@@ -831,16 +831,42 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
                           isCheapest && !unavailable ? 'cheapest' : '',
                         ].filter(Boolean).join(' ')}
                       >
+                        {/* Row 1: Supplier name + all status chips */}
                         <div className="supplierCellTop">
                           <strong className="supplierCellName">{option.supplier_name || 'SUPPLIER'}</strong>
                           <div className="supplierCellBadges">
+                            {isSelected ? <span className="miniTag selected">✓ Selected</span> : null}
                             {isCheapest && !unavailable ? <span className="miniTag">Best £</span> : null}
                             {ordered ? <span className="miniTag warn">Ordered</span> : null}
+                            {unavailable ? <span className="miniTag na">N/A</span> : null}
                           </div>
                         </div>
 
-                        {/* Cost / Markup / Sell — three inputs inline */}
-                        <div className="supplierPriceRow">
+                        {/* Row 2: Brand + Part No */}
+                        <div className="supplierNumbers">
+                          <input className="input compactInput" defaultValue={option.brand || ''} placeholder="Brand" onBlur={(e) => patchOption(option.id, { brand: toOperationalUpper(e.target.value) || null })} />
+                          <input className="input compactInput" defaultValue={option.part_number || ''} placeholder="Part No." onBlur={(e) => patchOption(option.id, { part_number: toOperationalUpper(e.target.value) || null })} />
+                        </div>
+
+                        {/* Row 3: ETA datetime + On shelf — ETA uses dedicated row to avoid datetime-local overflow */}
+                        <div className="supplierEtaRow">
+                          <input
+                            type="datetime-local"
+                            defaultValue={option?.eta_datetime ? String(option.eta_datetime).slice(0, 16) : new Date().toISOString().slice(0, 16)}
+                            onBlur={(e) => patchOption(option.id, { eta_datetime: e.target.value || null, eta_text: e.target.value ? null : option?.eta_text || null })}
+                          />
+                          <label className="inlineCheck">
+                            <input
+                              type="checkbox"
+                              checked={String(option?.eta_text || '').toUpperCase() === 'ON SHELF'}
+                              onChange={(e) => patchOption(option.id, { eta_text: e.target.checked ? 'ON SHELF' : '', eta_datetime: e.target.checked ? null : option?.eta_datetime || null })}
+                            />
+                            <span>On shelf</span>
+                          </label>
+                        </div>
+
+                        {/* Row 4: Cost / Markup / Sell — three equal columns */}
+                        <div className="supplierPriceGrid">
                           <input
                             className="input compactInput"
                             defaultValue={cost}
@@ -873,34 +899,10 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
                           />
                         </div>
 
-                        {/* Inc VAT — prominent gold badge, full width */}
+                        {/* Row 5: Inc VAT — gold badge, full width */}
                         <div className="incVatBadge">Inc VAT {formatMoney(sellInc)}</div>
 
-                        {/* Brand / part number */}
-                        <div className="supplierNumbers">
-                          <input className="input compactInput" defaultValue={option.brand || ''} placeholder="Brand" onBlur={(e) => patchOption(option.id, { brand: toOperationalUpper(e.target.value) || null })} />
-                          <input className="input compactInput" defaultValue={option.part_number || ''} placeholder="Part No." onBlur={(e) => patchOption(option.id, { part_number: toOperationalUpper(e.target.value) || null })} />
-                        </div>
-
-                        {/* ETA */}
-                        <div className="supplierNumbers">
-                          <input
-                            className="input compactInput"
-                            type="datetime-local"
-                            defaultValue={option?.eta_datetime ? String(option.eta_datetime).slice(0, 16) : new Date().toISOString().slice(0, 16)}
-                            onBlur={(e) => patchOption(option.id, { eta_datetime: e.target.value || null, eta_text: e.target.value ? null : option?.eta_text || null })}
-                          />
-                          <label className="inlineCheck">
-                            <input
-                              type="checkbox"
-                              checked={String(option?.eta_text || '').toUpperCase() === 'ON SHELF'}
-                              onChange={(e) => patchOption(option.id, { eta_text: e.target.checked ? 'ON SHELF' : '', eta_datetime: e.target.checked ? null : option?.eta_datetime || null })}
-                            />
-                            <span>On shelf</span>
-                          </label>
-                        </div>
-
-                        {/* Select / N/A / Ordered */}
+                        {/* Row 6: Select / N/A / Ordered controls */}
                         <div className="supplierCellFooter">
                           <label className="inlineCheck">
                             <input type="radio" name={`sel-${item.id}`} checked={Boolean(isSelected)} onChange={() => selectOption(option.id)} disabled={unavailable} />

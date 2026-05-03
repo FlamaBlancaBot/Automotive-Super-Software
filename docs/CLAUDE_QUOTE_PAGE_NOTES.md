@@ -74,6 +74,34 @@ Changes made:
 
 ---
 
+## Follow-up Layout Fix — 2025-05-03
+
+**Issue:** Supplier cards were still overflowing and overlapping after the initial refactor.
+
+**Files changed:**
+- `frontend/src/pages/QuoteDetail.jsx` — supplier card JSX reordered; `supplierPriceRow` → `supplierPriceGrid`; ETA row gets its own class; Selected/N/A status chips added to card header
+- `frontend/src/App.css` — `.partSupplierScroller` changed from CSS grid auto-flow to flexbox; `.supplierCell` given fixed `flex: 0 0 300px` dimensions; `.supplierNumbers` fixed min-width; new `.supplierPriceGrid`, `.supplierEtaRow` classes; `miniTag.selected` / `miniTag.na` chips
+
+**Root causes fixed:**
+1. `.partSupplierScroller` used `display: grid; grid-auto-flow: column` — this caused the grid container's intrinsic width to exceed the viewport. Changed to `display: flex; flex-wrap: nowrap`.
+2. `.supplierCell` had no explicit flex dimensions, so cards could grow unconstrained. Changed to `flex: 0 0 300px; overflow: hidden`.
+3. `.supplierNumbers { flex-wrap: nowrap }` combined with the `datetime-local` input (which has a large browser-native minimum width ~190px) caused the ETA row to overflow the card. ETA row now uses its own `.supplierEtaRow` class with `flex-wrap: wrap`.
+4. `.supplierNumbers .compactInput { min-width: 70px }` conflicted with narrow cards. Changed to `min-width: 0`.
+5. Supplier pricing row changed from flex to CSS grid (`repeat(3, minmax(0, 1fr))`) so three inputs share the card width equally without spilling.
+
+**Important — functionality must remain per-part:**
+Suppliers are added to individual parts via `addSupplierToPart(itemId)`. Do NOT change this to global supplier columns. The `partSupplierDrafts[item.id]` state is keyed per part item ID.
+
+**Supplier card row order (after follow-up fix):**
+1. Supplier name + Selected / Best / Ordered / N/A chips (display)
+2. Brand input + Part No input
+3. ETA datetime + On shelf checkbox
+4. Cost ex VAT + Markup % + Sell ex VAT (3-column grid)
+5. Inc VAT badge (gold, full width)
+6. Select radio + N/A checkbox + Ordered checkbox (controls)
+
+---
+
 ## Key Behaviours to Preserve
 
 - Adding a supplier to a part adds it **only to that part** — not to all parts.
