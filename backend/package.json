@@ -1,0 +1,26 @@
+{
+  "name": "automotive-super-software-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend API for Automotive Super Software (internal garage management).",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "db:check": "node scripts/db-check.js",
+    "db:init": "node scripts/db-init.js",
+    "db:seed": "node scripts/db-seed.js",
+    "db:reset:safe": "node scripts/db-reset-safe.js",
+    "prepare:public": "bash ../scripts/prepare-backend-public.sh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mysql2": "^3.22.2"
+  }
+}

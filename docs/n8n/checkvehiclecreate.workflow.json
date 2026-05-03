@@ -1,0 +1,246 @@
+{
+  "name": "AUTOSS - checkvehiclecreate (DVLA + DVSA)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "checkvehiclecreate",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-checkvehiclecreate",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise registration and (optionally) validate shared secret.\n//\n// Input body example:\n// { \"registration\": \"AB12CDE\" }\n\nconst body = $json.body || {};\nconst headers = $json.headers || {};\n\nconst rawReg = String(body.registration || '').toUpperCase();\nconst regNorm = rawReg.replace(/[^A-Z0-9]/g, '').trim();\n\nif (!regNorm) {\n  return [{ json: { ok: false, error: 'Missing registration' } }];\n}\n\n// Optional shared secret.\n// Set AUTOSS_WEBHOOK_SECRET in n8n environment variables.\nconst expected = $env.AUTOSS_WEBHOOK_SECRET;\nif (expected) {\n  const provided = String(headers['x-autoss-webhook-secret'] || headers['X-AUTOSS-WEBHOOK-SECRET'] || '');\n  if (!provided || provided !== expected) {\n    return [{ json: { ok: false, error: 'Invalid shared secret' } }];\n  }\n}\n\nreturn [{ json: { regNorm, dvla: { registrationNumber: regNorm } } }];\n"
+      },
+      "id": "code-normalise",
+      "name": "Normalise REG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles",
+        "sendHeaders": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.DVLA_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.dvla}}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "http-dvla",
+      "name": "DVLA Vehicle Enquiry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        700,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.DVSA_TOKEN_URL}}",
+        "sendHeaders": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{`grant_type=client_credentials&client_id=${encodeURIComponent($env.DVSA_CLIENT_ID)}&client_secret=${encodeURIComponent($env.DVSA_CLIENT_SECRET)}&scope=${encodeURIComponent($env.DVSA_SCOPE)}`}}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "http-dvsa-token",
+      "name": "DVSA OAuth Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.DVSA_MOT_ENDPOINT || 'https://CHANGE-ME-DVSA-MOT-ENDPOINT'}}",
+        "sendHeaders": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "={{`Bearer ${$node[\"DVSA OAuth Token\"].json[\"access_token\"]}`}}"
+            },
+            {
+              "name": "X-API-Key",
+              "value": "={{$env.DVSA_API_KEY}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json+v6"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParametersUi": {
+          "parameter": [
+            {
+              "name": "registration",
+              "value": "={{$node[\"Normalise REG\"].json[\"regNorm\"]}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "http-dvsa-mot",
+      "name": "DVSA MOT History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        940,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise response to the exact shape expected by the backend.\n//\n// Notes:\n// - DVLA and DVSA response fields vary depending on API version.\n// - This code intentionally keeps mapping simple and easy to edit.\n\nconst regNorm = $node['Normalise REG'].json.regNorm;\nconst dvla = $node['DVLA Vehicle Enquiry'].json || {};\nconst motRaw = $node['DVSA MOT History'].json || {};\n\n// DVLA Vehicle Enquiry API commonly returns fields like:\n// - make\n// - colour\n// - fuelType\n// - engineCapacity\n// - yearOfManufacture\n// Some fields such as model are not always present.\n\nconst vehicle = {\n  registration: dvla.registrationNumber || regNorm,\n  make: dvla.make || null,\n  model: dvla.model || null,\n  year: dvla.yearOfManufacture || dvla.year || null,\n  fuel_type: dvla.fuelType || dvla.fuel_type || null,\n  engine_size: dvla.engineCapacity ? `${dvla.engineCapacity}cc` : (dvla.engine_size || null),\n  colour: dvla.colour || dvla.color || null,\n  mot_status: null,\n  mot_expiry: null,\n  last_mot_date: null,\n  last_recorded_mileage: null\n};\n\n// MOT data: keep placeholders for now; adapt once DVSA response is confirmed.\nconst mot = {\n  tests: motRaw.tests || motRaw.motTests || [],\n  failures: motRaw.failures || [],\n  advisories: motRaw.advisories || []\n};\n\nreturn [{ json: { ok: true, source: 'n8n', vehicle, mot } }];\n"
+      },
+      "id": "code-normalise-output",
+      "name": "Normalise Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalise REG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise REG": {
+      "main": [
+        [
+          {
+            "node": "DVLA Vehicle Enquiry",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "DVSA OAuth Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DVSA OAuth Token": {
+      "main": [
+        [
+          {
+            "node": "DVSA MOT History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DVLA Vehicle Enquiry": {
+      "main": [
+        [
+          {
+            "node": "Normalise Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DVSA MOT History": {
+      "main": [
+        [
+          {
+            "node": "Normalise Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Output": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

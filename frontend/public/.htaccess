@@ -1,0 +1,21 @@
+# SPA fallback for Apache/Hostinger.
+#
+# This ensures that deep links (e.g. /jobs/123) are served by index.html so the
+# React app can handle routing on the client.
+#
+# If you deploy this app under a path (not a subdomain), you may need to change:
+#   RewriteBase /autoss/
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Allow requests for real files/folders to work normally.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else goes to the SPA entrypoint.
+  RewriteRule ^ index.html [L]
+</IfModule>
+

@@ -1,0 +1,63 @@
+:root {
+  /* Dark "garage software" theme (simple on purpose). */
+  --bg: #0b1020;
+  --panel: #0f172a;
+  --panel-2: #111c36;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --border: rgba(148, 163, 184, 0.18);
+  --accent: #60a5fa;
+  --accent-2: #22c55e;
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  --surface-0: #0b1020;
+  --surface-1: #10182d;
+  --surface-2: #15213d;
+  --surface-3: #1b2a4b;
+  --text-strong: #f8fafc;
+  --text-muted: #9aa8bd;
+  --separator: rgba(148, 163, 184, 0.24);
+
+  /* Hint to the browser that this app is dark themed (helps some form controls). */
+  color-scheme: dark;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='light'] {
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --panel-2: #eef2f7;
+  --text: #0f172a;
+  --muted: #475569;
+  --border: rgba(15, 23, 42, 0.14);
+  --accent: #2563eb;
+  --accent-2: #0f766e;
+  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --surface-0: #f4f7fb;
+  --surface-1: #ffffff;
+  --surface-2: #f7f9fd;
+  --surface-3: #eef3fb;
+  --text-strong: #0b1220;
+  --text-muted: #334155;
+  --separator: rgba(15, 23, 42, 0.2);
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+}
+
+button {
+  font: inherit;
+}

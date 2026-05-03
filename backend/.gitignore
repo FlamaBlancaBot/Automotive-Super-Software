@@ -1,0 +1,5 @@
+data/
+
+# Built frontend copied into backend for production deploy
+public/*
+!public/README.md
