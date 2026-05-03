@@ -12,7 +12,7 @@ function formatDateTime(value) {
   return d.toLocaleString('en-GB')
 }
 
-export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPartsOrders, onOpenJobSheet }) {
+export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPartsOrders, onOpenJobSheet, onOpenInvoice }) {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [job, setJob] = useState(null)
@@ -78,7 +78,11 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
     try {
       const out = await apiPost(`/api/jobs/${job.id}/invoice`, {})
       if (out && out.invoice) {
-        await load()
+        if (typeof onOpenInvoice === 'function') {
+          onOpenInvoice(out.invoice.id)
+        } else {
+          await load()
+        }
       }
     } finally {
       setActionStatus('idle')
@@ -133,8 +137,13 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
           >
             {actionStatus === 'saving' ? 'Working…' : 'Create/Open quote'}
           </button>
-          <button type="button" className="secondaryButton" onClick={createOrOpenInvoice}>
-            Create/Open invoice
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={createOrOpenInvoice}
+            disabled={actionStatus === 'saving'}
+          >
+            {actionStatus === 'saving' ? 'Working…' : 'Create/Open invoice'}
           </button>
         </div>
       </header>

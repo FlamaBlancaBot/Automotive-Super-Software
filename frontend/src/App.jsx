@@ -20,6 +20,7 @@ import PlaceholderPage from './pages/PlaceholderPage'
 import Login from './pages/Login'
 import CustomerDetailsRequest from './pages/CustomerDetailsRequest'
 import MotEvents from './pages/MotEvents'
+import InvoiceDetail from './pages/InvoiceDetail'
 import { NAV_ITEMS } from './config/navigation'
 import { setDocumentTitle } from './utils/title'
 import { apiGet, apiPost } from './api/http'
@@ -33,6 +34,7 @@ function getKeyFromPath(pathname) {
   if (clean && clean.startsWith('/quotes/')) return 'quotes'
   if (clean && clean.startsWith('/jobs/')) return 'jobs'
   if (clean && clean.startsWith('/job-sheets/')) return 'job-sheets'
+  if (clean && clean.startsWith('/invoices/')) return 'invoices'
   if (clean && clean.startsWith('/search')) return 'search'
   const match = NAV_ITEMS.find((x) => x.path === clean)
   return match ? match.key : 'dashboard'
@@ -130,6 +132,11 @@ function App() {
     return m && m[1] ? Number(m[1]) : null
   }, [pathname])
 
+  const invoiceIdFromPath = useMemo(() => {
+    const m = stripQuery(pathname).match(/^\/invoices\/(\d+)$/)
+    return m && m[1] ? Number(m[1]) : null
+  }, [pathname])
+
   const publicCustomerDetailsToken = useMemo(() => {
     const m = stripQuery(pathname).match(/^\/customer-details\/([^/]+)$/)
     return m && m[1] ? decodeURIComponent(m[1]) : null
@@ -218,6 +225,7 @@ function App() {
                 onOpenQuote={(id) => navigateToPath(`/quotes/${id}`)}
                 onViewPartsOrders={(jobId) => navigateToPath(`/parts?job_id=${jobId}`)}
                 onOpenJobSheet={(id) => navigateToPath(`/job-sheets/${id}`)}
+                onOpenInvoice={(id) => navigateToPath(`/invoices/${id}`)}
               />
             ) : (
               <Jobs
@@ -259,6 +267,15 @@ function App() {
               />
             ) : (
               <JobSheets onOpenJobSheet={(id) => navigateToPath(`/job-sheets/${id}`)} />
+            )
+          ) : activeKey === 'invoices' ? (
+            invoiceIdFromPath ? (
+              <InvoiceDetail
+                invoiceId={invoiceIdFromPath}
+                onBack={() => window.history.back()}
+              />
+            ) : (
+              <PlaceholderPage title="Invoices" />
             )
           ) : activeKey === 'quotes' ? (
             quoteIdFromPath ? (
