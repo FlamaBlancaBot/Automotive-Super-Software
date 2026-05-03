@@ -3,10 +3,10 @@
   "version": "1.1.001",
   "private": true,
   "scripts": {
-    "prebuild": "npm --prefix frontend ci && npm --prefix backend ci",
+    "prebuild": "npm --prefix frontend ci --include=dev && npm --prefix backend ci",
     "build": "RAYON_NUM_THREADS=1 UV_THREADPOOL_SIZE=1 CI=true npm --prefix frontend run build && mkdir -p backend/public && find backend/public -mindepth 1 -maxdepth 1 ! -name README.md -exec rm -rf {} + && cp -R frontend/dist/. backend/public/",
     "start": "node backend/server.js",
-    "install:all": "npm --prefix frontend ci && npm --prefix backend ci"
+    "install:all": "npm --prefix frontend ci --include=dev && npm --prefix backend ci"
   },
   "engines": {
     "node": "22.x"
