@@ -1,0 +1,26 @@
+{
+  "folders": [
+    {
+      "name": "Automotive Super Software",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": false,
+      "**/.DS_Store": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/package-lock.json": true
+    },
+    "editor.tabSize": 2,
+    "editor.formatOnSave": false,
+    "git.autofetch": true,
+    "npm.packageManager": "npm"
+  }
+}
