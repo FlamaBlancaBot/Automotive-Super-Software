@@ -487,3 +487,4 @@ For the planned MVP build order and data model, see:
 - `docs/PROJECT_PLAN.md`
 - `docs/MVP_SCOPE.md`
 - `docs/DATABASE_PLAN.md`
+
