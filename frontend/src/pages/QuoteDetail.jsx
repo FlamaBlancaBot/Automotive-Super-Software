@@ -63,11 +63,13 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
   const [partsOrders, setPartsOrders] = useState([])
   const [activity, setActivity] = useState([])
   const [showCustomerQuote, setShowCustomerQuote] = useState(false)
+  const [renderedCustomerQuoteHtml, setRenderedCustomerQuoteHtml] = useState('')
   const [customerDetailLink, setCustomerDetailLink] = useState('')
 
   const [quoteDraft, setQuoteDraft] = useState({ title: '', internal_notes: '', customer_notes: '' })
   const [expandedRows, setExpandedRows] = useState({})
   const [supplierToAdd, setSupplierToAdd] = useState('')
+  const [customSupplierName, setCustomSupplierName] = useState('')
 
   const partItems = useMemo(() => (items || []).filter((i) => PART_TYPES.includes(String(i.item_type || ''))), [items])
   const labourItems = useMemo(() => (items || []).filter((i) => LABOUR_TYPES.includes(String(i.item_type || ''))), [items])
@@ -260,6 +262,15 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
     }
   }
 
+  async function loadCustomerQuotePreview() {
+    try {
+      const out = await apiPost('/api/templates/customer_quote/render', { quote_id: quoteId })
+      setRenderedCustomerQuoteHtml(out.rendered_html || '')
+    } catch (err) {
+      setError(err.message || 'Failed to render customer quote preview.')
+    }
+  }
+
   async function addPredefined(id) {
     const item = (predefined || []).find((x) => Number(x.id) === Number(id))
     if (!item) return
@@ -356,6 +367,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
         cost_price: 0,
         markup_percent: 0,
         sell_price: 0,
+        eta_datetime: new Date().toISOString().slice(0, 16),
         eta_text: null,
         is_available: 1,
       })
@@ -385,7 +397,12 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
   }
 
   async function addSupplierColumn() {
-    const supplierId = Number(supplierToAdd || 0)
+    let supplierId = Number(supplierToAdd || 0)
+    if (supplierToAdd === 'custom') {
+      if (!customSupplierName.trim()) return
+      const createdSupplier = await apiPost('/api/suppliers', { name: customSupplierName.trim().toUpperCase(), usage_quotes: 1, usage_parts: 1, usage_mot: 0, usage_diagnostics: 0, usage_general: 1, active: 1 })
+      supplierId = Number(createdSupplier?.supplier?.id || 0)
+    }
     if (!supplierId) return
     setSaveBusy(true)
     setError('')
@@ -400,11 +417,13 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           cost_price: 0,
           markup_percent: 0,
           sell_price: 0,
+          eta_datetime: new Date().toISOString().slice(0, 16),
           eta_text: null,
           is_available: 1,
         })
       }
       setSupplierToAdd('')
+      setCustomSupplierName('')
       setNotice('Supplier column added.')
       await load({ preserveScroll: true, keepStatus: true })
     } catch (err) {
@@ -450,11 +469,18 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           <button type="button" className="secondaryButton" onClick={() => onViewPartsOrders && onViewPartsOrders(quote.id)}>
             View parts orders
           </button>
-          <button type="button" className="secondaryButton noPrint" onClick={() => setShowCustomerQuote((v) => !v)}>
+          <button type="button" className="secondaryButton noPrint" onClick={async () => { const next = !showCustomerQuote; setShowCustomerQuote(next); if (next) await loadCustomerQuotePreview() }}>
             {showCustomerQuote ? 'Hide customer quote' : 'Preview customer quote'}
           </button>
-          <button type="button" className="secondaryButton noPrint" onClick={() => window.print()}>
-            Print quote
+          <button type="button" className="secondaryButton noPrint" onClick={() => {
+            const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1000')
+            if (!w) return
+            w.document.write(`<html><head><title>Quote Preview</title></head><body>${renderedCustomerQuoteHtml || ''}</body></html>`)
+            w.document.close()
+            w.focus()
+            w.print()
+          }}>
+            Print customer quote
           </button>
         </div>
         <div className="fieldHint" style={{ marginTop: 6 }}>
@@ -510,52 +536,9 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
         <section className="cardBox printDocument" style={{ marginTop: 12 }}>
           <div className="cardTop">
             <h3 className="cardTitle">Customer Quote Preview</h3>
-            <div className="fieldHint">Customer-facing view (internal costs hidden).</div>
+            <div className="fieldHint">Template-rendered customer document (internal costs hidden).</div>
           </div>
-          <div className="fieldGrid" style={{ marginTop: 12 }}>
-            <div className="field" style={{ gridColumn: 'span 6' }}>
-              <div className="fieldLabel">Quote number</div>
-              <div className="mono">{quote.quote_number}</div>
-            </div>
-            <div className="field" style={{ gridColumn: 'span 6' }}>
-              <div className="fieldLabel">Date</div>
-              <div>{new Date().toLocaleDateString('en-GB')}</div>
-            </div>
-            <div className="field" style={{ gridColumn: 'span 12' }}>
-              <div className="fieldLabel">Vehicle</div>
-              <div>{quote.vehicle_registration} · {quote.vehicle_make} {quote.vehicle_model}</div>
-            </div>
-            <div className="field" style={{ gridColumn: 'span 12' }}>
-              <div className="fieldLabel">Customer</div>
-              <div>{quote.customer_first_name} {quote.customer_surname}</div>
-            </div>
-          </div>
-          <div className="quoteTableWrap" style={{ marginTop: 12 }}>
-            <table className="quoteTable">
-              <thead><tr><th>Item</th><th>Qty</th><th>Sell ex VAT</th><th>Line total</th></tr></thead>
-              <tbody>
-                {(items || []).filter((x) => Number(x.selected_for_quote) === 1).map((item) => {
-                  const opt = PART_TYPES.includes(String(item.item_type || '')) ? getEffectiveOption(item) : null
-                  const unitSell = opt ? toNumber(opt.sell_price, item.unit_sell) : toNumber(item.unit_sell, 0)
-                  const lineTotal = round2(toNumber(item.quantity, 1) * unitSell)
-                  return (
-                    <tr key={`cust-${item.id}`}>
-                      <td>{item.description}</td>
-                      <td>{item.quantity}</td>
-                      <td>{formatMoney(unitSell)}</td>
-                      <td>{formatMoney(lineTotal)}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="totalsGrid" style={{ marginTop: 12 }}>
-            <div className="totalsItem"><div className="totalsLabel">Subtotal ex VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.sellEx} /></div></div>
-            <div className="totalsItem"><div className="totalsLabel">VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.vat} /></div></div>
-            <div className="totalsItem emphasis"><div className="totalsLabel">Total inc VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.sellInc} /></div></div>
-          </div>
-          <div className="fieldHint" style={{ marginTop: 10 }}>Quote valid for 7 days. Terms and conditions apply.</div>
+          <div className="printDocument" style={{ marginTop: 12 }} dangerouslySetInnerHTML={{ __html: renderedCustomerQuoteHtml || '<p>No preview available.</p>' }} />
         </section>
       ) : null}
 
@@ -572,7 +555,9 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
             {(suppliers || []).filter((s) => Number(s.active) === 1 && Number(s.usage_quotes ?? 1) === 1).map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
+            <option value="custom">CUSTOM</option>
           </select>
+          {supplierToAdd === 'custom' ? <input className="input" value={customSupplierName} onChange={(e) => setCustomSupplierName(e.target.value.toUpperCase())} placeholder="CUSTOM SUPPLIER NAME" /> : null}
           <button type="button" className="secondaryButton" onClick={addSupplierColumn} disabled={saveBusy || !supplierToAdd}>Add supplier</button>
           <select className="select" defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value = ''; if (v) addPredefined(v) }}>
             <option value="" disabled>Add predefined…</option>

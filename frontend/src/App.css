@@ -312,6 +312,7 @@
   top: 56px;
   height: calc(100vh - 56px);
   overflow: hidden;
+  scrollbar-width: none;
 }
 
 .sidebarOverlay {
@@ -414,7 +415,20 @@
     padding: 10px 8px;
   }
 
-  .sidebar.isCollapsed:hover { width: 74px; }
+  .sidebar.isCollapsed:hover {
+    width: 170px;
+  }
+  .sidebar.isCollapsed:hover .navItem {
+    justify-content: flex-start;
+    gap: 10px;
+    padding-left: 8px;
+  }
+  .sidebar.isCollapsed:hover .navLabel {
+    display: inline;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
 }
 
 .main {

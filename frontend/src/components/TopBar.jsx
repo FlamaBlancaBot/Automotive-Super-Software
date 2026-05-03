@@ -1,4 +1,5 @@
 import { APP_LONG_NAME, APP_SHORT_NAME, LOGO_URL } from '../config/branding'
+import { APP_VERSION } from '../config/version'
 
 export default function TopBar({
   onToggleNav,
@@ -25,7 +26,7 @@ export default function TopBar({
         <img className="brandLogo" src={LOGO_URL} alt="" />
         <div className="brandText">
           <div className="brandShort">{APP_SHORT_NAME}</div>
-          <div className="brandLong">{APP_LONG_NAME}</div>
+          <div className="brandLong">{APP_LONG_NAME} · v{APP_VERSION}</div>
         </div>
       </div>
 

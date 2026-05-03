@@ -322,6 +322,23 @@ const MYSQL_SCHEMA_STATEMENTS = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
   `
+  CREATE TABLE IF NOT EXISTS document_templates (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    template_key VARCHAR(80) NOT NULL,
+    template_type VARCHAR(30) NOT NULL,
+    name VARCHAR(160) NOT NULL,
+    subject VARCHAR(255) NULL,
+    body_html MEDIUMTEXT NULL,
+    body_text MEDIUMTEXT NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_document_templates_key (template_key),
+    KEY idx_document_templates_type (template_type)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
   CREATE TABLE IF NOT EXISTS company_settings (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     company_name VARCHAR(180) NULL,

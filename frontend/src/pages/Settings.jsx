@@ -10,6 +10,7 @@ const TABS = [
   { key: 'services', label: 'Service Templates' },
   { key: 'job-statuses', label: 'Job Statuses' },
   { key: 'items', label: 'Predefined Items' },
+  { key: 'templates', label: 'Templates' },
   { key: 'accounting', label: 'Accounting' },
   { key: 'integrations', label: 'Integrations' },
   { key: 'branding', label: 'Branding' },
@@ -26,6 +27,8 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
   const [serviceTemplates, setServiceTemplates] = useState([])
   const [predefinedItems, setPredefinedItems] = useState([])
   const [jobStatuses, setJobStatuses] = useState([])
+  const [templates, setTemplates] = useState([])
+  const [shortcodeHelp, setShortcodeHelp] = useState(null)
   const [health, setHealth] = useState(null)
   const [integrationsStatus, setIntegrationsStatus] = useState(null)
 
@@ -67,7 +70,7 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
     setStatus('loading')
     setError('')
     try {
-      const [settingsRes, techRes, supplierRes, serviceRes, itemRes, statusesRes, healthRes, integrationsRes] =
+      const [settingsRes, techRes, supplierRes, serviceRes, itemRes, statusesRes, healthRes, integrationsRes, templatesRes] =
         await Promise.all([
           apiGet('/api/admin/company-settings').catch(() => ({ settings: null })),
           apiGet('/api/admin/technicians').catch(() => ({ technicians: [] })),
@@ -77,6 +80,7 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
           apiGet('/api/admin/job-statuses').catch(() => ({ statuses: [] })),
           apiGet('/api/health').catch(() => null),
           apiGet('/api/admin/integrations-status').catch(() => null),
+          apiGet('/api/templates').catch(() => ({ templates: [], shortcode_help: null })),
         ])
 
       setSettings(settingsRes.settings || null)
@@ -88,6 +92,8 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
       setJobStatuses(statusesRes.statuses || [])
       setHealth(healthRes || null)
       setIntegrationsStatus(integrationsRes || null)
+      setTemplates(templatesRes.templates || [])
+      setShortcodeHelp(templatesRes.shortcode_help || null)
       setStatus('ready')
     } catch (err) {
       setStatus('error')
@@ -411,6 +417,27 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
     }
   }
 
+  async function saveTemplateEdit() {
+    if (!modal.data || !modal.data.template_key) return
+    try {
+      const payload = {
+        name: modal.data.name,
+        subject: modal.data.subject,
+        body_html: modal.data.body_html,
+        body_text: modal.data.body_text,
+        active: modal.data.active ? 1 : 0,
+      }
+      await apiPatch(`/api/templates/${modal.data.template_key}`, payload)
+      const data = await apiGet('/api/templates')
+      setTemplates(data.templates || [])
+      setShortcodeHelp(data.shortcode_help || null)
+      setSaveMessage('Template updated.')
+      setModal({ type: '', data: null })
+    } catch (err) {
+      setError(err.message || 'Failed to update template.')
+    }
+  }
+
   return (
     <div className="settingsPage">
       <header className="pageHeader">
@@ -664,6 +691,31 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
         </div>
       ) : null}
 
+      {activeTab === 'templates' ? (
+        <div className="cardBox">
+          <div className="cardTop">
+            <h3 className="cardTitle">Document Templates</h3>
+            <div className="fieldHint">{templates.length} template(s)</div>
+          </div>
+          <div className="quoteTableWrap" style={{ marginTop: 12 }}>
+            <table className="quoteTable">
+              <thead><tr><th>Key</th><th>Type</th><th>Name</th><th>Active</th><th></th></tr></thead>
+              <tbody>
+                {templates.map((t) => (
+                  <tr key={t.template_key}>
+                    <td className="mono">{t.template_key}</td>
+                    <td>{t.template_type}</td>
+                    <td>{t.name}</td>
+                    <td>{Number(t.active) ? 'YES' : 'NO'}</td>
+                    <td><button type="button" className="miniButton" onClick={async () => { const out = await apiGet(`/api/templates/${t.template_key}`); setModal({ type: 'template-edit', data: { ...out.template, active: Number(out.template.active) === 1 } }) }}>Edit</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
       {activeTab === 'accounting' && settingsDraft ? (
         <SimpleTable
           title="Accounting"
@@ -758,6 +810,20 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
               <Field label="Name"><input className="input" value={modal.data.name || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, name: e.target.value } }))} /></Field>
               <Field label="Capabilities"><input className="input" value={modal.data.capabilities || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, capabilities: e.target.value } }))} /></Field>
               <div className="pageHeaderActions"><button className="primaryButton" type="button" onClick={modal.type === 'technician-add' ? async () => { setTechDraft(modal.data); await addTechnician(); setModal({ type: '', data: null }) } : saveTechnicianEdit}>Save</button></div>
+            </>
+          ) : null}
+          {modal.type === 'template-edit' ? (
+            <>
+              <h3 className="cardTitle">Edit template</h3>
+              <Field label="Name"><input className="input" value={modal.data.name || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, name: e.target.value } }))} /></Field>
+              <Field label="Subject"><input className="input" value={modal.data.subject || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, subject: e.target.value } }))} /></Field>
+              {modal.data.template_type === 'sms' ? (
+                <Field label="Body text"><textarea className="textarea" rows={8} value={modal.data.body_text || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, body_text: e.target.value } }))} /></Field>
+              ) : (
+                <Field label="Body HTML"><textarea className="textarea" rows={10} value={modal.data.body_html || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, body_html: e.target.value } }))} /></Field>
+              )}
+              <div className="fieldHint" style={{ marginTop: 8 }}>Shortcodes: {shortcodeHelp ? Object.values(shortcodeHelp).flat().slice(0, 12).join(' · ') : 'Load templates to view shortcodes.'}</div>
+              <div className="pageHeaderActions"><button className="primaryButton" type="button" onClick={saveTemplateEdit}>Save</button></div>
             </>
           ) : null}
           {modal.type === 'supplier-add' || modal.type === 'supplier-edit' ? (

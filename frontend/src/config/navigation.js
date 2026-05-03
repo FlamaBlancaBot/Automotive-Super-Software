@@ -12,10 +12,10 @@ export const NAV_ITEMS = [
   { key: 'jobs', label: 'Jobs', path: '/jobs', title: 'Jobs', icon: '🧾' },
   { key: 'quotes', label: 'Quotes', path: '/quotes', title: 'Quotes', icon: '💷' },
   { key: 'parts', label: 'Parts', path: '/parts', title: 'Parts', icon: '🧩' },
-  { key: 'suppliers', label: 'Suppliers', path: '/suppliers', title: 'Suppliers', icon: '🏭' },
-  { key: 'technicians', label: 'Technicians', path: '/technicians', title: 'Technicians', icon: '🧑‍🔧' },
+  { key: 'suppliers', label: 'Suppliers', path: '/suppliers', title: 'Suppliers', hidden: true, icon: '🏭' },
+  { key: 'technicians', label: 'Technicians', path: '/technicians', title: 'Technicians', hidden: true, icon: '🧑‍🔧' },
   { key: 'mot', label: 'MOT', path: '/mot', title: 'MOT', icon: '✅' },
-  { key: 'job-sheets', label: 'Job Sheets', path: '/job-sheets', title: 'Job Sheets', icon: '📄' },
+  { key: 'job-sheets', label: 'Job Sheets', path: '/job-sheets', title: 'Job Sheets', hidden: true, icon: '📄' },
   { key: 'settings', label: 'Settings', path: '/settings', title: 'Settings', icon: '⚙️' },
   { key: 'setup', label: 'Set-up', path: '/setup', title: 'Setup', hidden: true, icon: '🛠️' },
 ]

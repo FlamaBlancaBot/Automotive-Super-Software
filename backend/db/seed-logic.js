@@ -336,6 +336,31 @@ async function ensurePredefinedQuoteItems(db) {
   return { inserted }
 }
 
+async function ensureDocumentTemplates(db) {
+  const templates = [
+    ['customer_quote', 'html', 'CUSTOMER QUOTE TEMPLATE', null, '<h1>{{company.name}}</h1><p>{{company.address}} · {{company.phone}}</p><h2>QUOTE {{quote.quote_number}}</h2><p>{{customer.name}} · {{vehicle.registration}} {{vehicle.make}} {{vehicle.model}}</p><table border=\"1\" cellspacing=\"0\" cellpadding=\"6\" width=\"100%\"><tr><th>Item</th><th>Qty</th><th>Sell ex VAT</th><th>Sell inc VAT</th></tr>{{quote.items_html}}</table><p>Subtotal: £{{quote.subtotal_ex_vat}}<br/>VAT: £{{quote.vat_total}}<br/><strong>Total: £{{quote.total_inc_vat}}</strong></p><p>{{quote.notes}}</p>', null],
+    ['invoice', 'html', 'INVOICE TEMPLATE', null, '<h1>{{company.name}}</h1><p>{{company.address}}</p><h2>INVOICE {{invoice.invoice_number}}</h2><p>{{customer.name}} · {{vehicle.registration}} {{vehicle.make}} {{vehicle.model}}</p><table border=\"1\" cellspacing=\"0\" cellpadding=\"6\" width=\"100%\"><tr><th>Item</th><th>Qty</th><th>Unit ex VAT</th><th>Total inc VAT</th></tr>{{invoice.items_html}}</table><p>Subtotal: £{{invoice.subtotal_ex_vat}}<br/>VAT: £{{invoice.vat_total}}<br/><strong>Total: £{{invoice.total_inc_vat}}</strong></p><p>{{invoice.notes}}</p>', null],
+    ['job_sheet', 'html', 'JOB SHEET TEMPLATE', null, '<h2>{{company.name}} JOB SHEET</h2><h1>{{vehicle.registration}}</h1><p>{{vehicle.make}} {{vehicle.model}} {{vehicle.colour}} {{vehicle.year}} {{vehicle.fuel_type}}</p><p>JOB #{{job.id}} · {{job.title}} · {{job.booked_start}}</p><p>CUSTOMER STATEMENT: {{job.customer_statement}}</p><p>INTERNAL NOTES: {{job.internal_notes}}</p><h3>TASKS</h3>{{job_sheet.tasks_html}}<h3>PARTS</h3>{{job_sheet.parts_html}}<h3>CHECKLIST</h3>{{job_sheet.checklist_html}}<p>MILEAGE IN: ______ MILEAGE OUT: ______ TOTAL HOURS: ______</p><p>TEST DRIVEN [ ] READY TO CALL CUSTOMER [ ] TECH SIGN: __________ DATE: ______</p>', null],
+    ['email_quote_ready', 'email', 'EMAIL QUOTE READY', 'QUOTE READY {{quote.quote_number}}', '<p>Hello {{customer.name}}, your quote {{quote.quote_number}} is ready.</p><p>Total including VAT: £{{quote.total_inc_vat}}</p>', 'Hello {{customer.name}}, your quote {{quote.quote_number}} is ready. Total inc VAT: £{{quote.total_inc_vat}}'],
+    ['email_invoice_ready', 'email', 'EMAIL INVOICE READY', 'INVOICE READY {{invoice.invoice_number}}', '<p>Hello {{customer.name}}, your invoice {{invoice.invoice_number}} is ready.</p><p>Total including VAT: £{{invoice.total_inc_vat}}</p>', 'Hello {{customer.name}}, your invoice {{invoice.invoice_number}} is ready. Total inc VAT: £{{invoice.total_inc_vat}}'],
+    ['sms_customer_details_request', 'sms', 'SMS CUSTOMER DETAILS REQUEST', null, null, 'AUTOSS: Please provide your details for {{vehicle.registration}}.'],
+    ['sms_quote_ready', 'sms', 'SMS QUOTE READY', null, null, 'AUTOSS: Quote {{quote.quote_number}} ready for {{vehicle.registration}}. Total £{{quote.total_inc_vat}}.'],
+    ['sms_vehicle_update', 'sms', 'SMS VEHICLE UPDATE', null, null, 'AUTOSS update: {{vehicle.registration}} job {{job.status}}.'],
+  ]
+  let inserted = 0
+  for (const t of templates) {
+    const exists = await db.get(`SELECT id FROM document_templates WHERE template_key = ? LIMIT 1`, [t[0]])
+    if (exists?.id) continue
+    await db.run(
+      `INSERT INTO document_templates (template_key, template_type, name, subject, body_html, body_text, active)
+       VALUES (?, ?, ?, ?, ?, ?, 1)`,
+      t,
+    )
+    inserted += 1
+  }
+  return { inserted }
+}
+
 async function seedDatabase(db) {
   return db.transaction(async (tx) => {
     const createdSuppliers = []
@@ -347,6 +372,7 @@ async function seedDatabase(db) {
     const serviceTemplates = await ensureServiceTemplates(tx)
     const jobStatuses = await ensureJobStatuses(tx)
     const predefinedQuoteItems = await ensurePredefinedQuoteItems(tx)
+    const documentTemplates = await ensureDocumentTemplates(tx)
 
     const customersCount = await countRows(tx, 'customers')
     const vehiclesCount = await countRows(tx, 'vehicles')
@@ -1031,6 +1057,7 @@ async function seedDatabase(db) {
         service_templates: serviceTemplates.inserted,
         job_statuses: jobStatuses.inserted,
         predefined_quote_items: predefinedQuoteItems.inserted,
+        document_templates: documentTemplates.inserted,
         customers: customersCount === 0 ? customerIds.length : 0,
         vehicles: vehiclesCount === 0 ? vehicleIds.length : 0,
         quotes: seededQuotes,

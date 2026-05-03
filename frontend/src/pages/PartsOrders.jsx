@@ -50,6 +50,8 @@ export default function PartsOrders({ locationPath }) {
 
   const [goodsModal, setGoodsModal] = useState(null) // { order }
   const [editModal, setEditModal] = useState(null) // { orderId }
+  const [addReceivedModal, setAddReceivedModal] = useState(false)
+  const [returnModal, setReturnModal] = useState(false)
   const [modalStatus, setModalStatus] = useState('idle')
   const [modalError, setModalError] = useState('')
 
@@ -232,6 +234,8 @@ export default function PartsOrders({ locationPath }) {
           <button type="button" className="secondaryButton" onClick={loadOrders}>
             {listStatus === 'loading' ? 'Loading…' : 'Apply filters'}
           </button>
+          <button type="button" className="secondaryButton" onClick={() => setAddReceivedModal(true)}>Add received part</button>
+          <button type="button" className="secondaryButton" onClick={() => setReturnModal(true)}>Return part</button>
           {modalStatus === 'saving' ? <span className="fieldHint">Saving…</span> : null}
         </div>
 
@@ -324,6 +328,8 @@ export default function PartsOrders({ locationPath }) {
           }}
         />
       ) : null}
+      {addReceivedModal ? <AddReceivedPartModal onClose={() => setAddReceivedModal(false)} onSaved={() => { setAddReceivedModal(false); loadOrders() }} /> : null}
+      {returnModal ? <ReturnPartModal onClose={() => setReturnModal(false)} onSaved={() => { setReturnModal(false); loadOrders() }} /> : null}
     </div>
   )
 }
@@ -336,6 +342,91 @@ function SummaryCard({ title, value }) {
         <span className="cardValue">{value == null ? '—' : String(value)}</span>
       </div>
     </article>
+  )
+}
+
+function AddReceivedPartModal({ onClose, onSaved }) {
+  const [jobs, setJobs] = useState([])
+  const [reg, setReg] = useState('')
+  const [jobId, setJobId] = useState('')
+  const [form, setForm] = useState({ part_name: '', part_number: '', brand: '', supplier: '', quantity: '1', invoice: '', delivery: '', cost: '0', markup: '0', sell: '0', notes: '' })
+  const [status, setStatus] = useState('idle')
+  async function lookup() {
+    const out = await apiGet(`/api/jobs?q=${encodeURIComponent(reg)}`)
+    setJobs(out.jobs || [])
+    if (out.jobs?.[0]?.id) setJobId(String(out.jobs[0].id))
+  }
+  async function save() {
+    if (!jobId || !form.part_name.trim()) return
+    setStatus('saving')
+    const supplierId = 0
+    const created = await apiPost('/api/parts-orders', {
+      job_id: Number(jobId),
+      part_name: form.part_name,
+      part_number: form.part_number,
+      brand: form.brand,
+      quantity: Number(form.quantity || 1),
+      cost_ex_vat: Number(form.cost || 0),
+      sell_ex_vat: Number(form.sell || 0),
+      notes: form.notes,
+      supplier_id: supplierId || null,
+    })
+    const order = created.parts_order
+    await apiPost(`/api/parts-orders/${order.id}/goods-received`, {
+      quantity_received: Number(form.quantity || 1),
+      supplier_invoice_number: form.invoice || null,
+      delivery_note_number: form.delivery || null,
+      notes: form.notes || null,
+      correct_part: 1,
+      condition_ok: 1,
+      return_required: 0,
+    })
+    setStatus('idle')
+    onSaved()
+  }
+  return (
+    <div className="modalOverlay" onClick={onClose}><div className="modalCard" onClick={(e) => e.stopPropagation()}>
+      <h3>Add received part</h3>
+      <input className="input" placeholder="REG" value={reg} onChange={(e) => setReg(e.target.value.toUpperCase())} />
+      <button type="button" className="miniButton" onClick={lookup}>Lookup REG</button>
+      <select className="select" value={jobId} onChange={(e) => setJobId(e.target.value)}><option value="">Select job</option>{jobs.map((j) => <option key={j.id} value={j.id}>{j.vehicle_registration} · {j.title}</option>)}</select>
+      <input className="input" placeholder="PART NAME" value={form.part_name} onChange={(e) => setForm((f) => ({ ...f, part_name: e.target.value.toUpperCase() }))} />
+      <div className="fieldGrid"><input className="input" placeholder="PART NO." value={form.part_number} onChange={(e) => setForm((f) => ({ ...f, part_number: e.target.value.toUpperCase() }))} /><input className="input" placeholder="BRAND" value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value.toUpperCase() }))} /></div>
+      <div className="fieldGrid"><input className="input" placeholder="QTY" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} /><input className="input" placeholder="INVOICE NO." value={form.invoice} onChange={(e) => setForm((f) => ({ ...f, invoice: e.target.value.toUpperCase() }))} /></div>
+      <div className="fieldGrid"><input className="input" placeholder="COST EX VAT" value={form.cost} onChange={(e) => setForm((f) => ({ ...f, cost: e.target.value }))} /><input className="input" placeholder="SELL EX VAT" value={form.sell} onChange={(e) => setForm((f) => ({ ...f, sell: e.target.value }))} /></div>
+      <textarea className="textarea" placeholder="NOTES" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value.toUpperCase() }))} />
+      <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={onClose}>Cancel</button><button type="button" className="primaryButton" onClick={save}>{status === 'saving' ? 'Saving…' : 'Save received part'}</button></div>
+    </div></div>
+  )
+}
+
+function ReturnPartModal({ onClose, onSaved }) {
+  const [reg, setReg] = useState('')
+  const [orders, setOrders] = useState([])
+  const [orderId, setOrderId] = useState('')
+  const [reason, setReason] = useState('')
+  const [credit, setCredit] = useState('')
+  async function lookup() {
+    const out = await apiGet(`/api/parts-orders?q=${encodeURIComponent(reg)}`)
+    setOrders(out.parts_orders || [])
+    if (out.parts_orders?.[0]?.id) setOrderId(String(out.parts_orders[0].id))
+  }
+  async function save(nextStatus = 'return_required') {
+    if (!orderId) return
+    await apiPatch(`/api/parts-orders/${orderId}`, { credit_note_number: credit || null, notes: reason || null })
+    await apiPatch(`/api/parts-orders/${orderId}/status`, { status: nextStatus, notes: reason || null })
+    onSaved()
+  }
+  return (
+    <div className="modalOverlay" onClick={onClose}><div className="modalCard" onClick={(e) => e.stopPropagation()}>
+      <h3>Return part</h3>
+      <input className="input" placeholder="REG" value={reg} onChange={(e) => setReg(e.target.value.toUpperCase())} />
+      <button type="button" className="miniButton" onClick={lookup}>Lookup REG</button>
+      <select className="select" value={orderId} onChange={(e) => setOrderId(e.target.value)}><option value="">Select part</option>{orders.map((o) => <option key={o.id} value={o.id}>{o.vehicle_registration} · {o.part_name || o.description}</option>)}</select>
+      <textarea className="textarea" placeholder="RETURN REASON" value={reason} onChange={(e) => setReason(e.target.value.toUpperCase())} />
+      <input className="input" placeholder="CREDIT NOTE NUMBER" value={credit} onChange={(e) => setCredit(e.target.value.toUpperCase())} />
+      <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={onClose}>Cancel</button><button type="button" className="miniButton" onClick={() => save('return_required')}>Mark return required</button><button type="button" className="miniButton" onClick={() => save('credit_pending')}>Mark credit pending</button><button type="button" className="primaryButton" onClick={() => save('credited')}>Mark credited</button></div>
+    </div></div>
   )
 }
 

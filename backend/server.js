@@ -10,6 +10,7 @@ const dotenv = require('dotenv')
 const path = require('path')
 const fs = require('fs')
 const cookieParser = require('cookie-parser')
+const rootPackage = require('../package.json')
 
 dotenv.config({ quiet: true })
 
@@ -64,6 +65,7 @@ async function main() {
   const { createActivityRouter } = require('./routes/activity')
   const { createMotEventsRouter } = require('./routes/mot-events')
   const { createInvoicesRouter } = require('./routes/invoices')
+  const { createTemplatesRouter } = require('./routes/templates')
   const {
     createCustomerDetailRequestsRouter,
   } = require('./routes/customer-detail-requests')
@@ -96,6 +98,7 @@ async function main() {
     res.json({
       ok: true,
       app: 'Automotive Super Software',
+      version: rootPackage.version || '0.0.0',
       environment: process.env.NODE_ENV || 'development',
       db: {
         client: getDbClient(),
@@ -129,6 +132,7 @@ async function main() {
   app.use('/api', createCalendarRouter({ db }))
   app.use('/api', createMotEventsRouter({ db }))
   app.use('/api', createInvoicesRouter({ db }))
+  app.use('/api', requireAuth, requireRole(['admin', 'office']), createTemplatesRouter({ db }))
 
   // In production, serve the built React app from `backend/public/`.
   // Non-API routes should return index.html so browser refresh works on SPA routes.

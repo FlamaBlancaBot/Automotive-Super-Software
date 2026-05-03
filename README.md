@@ -503,3 +503,41 @@ For the planned MVP build order and data model, see:
   - `PATCH /api/invoices/:id`
 
 Hostinger deployment remains Git-based from repository root. Do not use manual zip/dist uploads.
+
+## Version visibility
+
+- Current app version: `1.1.008`
+- Version is shown in the top bar and returned by `/api/health`.
+
+## Editable templates
+
+- New template storage table: `document_templates`.
+- API endpoints:
+  - `GET /api/templates`
+  - `GET /api/templates/:key`
+  - `PATCH /api/templates/:key`
+  - `POST /api/templates/:key/render`
+- Template keys include:
+  - `customer_quote`
+  - `invoice`
+  - `job_sheet`
+  - `email_quote_ready`
+  - `email_invoice_ready`
+  - `sms_customer_details_request`
+  - `sms_quote_ready`
+  - `sms_vehicle_update`
+
+## Core shortcodes
+
+- General: `{{company.name}}`, `{{company.phone}}`, `{{company.email}}`, `{{company.address}}`, `{{company.vat_number}}`, `{{company.logo_url}}`
+- Customer: `{{customer.name}}`, `{{customer.first_name}}`, `{{customer.surname}}`, `{{customer.phone}}`, `{{customer.email}}`, `{{customer.address}}`, `{{customer.postcode}}`
+- Vehicle: `{{vehicle.registration}}`, `{{vehicle.make}}`, `{{vehicle.model}}`, `{{vehicle.colour}}`, `{{vehicle.year}}`, `{{vehicle.fuel_type}}`, `{{vehicle.mileage}}`
+- Job: `{{job.id}}`, `{{job.title}}`, `{{job.status}}`, `{{job.booked_start}}`, `{{job.booked_end}}`, `{{job.customer_statement}}`, `{{job.internal_notes}}`
+- Quote: `{{quote.quote_number}}`, `{{quote.status}}`, `{{quote.date}}`, `{{quote.items_html}}`, `{{quote.subtotal_ex_vat}}`, `{{quote.vat_total}}`, `{{quote.total_inc_vat}}`, `{{quote.notes}}`
+- Invoice: `{{invoice.invoice_number}}`, `{{invoice.status}}`, `{{invoice.date}}`, `{{invoice.items_html}}`, `{{invoice.subtotal_ex_vat}}`, `{{invoice.vat_total}}`, `{{invoice.total_inc_vat}}`, `{{invoice.notes}}`
+- Job sheet: `{{job_sheet.tasks_html}}`, `{{job_sheet.parts_html}}`, `{{job_sheet.checklist_html}}`
+
+## Navigation update
+
+- Sidebar keeps collapsed default and reveals labels on hover.
+- Sidebar no longer shows `Technicians`, `Suppliers`, or `Job Sheets` entries.
