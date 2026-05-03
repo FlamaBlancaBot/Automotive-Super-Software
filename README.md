@@ -541,3 +541,11 @@ Hostinger deployment remains Git-based from repository root. Do not use manual z
 
 - Sidebar keeps collapsed default and reveals labels on hover.
 - Sidebar no longer shows `Technicians`, `Suppliers`, or `Job Sheets` entries.
+
+## Quote and parts workflow updates (v1.1.008)
+
+- Parts comparison is now per-part: suppliers are added to the specific part row only.
+- Pricing order in supplier cards is Cost ex VAT, Markup %, Sell ex VAT, with highlighted Inc VAT output.
+- Quote customer preview/print uses rendered template content with customer-facing pricing only.
+- Parts page includes ad-hoc `Order part`, `Add received part`, and `Return part` flows by REG/job.
+- Seed data now includes broader realistic scenarios for in-progress/accepted/no-quote jobs and invoice examples.

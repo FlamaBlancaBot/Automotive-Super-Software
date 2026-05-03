@@ -52,6 +52,7 @@ export default function PartsOrders({ locationPath }) {
   const [editModal, setEditModal] = useState(null) // { orderId }
   const [addReceivedModal, setAddReceivedModal] = useState(false)
   const [returnModal, setReturnModal] = useState(false)
+  const [orderPartModal, setOrderPartModal] = useState(false)
   const [modalStatus, setModalStatus] = useState('idle')
   const [modalError, setModalError] = useState('')
 
@@ -235,6 +236,7 @@ export default function PartsOrders({ locationPath }) {
             {listStatus === 'loading' ? 'Loading…' : 'Apply filters'}
           </button>
           <button type="button" className="secondaryButton" onClick={() => setAddReceivedModal(true)}>Add received part</button>
+          <button type="button" className="secondaryButton" onClick={() => setOrderPartModal(true)}>Order part</button>
           <button type="button" className="secondaryButton" onClick={() => setReturnModal(true)}>Return part</button>
           {modalStatus === 'saving' ? <span className="fieldHint">Saving…</span> : null}
         </div>
@@ -329,6 +331,7 @@ export default function PartsOrders({ locationPath }) {
         />
       ) : null}
       {addReceivedModal ? <AddReceivedPartModal onClose={() => setAddReceivedModal(false)} onSaved={() => { setAddReceivedModal(false); loadOrders() }} /> : null}
+      {orderPartModal ? <OrderPartModal onClose={() => setOrderPartModal(false)} onSaved={() => { setOrderPartModal(false); loadOrders() }} /> : null}
       {returnModal ? <ReturnPartModal onClose={() => setReturnModal(false)} onSaved={() => { setReturnModal(false); loadOrders() }} /> : null}
     </div>
   )
@@ -385,17 +388,74 @@ function AddReceivedPartModal({ onClose, onSaved }) {
     onSaved()
   }
   return (
-    <div className="modalOverlay" onClick={onClose}><div className="modalCard" onClick={(e) => e.stopPropagation()}>
+    <div className="modalOverlay" onClick={onClose}><div className="modalCard modalWide" onClick={(e) => e.stopPropagation()}>
       <h3>Add received part</h3>
-      <input className="input" placeholder="REG" value={reg} onChange={(e) => setReg(e.target.value.toUpperCase())} />
-      <button type="button" className="miniButton" onClick={lookup}>Lookup REG</button>
-      <select className="select" value={jobId} onChange={(e) => setJobId(e.target.value)}><option value="">Select job</option>{jobs.map((j) => <option key={j.id} value={j.id}>{j.vehicle_registration} · {j.title}</option>)}</select>
-      <input className="input" placeholder="PART NAME" value={form.part_name} onChange={(e) => setForm((f) => ({ ...f, part_name: e.target.value.toUpperCase() }))} />
-      <div className="fieldGrid"><input className="input" placeholder="PART NO." value={form.part_number} onChange={(e) => setForm((f) => ({ ...f, part_number: e.target.value.toUpperCase() }))} /><input className="input" placeholder="BRAND" value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value.toUpperCase() }))} /></div>
-      <div className="fieldGrid"><input className="input" placeholder="QTY" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} /><input className="input" placeholder="INVOICE NO." value={form.invoice} onChange={(e) => setForm((f) => ({ ...f, invoice: e.target.value.toUpperCase() }))} /></div>
-      <div className="fieldGrid"><input className="input" placeholder="COST EX VAT" value={form.cost} onChange={(e) => setForm((f) => ({ ...f, cost: e.target.value }))} /><input className="input" placeholder="SELL EX VAT" value={form.sell} onChange={(e) => setForm((f) => ({ ...f, sell: e.target.value }))} /></div>
+      <div className="fieldGrid">
+        <div className="field"><input className="input" placeholder="REG" value={reg} onChange={(e) => setReg(e.target.value.toUpperCase())} /></div>
+        <div className="field"><button type="button" className="miniButton" onClick={lookup}>Lookup REG</button></div>
+        <div className="field" style={{ gridColumn: 'span 12' }}><select className="select" value={jobId} onChange={(e) => setJobId(e.target.value)}><option value="">Select job</option>{jobs.map((j) => <option key={j.id} value={j.id}>{j.vehicle_registration} · {j.title}</option>)}</select></div>
+        <div className="field" style={{ gridColumn: 'span 12' }}><input className="input" placeholder="PART NAME" value={form.part_name} onChange={(e) => setForm((f) => ({ ...f, part_name: e.target.value.toUpperCase() }))} /></div>
+        <div className="field"><input className="input" placeholder="PART NO." value={form.part_number} onChange={(e) => setForm((f) => ({ ...f, part_number: e.target.value.toUpperCase() }))} /></div>
+        <div className="field"><input className="input" placeholder="BRAND" value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value.toUpperCase() }))} /></div>
+        <div className="field"><input className="input" placeholder="QTY" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} /></div>
+        <div className="field"><input className="input" placeholder="INVOICE NO." value={form.invoice} onChange={(e) => setForm((f) => ({ ...f, invoice: e.target.value.toUpperCase() }))} /></div>
+        <div className="field"><input className="input" placeholder="DELIVERY NOTE NO." value={form.delivery} onChange={(e) => setForm((f) => ({ ...f, delivery: e.target.value.toUpperCase() }))} /></div>
+        <div className="field"><input className="input" placeholder="COST EX VAT" value={form.cost} onChange={(e) => setForm((f) => ({ ...f, cost: e.target.value }))} /></div>
+        <div className="field"><input className="input" placeholder="MARKUP %" value={form.markup} onChange={(e) => setForm((f) => ({ ...f, markup: e.target.value }))} /></div>
+        <div className="field"><input className="input" placeholder="SELL EX VAT" value={form.sell} onChange={(e) => setForm((f) => ({ ...f, sell: e.target.value }))} /></div>
+      </div>
       <textarea className="textarea" placeholder="NOTES" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value.toUpperCase() }))} />
       <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={onClose}>Cancel</button><button type="button" className="primaryButton" onClick={save}>{status === 'saving' ? 'Saving…' : 'Save received part'}</button></div>
+    </div></div>
+  )
+}
+
+function OrderPartModal({ onClose, onSaved }) {
+  const [jobs, setJobs] = useState([])
+  const [reg, setReg] = useState('')
+  const [jobId, setJobId] = useState('')
+  const [form, setForm] = useState({ part_name: '', part_number: '', brand: '', quantity: '1', eta: '', cost: '0', sell: '0', notes: '' })
+  const [status, setStatus] = useState('idle')
+  async function lookup() {
+    const out = await apiGet(`/api/jobs?q=${encodeURIComponent(reg)}`)
+    setJobs(out.jobs || [])
+    if (out.jobs?.[0]?.id) setJobId(String(out.jobs[0].id))
+  }
+  async function save() {
+    if (!jobId || !form.part_name.trim()) return
+    setStatus('saving')
+    await apiPost('/api/parts-orders', {
+      job_id: Number(jobId),
+      part_name: form.part_name,
+      part_number: form.part_number || null,
+      brand: form.brand || null,
+      quantity: Number(form.quantity || 1),
+      expected_at: form.eta || null,
+      cost_ex_vat: Number(form.cost || 0),
+      sell_ex_vat: Number(form.sell || 0),
+      notes: form.notes || null,
+      status: 'ordered',
+    })
+    setStatus('idle')
+    onSaved()
+  }
+  return (
+    <div className="modalOverlay" onClick={onClose}><div className="modalCard modalWide" onClick={(e) => e.stopPropagation()}>
+      <h3>Order part (ad-hoc)</h3>
+      <div className="fieldGrid">
+        <div className="field"><input className="input" placeholder="REG" value={reg} onChange={(e) => setReg(e.target.value.toUpperCase())} /></div>
+        <div className="field"><button type="button" className="miniButton" onClick={lookup}>Lookup REG</button></div>
+        <div className="field" style={{ gridColumn: 'span 12' }}><select className="select" value={jobId} onChange={(e) => setJobId(e.target.value)}><option value="">Select job</option>{jobs.map((j) => <option key={j.id} value={j.id}>{j.vehicle_registration} · {j.title}</option>)}</select></div>
+        <div className="field" style={{ gridColumn: 'span 12' }}><input className="input" placeholder="PART NAME" value={form.part_name} onChange={(e) => setForm((f) => ({ ...f, part_name: e.target.value.toUpperCase() }))} /></div>
+        <div className="field"><input className="input" placeholder="PART NO." value={form.part_number} onChange={(e) => setForm((f) => ({ ...f, part_number: e.target.value.toUpperCase() }))} /></div>
+        <div className="field"><input className="input" placeholder="BRAND" value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value.toUpperCase() }))} /></div>
+        <div className="field"><input className="input" placeholder="QTY" value={form.quantity} onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))} /></div>
+        <div className="field"><input className="input" type="datetime-local" value={form.eta} onChange={(e) => setForm((f) => ({ ...f, eta: e.target.value }))} /></div>
+        <div className="field"><input className="input" placeholder="COST EX VAT" value={form.cost} onChange={(e) => setForm((f) => ({ ...f, cost: e.target.value }))} /></div>
+        <div className="field"><input className="input" placeholder="SELL EX VAT" value={form.sell} onChange={(e) => setForm((f) => ({ ...f, sell: e.target.value }))} /></div>
+      </div>
+      <textarea className="textarea" placeholder="NOTES" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value.toUpperCase() }))} />
+      <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={onClose}>Cancel</button><button type="button" className="primaryButton" onClick={save}>{status === 'saving' ? 'Saving…' : 'Save ordered part'}</button></div>
     </div></div>
   )
 }
@@ -418,11 +478,13 @@ function ReturnPartModal({ onClose, onSaved }) {
     onSaved()
   }
   return (
-    <div className="modalOverlay" onClick={onClose}><div className="modalCard" onClick={(e) => e.stopPropagation()}>
+    <div className="modalOverlay" onClick={onClose}><div className="modalCard modalWide" onClick={(e) => e.stopPropagation()}>
       <h3>Return part</h3>
-      <input className="input" placeholder="REG" value={reg} onChange={(e) => setReg(e.target.value.toUpperCase())} />
-      <button type="button" className="miniButton" onClick={lookup}>Lookup REG</button>
-      <select className="select" value={orderId} onChange={(e) => setOrderId(e.target.value)}><option value="">Select part</option>{orders.map((o) => <option key={o.id} value={o.id}>{o.vehicle_registration} · {o.part_name || o.description}</option>)}</select>
+      <div className="fieldGrid">
+        <div className="field"><input className="input" placeholder="REG" value={reg} onChange={(e) => setReg(e.target.value.toUpperCase())} /></div>
+        <div className="field"><button type="button" className="miniButton" onClick={lookup}>Lookup REG</button></div>
+        <div className="field" style={{ gridColumn: 'span 12' }}><select className="select" value={orderId} onChange={(e) => setOrderId(e.target.value)}><option value="">Select part</option>{orders.map((o) => <option key={o.id} value={o.id}>{o.vehicle_registration} · {o.part_name || o.description}</option>)}</select></div>
+      </div>
       <textarea className="textarea" placeholder="RETURN REASON" value={reason} onChange={(e) => setReason(e.target.value.toUpperCase())} />
       <input className="input" placeholder="CREDIT NOTE NUMBER" value={credit} onChange={(e) => setCredit(e.target.value.toUpperCase())} />
       <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={onClose}>Cancel</button><button type="button" className="miniButton" onClick={() => save('return_required')}>Mark return required</button><button type="button" className="miniButton" onClick={() => save('credit_pending')}>Mark credit pending</button><button type="button" className="primaryButton" onClick={() => save('credited')}>Mark credited</button></div>

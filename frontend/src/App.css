@@ -435,7 +435,8 @@
   flex: 1;
   min-width: 0;
   padding: 18px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--surface-0);
 }
 
@@ -1597,14 +1598,14 @@
 
 .quoteTotalsBar {
   position: sticky;
-  bottom: 0;
+  top: 64px;
   margin-top: 12px;
   border: 1px solid var(--separator);
   border-radius: 14px;
   padding: 12px;
   background: var(--surface-1);
   backdrop-filter: blur(8px);
-  z-index: 12;
+  z-index: 18;
 }
 
 .totalsGrid {
@@ -1749,40 +1750,17 @@
 
 /* Quote V3 comparison layout */
 .comparisonBoardWrap {
-  overflow: auto;
+  overflow: hidden;
 }
 
-.comparisonBoard {
-  width: 100%;
-  min-width: 980px;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.comparisonBoard th,
-.comparisonBoard td {
-  border: 1px solid var(--separator);
-  padding: 8px;
-  vertical-align: top;
-}
-
-.comparisonBoard th {
-  background: var(--surface-2);
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-.comparisonBoard .fixedCol {
-  width: 64px;
-}
-
-.comparisonBoard .partCol {
-  min-width: 240px;
-}
-
-.comparisonBoard .supplierCol {
-  min-width: 210px;
+.partSupplierScroller {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(260px, 300px);
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
 }
 
 .supplierCell {
@@ -1800,7 +1778,7 @@
 }
 
 .supplierCell.na {
-  opacity: 0.7;
+  opacity: 0.35;
   border-style: dashed;
 }
 
@@ -1831,9 +1809,25 @@
 }
 
 .supplierNumbers {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
   gap: 6px;
+}
+
+.supplierNumbers .compactInput {
+  flex: 1;
+  min-width: 70px;
+}
+
+.incVatBadge {
+  border: 1px solid #f2c94c;
+  color: #f2c94c;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .supplierCellFooter {
@@ -1841,6 +1835,20 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.modalCard.modalWide {
+  width: min(920px, 92vw);
+}
+
+.modalCard.modalWide .fieldGrid {
+  margin-top: 8px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.modalCard.modalWide .field {
+  grid-column: span 6;
 }
 
 .partMetaRow {

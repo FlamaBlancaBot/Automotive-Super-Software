@@ -7,8 +7,10 @@ import StatusChip from '../components/StatusChip'
 import MoneyDisplay from '../components/MoneyDisplay'
 
 const QUOTE_STATUSES = ['draft', 'ready', 'sent', 'accepted', 'rejected', 'completed']
-const PART_TYPES = ['part', 'oil', 'service_item', 'mot_repair', 'other']
-const LABOUR_TYPES = ['labour', 'diagnostic']
+const PART_TYPES = ['part']
+const LABOUR_TYPES = ['labour']
+const FIXED_TYPES = ['diagnostic', 'mot_repair', 'other']
+const CONSUMABLE_TYPES = ['oil', 'service_item']
 
 function toNumber(value, fallback = 0) {
   const n = Number(value)
@@ -67,23 +69,12 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
   const [customerDetailLink, setCustomerDetailLink] = useState('')
 
   const [quoteDraft, setQuoteDraft] = useState({ title: '', internal_notes: '', customer_notes: '' })
-  const [expandedRows, setExpandedRows] = useState({})
-  const [supplierToAdd, setSupplierToAdd] = useState('')
-  const [customSupplierName, setCustomSupplierName] = useState('')
+  const [partSupplierDrafts, setPartSupplierDrafts] = useState({})
 
   const partItems = useMemo(() => (items || []).filter((i) => PART_TYPES.includes(String(i.item_type || ''))), [items])
   const labourItems = useMemo(() => (items || []).filter((i) => LABOUR_TYPES.includes(String(i.item_type || ''))), [items])
-  const quoteSupplierIds = useMemo(() => {
-    const ids = new Set()
-    for (const item of partItems) {
-      for (const option of item.supplier_options || []) ids.add(Number(option.supplier_id || 0))
-    }
-    return [...ids].filter((x) => x > 0)
-  }, [partItems])
-  const quoteSuppliers = useMemo(
-    () => (suppliers || []).filter((s) => quoteSupplierIds.includes(Number(s.id))),
-    [suppliers, quoteSupplierIds],
-  )
+  const fixedItems = useMemo(() => (items || []).filter((i) => FIXED_TYPES.includes(String(i.item_type || ''))), [items])
+  const consumableItems = useMemo(() => (items || []).filter((i) => CONSUMABLE_TYPES.includes(String(i.item_type || ''))), [items])
 
   const totalsView = useMemo(() => {
     const vatDefault = toNumber(quote?.vat_rate, 0.2)
@@ -92,6 +83,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
     let vat = 0
     let lines = 0
     let labourEx = 0
+    let fixedEx = 0
     let consumablesEx = 0
     let partsEx = 0
 
@@ -115,6 +107,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
         costEx += qty * cost
         sellEx += qty * sell
         if (String(item.item_type || '') === 'labour') labourEx += qty * sell
+        else if (FIXED_TYPES.includes(String(item.item_type || ''))) fixedEx += qty * sell
         else consumablesEx += qty * sell
         vat += qty * sell * vatRate
       }
@@ -129,6 +122,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
       sellInc: round2(sellInc),
       margin: round2(sellEx - costEx),
       labourEx: round2(labourEx),
+      fixedEx: round2(fixedEx),
       consumablesEx: round2(consumablesEx),
       partsEx: round2(partsEx),
     }
@@ -271,6 +265,32 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
     }
   }
 
+  async function printCustomerQuoteDocument() {
+    if (!renderedCustomerQuoteHtml) {
+      await loadCustomerQuotePreview()
+    }
+    const html = renderedCustomerQuoteHtml || ''
+    if (!html) return
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    document.body.appendChild(iframe)
+    const doc = iframe.contentWindow?.document
+    if (!doc) return
+    doc.open()
+    doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Customer Quote</title><style>body{font-family:Arial,sans-serif;padding:16px;color:#111}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px;text-align:left}</style></head><body>${html}</body></html>`)
+    doc.close()
+    setTimeout(() => {
+      iframe.contentWindow?.focus()
+      iframe.contentWindow?.print()
+      setTimeout(() => document.body.removeChild(iframe), 1200)
+    }, 200)
+  }
+
   async function addPredefined(id) {
     const item = (predefined || []).find((x) => Number(x.id) === Number(id))
     if (!item) return
@@ -396,20 +416,30 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
     if (option) await selectOption(option.id)
   }
 
-  async function addSupplierColumn() {
-    let supplierId = Number(supplierToAdd || 0)
-    if (supplierToAdd === 'custom') {
-      if (!customSupplierName.trim()) return
-      const createdSupplier = await apiPost('/api/suppliers', { name: customSupplierName.trim().toUpperCase(), usage_quotes: 1, usage_parts: 1, usage_mot: 0, usage_diagnostics: 0, usage_general: 1, active: 1 })
+  async function addSupplierToPart(itemId) {
+    const draft = partSupplierDrafts[itemId] || {}
+    let supplierId = Number(draft.supplier_id || 0)
+    if (String(draft.supplier_id || '') === 'custom') {
+      if (!String(draft.custom_name || '').trim()) return
+      const createdSupplier = await apiPost('/api/suppliers', {
+        name: toOperationalUpper(draft.custom_name),
+        usage_quotes: 1,
+        usage_parts: 1,
+        usage_mot: 0,
+        usage_diagnostics: 0,
+        usage_general: 1,
+        active: 1,
+      })
       supplierId = Number(createdSupplier?.supplier?.id || 0)
     }
     if (!supplierId) return
+    const item = partItems.find((x) => Number(x.id) === Number(itemId))
+    if (!item) return
     setSaveBusy(true)
     setError('')
     try {
-      for (const item of partItems) {
-        const exists = (item.supplier_options || []).some((o) => Number(o.supplier_id) === supplierId)
-        if (exists) continue
+      const exists = (item.supplier_options || []).some((o) => Number(o.supplier_id) === supplierId)
+      if (!exists) {
         await apiPost(`/api/quote-items/${item.id}/supplier-options`, {
           supplier_id: supplierId,
           brand: item.part_brand || null,
@@ -422,9 +452,8 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           is_available: 1,
         })
       }
-      setSupplierToAdd('')
-      setCustomSupplierName('')
-      setNotice('Supplier column added.')
+      setPartSupplierDrafts((prev) => ({ ...prev, [itemId]: { supplier_id: '', custom_name: '' } }))
+      setNotice('Supplier added to part.')
       await load({ preserveScroll: true, keepStatus: true })
     } catch (err) {
       setError(err.message || 'Failed to add supplier.')
@@ -472,14 +501,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           <button type="button" className="secondaryButton noPrint" onClick={async () => { const next = !showCustomerQuote; setShowCustomerQuote(next); if (next) await loadCustomerQuotePreview() }}>
             {showCustomerQuote ? 'Hide customer quote' : 'Preview customer quote'}
           </button>
-          <button type="button" className="secondaryButton noPrint" onClick={() => {
-            const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=1000')
-            if (!w) return
-            w.document.write(`<html><head><title>Quote Preview</title></head><body>${renderedCustomerQuoteHtml || ''}</body></html>`)
-            w.document.close()
-            w.focus()
-            w.print()
-          }}>
+          <button type="button" className="secondaryButton noPrint" onClick={printCustomerQuoteDocument}>
             Print customer quote
           </button>
         </div>
@@ -545,194 +567,113 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
       <section className="cardBox" style={{ marginTop: 12 }}>
         <div className="cardTop">
           <h3 className="cardTitle">Parts Comparison</h3>
-          <div className="fieldHint">Compare suppliers per part. Cheapest valid supplier is highlighted.</div>
+          <div className="fieldHint">Per-part supplier comparison. Add suppliers to each part row only.</div>
         </div>
 
         <div className="pageHeaderActions" style={{ marginTop: 10 }}>
           <button type="button" className="primaryButton" onClick={() => addLine('part', 'NEW PART')} disabled={saveBusy}>Add part</button>
-          <select className="select" value={supplierToAdd} onChange={(e) => setSupplierToAdd(e.target.value)}>
-            <option value="">Select supplier…</option>
-            {(suppliers || []).filter((s) => Number(s.active) === 1 && Number(s.usage_quotes ?? 1) === 1).map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-            <option value="custom">CUSTOM</option>
-          </select>
-          {supplierToAdd === 'custom' ? <input className="input" value={customSupplierName} onChange={(e) => setCustomSupplierName(e.target.value.toUpperCase())} placeholder="CUSTOM SUPPLIER NAME" /> : null}
-          <button type="button" className="secondaryButton" onClick={addSupplierColumn} disabled={saveBusy || !supplierToAdd}>Add supplier</button>
-          <select className="select" defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value = ''; if (v) addPredefined(v) }}>
-            <option value="" disabled>Add predefined…</option>
-            {predefined.filter((p) => PART_TYPES.includes(String(p.item_type || ''))).map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
         </div>
 
-        <div className="comparisonBoardWrap" style={{ marginTop: 12 }}>
-          <table className="comparisonBoard">
-            <thead>
-              <tr>
-                <th className="fixedCol">Use</th>
-                <th className="partCol">Part</th>
-                {quoteSuppliers.map((s) => (
-                  <th key={s.id} className="supplierCol">{s.name}</th>
-                ))}
-                <th className="fixedCol">Actions</th>
-              </tr>
-            </thead>
+        {partItems.map((item) => {
+          const cheapestId = getCheapestSupplierId(item)
+          const effective = getEffectiveOption(item)
+          const draft = partSupplierDrafts[item.id] || { supplier_id: '', custom_name: '' }
+          return (
+            <article key={item.id} className="cardBox" style={{ marginTop: 12, borderStyle: 'dashed' }}>
+              <div className="fieldGrid">
+                <div className="field" style={{ gridColumn: 'span 6' }}>
+                  <label className="inlineCheck"><input type="checkbox" checked={Number(item.selected_for_quote) === 1} onChange={(e) => patchItem(item.id, { selected_for_quote: e.target.checked ? 1 : 0 })} /><span>Include</span></label>
+                  <input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: toOperationalUpper(e.target.value) })} placeholder="PART NAME" />
+                </div>
+                <div className="field" style={{ gridColumn: 'span 3' }}>
+                  <input className="input compactInput" value={item.part_number || ''} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, part_number: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { part_number: toOperationalUpper(e.target.value) })} placeholder="PART NO." />
+                </div>
+                <div className="field" style={{ gridColumn: 'span 3' }}>
+                  <input className="input compactInput" value={String(item.quantity || 1)} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, quantity: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { quantity: e.target.value })} placeholder="QTY" />
+                </div>
+              </div>
+              <div className="fieldHint">Selected supplier: {effective ? `${effective.supplier_name || 'SUPPLIER'} · ${formatMoney(effective.sell_price)}` : 'None selected (cheapest valid will be used)'}</div>
+              <div className="pageHeaderActions" style={{ marginTop: 8, justifyContent: 'flex-start' }}>
+                <select className="select" value={draft.supplier_id} onChange={(e) => setPartSupplierDrafts((p) => ({ ...p, [item.id]: { ...draft, supplier_id: e.target.value } }))}>
+                  <option value="">Add supplier to this part…</option>
+                  {(suppliers || []).filter((s) => Number(s.active) === 1 && Number(s.usage_quotes ?? 1) === 1).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  <option value="custom">CUSTOM</option>
+                </select>
+                {draft.supplier_id === 'custom' ? <input className="input" value={draft.custom_name || ''} onChange={(e) => setPartSupplierDrafts((p) => ({ ...p, [item.id]: { ...draft, custom_name: e.target.value.toUpperCase() } }))} placeholder="CUSTOM SUPPLIER NAME" /> : null}
+                <button type="button" className="miniButton" onClick={() => addSupplierToPart(item.id)} disabled={!draft.supplier_id}>Add supplier</button>
+                <button type="button" className="miniButton" onClick={() => autoSelectCheapest(item)}>Auto best</button>
+                <button type="button" className="miniButton danger" onClick={() => removeItem(item.id)}>Remove part</button>
+              </div>
+              <div className="partSupplierScroller" style={{ marginTop: 8 }}>
+                {(item.supplier_options || []).length ? (item.supplier_options || []).map((option) => {
+                  const isSelected = Number(option.is_selected) === 1
+                  const isCheapest = Number(cheapestId || 0) === Number(option.supplier_id || 0)
+                  const unavailable = Number(option.is_available) === 0
+                  const ordered = Number(option.is_ordered) === 1
+                  const cost = toNumber(option.cost_price, 0)
+                  const markup = toNumber(option.markup_percent, 0)
+                  const sell = toNumber(option.sell_price, 0)
+                  const sellInc = round2(sell * (1 + toNumber(option?.vat_rate, quote.vat_rate || 0.2)))
+                  return (
+                    <div key={option.id} className={`supplierCell ${isSelected ? 'selected' : ''} ${unavailable ? 'na' : ''}`}>
+                      <div className="supplierCellTop">
+                        <strong>{option.supplier_name || 'SUPPLIER'}</strong>
+                        {isCheapest ? <span className="miniTag">Best £</span> : null}
+                        {ordered ? <span className="miniTag warn">Ordered</span> : null}
+                      </div>
+                      <div className="supplierNumbers">
+                        <input className="input compactInput" defaultValue={cost} placeholder="Cost ex VAT" onBlur={(e) => { const nextCost = toNumber(e.target.value, 0); const nextSell = optionPriceFrom(nextCost, markup); patchOption(option.id, { cost_price: nextCost, markup_percent: markup, sell_price: nextSell }) }} />
+                        <input className="input compactInput" defaultValue={markup} placeholder="Markup %" onBlur={(e) => { const nextMarkup = toNumber(e.target.value, 0); const nextSell = optionPriceFrom(cost, nextMarkup); patchOption(option.id, { cost_price: cost, markup_percent: nextMarkup, sell_price: nextSell }) }} />
+                        <input className="input compactInput" defaultValue={sell} placeholder="Sell ex VAT" onBlur={(e) => { const nextSell = toNumber(e.target.value, 0); const nextMarkup = optionMarkupFrom(cost, nextSell); patchOption(option.id, { cost_price: cost, sell_price: nextSell, markup_percent: nextMarkup }) }} />
+                        <span className="incVatBadge">Inc VAT {formatMoney(sellInc)}</span>
+                      </div>
+                      <div className="supplierNumbers" style={{ marginTop: 6 }}>
+                        <input className="input compactInput" defaultValue={option.brand || ''} placeholder="Brand" onBlur={(e) => patchOption(option.id, { brand: toOperationalUpper(e.target.value) || null })} />
+                        <input className="input compactInput" defaultValue={option.part_number || ''} placeholder="Part No." onBlur={(e) => patchOption(option.id, { part_number: toOperationalUpper(e.target.value) || null })} />
+                      </div>
+                      <div className="supplierNumbers" style={{ marginTop: 6 }}>
+                        <input className="input compactInput" type="datetime-local" defaultValue={option?.eta_datetime ? String(option.eta_datetime).slice(0, 16) : new Date().toISOString().slice(0, 16)} onBlur={(e) => patchOption(option.id, { eta_datetime: e.target.value || null, eta_text: e.target.value ? null : option?.eta_text || null })} />
+                        <label className="inlineCheck"><input type="checkbox" checked={String(option?.eta_text || '').toUpperCase() === 'ON SHELF'} onChange={(e) => patchOption(option.id, { eta_text: e.target.checked ? 'ON SHELF' : '', eta_datetime: e.target.checked ? null : option?.eta_datetime || null })} /><span>On shelf</span></label>
+                      </div>
+                      <div className="supplierCellFooter">
+                        <label className="inlineCheck"><input type="radio" name={`sel-${item.id}`} checked={Boolean(isSelected)} onChange={() => selectOption(option.id)} disabled={unavailable} /><span>Select</span></label>
+                        <label className="inlineCheck"><input type="checkbox" checked={Boolean(unavailable)} onChange={(e) => patchOption(option.id, { is_available: e.target.checked ? 0 : 1 })} /><span>N/A</span></label>
+                        <label className="inlineCheck"><input type="checkbox" checked={Boolean(ordered)} onChange={(e) => patchOption(option.id, { is_ordered: e.target.checked ? 1 : 0 })} /><span>Ordered</span></label>
+                      </div>
+                    </div>
+                  )
+                }) : <div className="emptyState">No suppliers added to this part yet.</div>}
+              </div>
+            </article>
+          )
+        })}
+      </section>
+
+      <section className="cardBox" style={{ marginTop: 12 }}>
+        <div className="cardTop">
+          <h3 className="cardTitle">Fixed / Predefined Charges</h3>
+          <div className="fieldHint">Diagnostics and fixed workshop charges (not parts comparison).</div>
+        </div>
+        <div className="pageHeaderActions" style={{ marginTop: 10 }}>
+          <select className="select" defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value=''; if(v) addPredefined(v) }}>
+            <option value="" disabled>Add fixed charge…</option>
+            {predefined.filter((p) => FIXED_TYPES.includes(String(p.item_type || ''))).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+        <div className="quoteTableWrap" style={{ marginTop: 10 }}>
+          <table className="quoteTable">
+            <thead><tr><th>Use</th><th>Item</th><th>Qty</th><th>Sell ex VAT</th><th>Sell inc VAT</th></tr></thead>
             <tbody>
-              {!quoteSuppliers.length ? (
-                <tr>
-                  <td colSpan={3} className="emptyState">
-                    No suppliers added yet. Add a supplier to compare prices.
-                  </td>
-                </tr>
-              ) : null}
-              {partItems.map((item) => {
-                const cheapestId = getCheapestSupplierId(item)
-                const effective = getEffectiveOption(item)
+              {fixedItems.map((item) => {
+                const vatRate = toNumber(item.vat_rate, quote.vat_rate || 0.2)
+                const sellInc = round2(toNumber(item.unit_sell, 0) * (1 + vatRate))
                 return (
                   <tr key={item.id}>
-                    <td>
-                      <input type="checkbox" checked={Number(item.selected_for_quote) === 1} onChange={(e) => patchItem(item.id, { selected_for_quote: e.target.checked ? 1 : 0 })} />
-                    </td>
-                    <td>
-                      <div className="partNameCell">
-                        <input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: toOperationalUpper(e.target.value) })} placeholder="PART NAME" />
-                        <div className="partMetaRow">
-                          <input className="input compactInput" value={item.part_number || ''} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, part_number: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { part_number: toOperationalUpper(e.target.value) })} placeholder="PART #" />
-                          <input className="input compactInput" value={String(item.quantity || 1)} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, quantity: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { quantity: e.target.value })} placeholder="Qty" />
-                        </div>
-                        <div className="fieldHint">Selected: {effective ? `${effective.supplier_name || 'SUP'} · ${formatMoney(effective.sell_price)}` : 'None selected'}</div>
-                      </div>
-                    </td>
-                    {quoteSuppliers.map((supplier) => {
-                      const option = (item.supplier_options || []).find((o) => Number(o.supplier_id) === Number(supplier.id))
-                      const isSelected = option && Number(option.is_selected) === 1
-                      const isCheapest = Number(cheapestId || 0) === Number(supplier.id)
-                      const unavailable = option && Number(option.is_available) === 0
-                      const ordered = option && Number(option.is_ordered) === 1
-
-                      const cost = option ? toNumber(option.cost_price, 0) : 0
-                      const markup = option ? toNumber(option.markup_percent, 0) : 0
-                      const sell = option ? toNumber(option.sell_price, 0) : 0
-                      const sellInc = round2(sell * (1 + toNumber(option?.vat_rate, quote.vat_rate || 0.2)))
-
-                      return (
-                        <td key={`${item.id}-${supplier.id}`}>
-                          <div className={`supplierCell ${isSelected ? 'selected' : ''} ${unavailable ? 'na' : ''}`}>
-                            <div className="supplierCellTop">
-                              <label className="inlineCheck">
-                                <input
-                                  type="radio"
-                                  name={`sel-${item.id}`}
-                                  checked={Boolean(isSelected)}
-                                  onChange={() => option && selectOption(option.id)}
-                                  disabled={!option || unavailable}
-                                />
-                                <span>{isSelected ? 'Selected' : 'Use'}</span>
-                              </label>
-                              {isCheapest ? <span className="miniTag">Best £</span> : null}
-                              {ordered ? <span className="miniTag warn">Ordered</span> : null}
-                            </div>
-
-                            <div className="fieldHint">Brand</div>
-                            <input
-                              className="input compactInput"
-                              defaultValue={option?.brand || ''}
-                              onBlur={(e) => ensureOptionAndPatch(item, supplier.id, { brand: toOperationalUpper(e.target.value) || null })}
-                              placeholder="e.g. BOSCH"
-                            />
-                            <div className="fieldHint">ETA date/time</div>
-                            <input
-                              className="input compactInput"
-                              type="datetime-local"
-                              defaultValue={option?.eta_datetime ? String(option.eta_datetime).slice(0, 16) : ''}
-                              onBlur={(e) =>
-                                ensureOptionAndPatch(item, supplier.id, {
-                                  eta_datetime: e.target.value || null,
-                                  eta_text: e.target.value ? null : option?.eta_text || null,
-                                })
-                              }
-                              title="ETA date/time"
-                            />
-                            <label className="inlineCheck">
-                              <input
-                                type="checkbox"
-                                checked={String(option?.eta_text || '').toUpperCase() === 'ON SHELF'}
-                                onChange={(e) =>
-                                  ensureOptionAndPatch(item, supplier.id, {
-                                    eta_text: e.target.checked ? 'ON SHELF' : '',
-                                    eta_datetime: e.target.checked ? null : option?.eta_datetime || null,
-                                  })
-                                }
-                              />
-                              <span>On shelf</span>
-                            </label>
-                            <div className="supplierNumbers">
-                              <div className="fieldHint">Cost ex VAT</div>
-                              <input
-                                className="input compactInput"
-                                defaultValue={cost}
-                                onBlur={(e) => {
-                                  const nextCost = toNumber(e.target.value, 0)
-                                  const nextSell = optionPriceFrom(nextCost, markup)
-                                  ensureOptionAndPatch(item, supplier.id, { cost_price: nextCost, markup_percent: markup, sell_price: nextSell })
-                                }}
-                                placeholder="Cost ex"
-                              />
-                              <div className="fieldHint">Markup %</div>
-                              <input
-                                className="input compactInput"
-                                defaultValue={markup}
-                                onBlur={(e) => {
-                                  const nextMarkup = toNumber(e.target.value, 0)
-                                  const nextSell = optionPriceFrom(cost, nextMarkup)
-                                  ensureOptionAndPatch(item, supplier.id, { cost_price: cost, markup_percent: nextMarkup, sell_price: nextSell })
-                                }}
-                                placeholder="Markup %"
-                              />
-                              <div className="fieldHint">Sell ex VAT</div>
-                              <input
-                                className="input compactInput"
-                                defaultValue={sell}
-                                onBlur={(e) => {
-                                  const nextSell = toNumber(e.target.value, 0)
-                                  const nextMarkup = optionMarkupFrom(cost, nextSell)
-                                  ensureOptionAndPatch(item, supplier.id, { cost_price: cost, sell_price: nextSell, markup_percent: nextMarkup })
-                                }}
-                                placeholder="Sell ex"
-                              />
-                            </div>
-                            <div className="supplierCellFooter">
-                              <span className="fieldHint">Inc VAT {formatMoney(sellInc)}</span>
-                              <label className="inlineCheck">
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(unavailable)}
-                                  onChange={(e) => option && patchOption(option.id, { is_available: e.target.checked ? 0 : 1 })}
-                                />
-                                <span>Not available</span>
-                              </label>
-                              <label className="inlineCheck">
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(ordered)}
-                                  onChange={(e) => option && patchOption(option.id, { is_ordered: e.target.checked ? 1 : 0 })}
-                                />
-                                <span>Ordered</span>
-                              </label>
-                            </div>
-                          </div>
-                        </td>
-                      )
-                    })}
-                    <td>
-                      <div className="rowActions">
-                        <button type="button" className="miniButton" onClick={() => autoSelectCheapest(item)}>Auto best</button>
-                        <button type="button" className="miniButton" onClick={() => duplicateItem(item)}>Duplicate</button>
-                        <button type="button" className="miniButton danger" onClick={() => removeItem(item.id)}>Remove</button>
-                      </div>
-                    </td>
+                    <td><input type="checkbox" checked={Number(item.selected_for_quote) === 1} onChange={(e) => patchItem(item.id, { selected_for_quote: e.target.checked ? 1 : 0 })} /></td>
+                    <td><input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: toOperationalUpper(e.target.value) })} /></td>
+                    <td><input className="input compactInput" value={String(item.quantity || 1)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, quantity: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { quantity: e.target.value })} /></td>
+                    <td><input className="input compactInput" value={String(item.unit_sell || 0)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, unit_sell: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { unit_sell: e.target.value })} /></td>
+                    <td>{formatMoney(sellInc)}</td>
                   </tr>
                 )
               })}
@@ -789,23 +730,41 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
 
       <section className="cardBox" style={{ marginTop: 12 }}>
         <div className="cardTop">
-          <h3 className="cardTitle">Consumables / Default Costs</h3>
-          <div className="fieldHint">Quick add from predefined items (admin-controlled).</div>
+          <h3 className="cardTitle">Consumables</h3>
+          <div className="fieldHint">Consumables stay separate from parts comparison.</div>
         </div>
         <div className="pageHeaderActions" style={{ marginTop: 10 }}>
           <select className="select" defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value=''; if(v) addPredefined(v) }}>
             <option value="" disabled>Select consumable…</option>
-            {predefined.filter((p) => ['oil', 'other', 'service_item'].includes(String(p.item_type || ''))).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {predefined.filter((p) => CONSUMABLE_TYPES.includes(String(p.item_type || ''))).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
-        <div className="fieldHint" style={{ marginTop: 10 }}>
-          Use the Parts and Labour sections to edit the added lines inline.
+        <div className="quoteTableWrap" style={{ marginTop: 10 }}>
+          <table className="quoteTable">
+            <thead><tr><th>Use</th><th>Item</th><th>Qty</th><th>Sell ex VAT</th><th>Sell inc VAT</th></tr></thead>
+            <tbody>
+              {consumableItems.map((item) => {
+                const vatRate = toNumber(item.vat_rate, quote.vat_rate || 0.2)
+                const sellInc = round2(toNumber(item.unit_sell, 0) * (1 + vatRate))
+                return (
+                  <tr key={item.id}>
+                    <td><input type="checkbox" checked={Number(item.selected_for_quote) === 1} onChange={(e) => patchItem(item.id, { selected_for_quote: e.target.checked ? 1 : 0 })} /></td>
+                    <td><input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: toOperationalUpper(e.target.value) })} /></td>
+                    <td><input className="input compactInput" value={String(item.quantity || 1)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, quantity: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { quantity: e.target.value })} /></td>
+                    <td><input className="input compactInput" value={String(item.unit_sell || 0)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, unit_sell: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { unit_sell: e.target.value })} /></td>
+                    <td>{formatMoney(sellInc)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </section>
 
       <section className="quoteTotalsBar" style={{ marginTop: 12 }}>
         <div className="totalsGrid">
           <div className="totalsItem"><div className="totalsLabel">Labour total ex VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.labourEx} /></div></div>
+          <div className="totalsItem"><div className="totalsLabel">Fixed charges ex VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.fixedEx} /></div></div>
           <div className="totalsItem"><div className="totalsLabel">Consumables total ex VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.consumablesEx} /></div></div>
           <div className="totalsItem"><div className="totalsLabel">Parts total ex VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.partsEx} /></div></div>
           <div className="totalsItem"><div className="totalsLabel">Included lines</div><div className="totalsValue">{totalsView.lines}</div></div>

@@ -83,6 +83,40 @@ async function ensureSupplier(db, name) {
   return { id: created.lastInsertId, created: true }
 }
 
+async function ensureCustomerByPhone(db, customer) {
+  const existing = await db.get(`SELECT id FROM customers WHERE phone = ? LIMIT 1`, [customer.phone])
+  if (existing?.id) return { id: existing.id, created: false }
+  const created = await db.run(
+    `INSERT INTO customers (first_name, surname, phone, email, postcode, address) VALUES (?, ?, ?, ?, ?, ?)`,
+    [customer.first_name, customer.surname, customer.phone, customer.email || null, customer.postcode || null, customer.address || null],
+  )
+  return { id: created.lastInsertId, created: true }
+}
+
+async function ensureVehicleByReg(db, vehicle) {
+  const existing = await db.get(`SELECT id FROM vehicles WHERE registration = ? LIMIT 1`, [vehicle.registration])
+  if (existing?.id) return { id: existing.id, created: false }
+  const created = await db.run(
+    `INSERT INTO vehicles (
+      registration, make, model, year, fuel_type, engine_size, colour, mot_status, mot_expiry, last_mot_date, last_recorded_mileage
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      vehicle.registration,
+      vehicle.make || null,
+      vehicle.model || null,
+      vehicle.year || null,
+      vehicle.fuel_type || null,
+      vehicle.engine_size || null,
+      vehicle.colour || null,
+      vehicle.mot_status || null,
+      vehicle.mot_expiry || null,
+      vehicle.last_mot_date || null,
+      vehicle.last_recorded_mileage || null,
+    ],
+  )
+  return { id: created.lastInsertId, created: true }
+}
+
 async function ensureDefaultAdminUser(db) {
   const countRow = await db.get(`SELECT COUNT(*) AS count FROM users`)
   const userCount = Number(countRow?.count || 0)
@@ -495,6 +529,26 @@ async function seedDatabase(db) {
       for (const row of rows || []) vehicleIds.push(row.id)
     }
 
+    // Add broader realistic demo dataset (safe insert-if-missing).
+    const extraCustomers = [
+      { first_name: 'MAYA', surname: 'THOMAS', phone: '07555 111222', email: 'MAYA@AUTOSS.TEST', postcode: 'E1 1AA', address: '12 TEST ROAD, LONDON' },
+      { first_name: 'LUKE', surname: 'PARKER', phone: '07555 111333', email: 'LUKE@AUTOSS.TEST', postcode: 'E2 2BB', address: '27 WORKSHOP LANE, LONDON' },
+      { first_name: 'EMMA', surname: 'NOLAN', phone: '07555 111444', email: 'EMMA@AUTOSS.TEST', postcode: 'E3 3CC', address: '5 GARAGE COURT, LONDON' },
+    ]
+    const extraVehicles = [
+      { registration: 'RX22MOT', make: 'AUDI', model: 'A3', year: '2022', fuel_type: 'PETROL', engine_size: '1.5L', colour: 'RED', mot_status: 'VALID' },
+      { registration: 'SV18FIX', make: 'VAUXHALL', model: 'CORSA', year: '2018', fuel_type: 'PETROL', engine_size: '1.4L', colour: 'SILVER', mot_status: 'DUE SOON' },
+      { registration: 'PJ14DIE', make: 'PEUGEOT', model: '308', year: '2014', fuel_type: 'DIESEL', engine_size: '1.6L', colour: 'BLUE', mot_status: 'EXPIRED' },
+    ]
+    for (const c of extraCustomers) {
+      const createdCustomer = await ensureCustomerByPhone(tx, c)
+      if (createdCustomer?.id && !customerIds.includes(createdCustomer.id)) customerIds.push(createdCustomer.id)
+    }
+    for (const v of extraVehicles) {
+      const createdVehicle = await ensureVehicleByReg(tx, v)
+      if (createdVehicle?.id && !vehicleIds.includes(createdVehicle.id)) vehicleIds.push(createdVehicle.id)
+    }
+
     const services = await tx.all(
       `SELECT id, name FROM service_templates WHERE active = 1 ORDER BY id ASC`,
     )
@@ -640,6 +694,38 @@ async function seedDatabase(db) {
         notes_customer_words: 'WAITING WHILE VEHICLE IS CHECKED.',
         notes_internal: 'DEMO SCENARIO: OVERLAPPING CAPACITY TEST B.',
       })
+
+      await ensureJobByTitle(tx, {
+        customer_id: customerIds[3] || customerIds[0],
+        vehicle_id: vehicleIds[4] || vehicleIds[0],
+        service_template_id: serviceId2 || serviceId,
+        title: 'IN PROGRESS - RX22MOT',
+        status: 'in_progress',
+        priority: 'urgent',
+        requested_date: today,
+        booked_start: plusHours(-2),
+        booked_end: plusHours(2),
+        estimated_duration_minutes: 240,
+        duration_margin_minutes: 30,
+        notes_customer_words: 'ENGINE MANAGEMENT LIGHT ON.',
+        notes_internal: 'DIAGNOSTICS UNDERWAY.',
+      })
+
+      await ensureJobByTitle(tx, {
+        customer_id: customerIds[4] || customerIds[0],
+        vehicle_id: vehicleIds[5] || vehicleIds[0],
+        service_template_id: serviceId || serviceId2,
+        title: 'NO QUOTE YET - SV18FIX',
+        status: 'booked_in',
+        priority: 'normal',
+        requested_date: today,
+        booked_start: plusHours(8),
+        booked_end: plusHours(10),
+        estimated_duration_minutes: 120,
+        duration_margin_minutes: 15,
+        notes_customer_words: 'BRAKE CHECK REQUESTED.',
+        notes_internal: 'PENDING INITIAL INSPECTION.',
+      })
     }
 
     let seededQuotes = 0
@@ -735,6 +821,72 @@ async function seedDatabase(db) {
     }
 
     let seededCompanySettings = 0
+    // Add richer quote/parts/invoice scenarios if missing.
+    const existingRichQuote = await tx.get(`SELECT id FROM quotes WHERE title = 'RICH DEMO QUOTE - MULTI SUPPLIER' LIMIT 1`)
+    if (!existingRichQuote && customerIds.length && vehicleIds.length) {
+      const richJob = await tx.get(`SELECT id, customer_id, vehicle_id FROM jobs WHERE title = 'IN PROGRESS - RX22MOT' LIMIT 1`)
+      if (richJob?.id) {
+        const quoteNumber = await nextQuoteNumber(tx)
+        const createdQuote = await tx.run(
+          `INSERT INTO quotes (quote_number, customer_id, vehicle_id, job_id, status, title, customer_notes, internal_notes)
+           VALUES (?, ?, ?, ?, 'accepted', 'RICH DEMO QUOTE - MULTI SUPPLIER', ?, ?)`,
+          [quoteNumber, richJob.customer_id, richJob.vehicle_id, richJob.id, 'APPROVED BY CUSTOMER.', 'INTERNAL COMPARISON DATA INCLUDED.'],
+        )
+        const quoteId = createdQuote.lastInsertId
+        await tx.run(
+          `INSERT INTO quote_items (quote_id, item_type, description, quantity, unit_cost, unit_sell, total_cost, total_sell, selected_for_quote, sort_order)
+           VALUES
+           (?, 'part', 'FRONT BRAKE PADS', 1, 40, 95, 40, 95, 1, 10),
+           (?, 'part', 'FRONT BRAKE DISCS', 2, 55, 120, 110, 240, 1, 20),
+           (?, 'labour', 'BRAKE FITTING LABOUR', 2, 35, 70, 70, 140, 1, 30),
+           (?, 'diagnostic', 'BRAKE SYSTEM CHECK', 1, 0, 35, 0, 35, 1, 40),
+           (?, 'oil', 'WORKSHOP CONSUMABLES', 1, 4, 12, 4, 12, 1, 50)`,
+          [quoteId, quoteId, quoteId, quoteId, quoteId],
+        )
+      }
+    }
+
+    const invoiceCount = await countRows(tx, 'invoices').catch(() => 0)
+    if (invoiceCount === 0) {
+      const acceptedQuote = await tx.get(`SELECT * FROM quotes WHERE status = 'accepted' ORDER BY id DESC LIMIT 1`)
+      if (acceptedQuote?.id) {
+        const year = new Date().getFullYear()
+        const invoiceNumber = `INV-${year}-0001`
+        const inv = await tx.run(
+          `INSERT INTO invoices (job_id, quote_id, customer_id, vehicle_id, invoice_number, status, subtotal_ex_vat, vat_total, total_inc_vat, notes)
+           VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?)`,
+          [
+            acceptedQuote.job_id,
+            acceptedQuote.id,
+            acceptedQuote.customer_id,
+            acceptedQuote.vehicle_id,
+            invoiceNumber,
+            acceptedQuote.subtotal_sell || 0,
+            acceptedQuote.vat_amount || 0,
+            acceptedQuote.total_sell || 0,
+            'PAYMENT TERMS: DUE ON COLLECTION.',
+          ],
+        )
+        const quoteItems = await tx.all(`SELECT * FROM quote_items WHERE quote_id = ? AND selected_for_quote = 1 ORDER BY sort_order ASC`, [acceptedQuote.id])
+        for (const it of quoteItems || []) {
+          await tx.run(
+            `INSERT INTO invoice_items (invoice_id, item_type, description, quantity, unit_price_ex_vat, vat_rate, total_ex_vat, total_inc_vat)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              inv.lastInsertId,
+              it.item_type || 'other',
+              it.description || 'ITEM',
+              it.quantity || 1,
+              it.unit_sell || 0,
+              it.vat_rate || 0.2,
+              it.total_sell || 0,
+              roundMoney((it.total_sell || 0) * (1 + toNumber(it.vat_rate, 0.2))),
+            ],
+          )
+        }
+      }
+    }
+
     if (companySettingsCount === 0) {
       await tx.run(
         `INSERT INTO company_settings (
