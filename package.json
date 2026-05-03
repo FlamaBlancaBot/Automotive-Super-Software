@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "install:all": "npm --prefix frontend ci && npm --prefix backend ci",
-    "build": "npm --prefix frontend run build && rm -rf backend/public/* && mkdir -p backend/public && cp -R frontend/dist/* backend/public/",
+    "build": "npm --prefix frontend run build && mkdir -p backend/public && find backend/public -mindepth 1 -maxdepth 1 ! -name README.md -exec rm -rf {} + && cp -R frontend/dist/. backend/public/",
     "start": "node backend/server.js"
   },
   "engines": {
