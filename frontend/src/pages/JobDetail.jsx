@@ -12,7 +12,7 @@ function formatDateTime(value) {
   return d.toLocaleString('en-GB')
 }
 
-export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPartsOrders }) {
+export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPartsOrders, onOpenJobSheet }) {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [job, setJob] = useState(null)
@@ -20,6 +20,7 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [partsOrders, setPartsOrders] = useState([])
   const [jobSheet, setJobSheet] = useState(null)
   const [activity, setActivity] = useState([])
+  const [invoices, setInvoices] = useState([])
   const [actionStatus, setActionStatus] = useState('idle')
 
   useEffect(() => {
@@ -34,6 +35,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setJob(data.job || null)
       setQuotes(data.quotes || [])
       setPartsOrders(data.parts_orders || [])
+      const invoiceRes = await apiGet(`/api/jobs/${jobId}/invoices`).catch(() => ({ invoices: [] }))
+      setInvoices(invoiceRes.invoices || [])
       const [sheetRes, activityRes] = await Promise.all([
         apiGet(`/api/jobs/${jobId}/job-sheet`).catch(() => null),
         apiGet(`/api/activity?entity_type=job&entity_id=${jobId}&limit=40`).catch(() => null),
@@ -64,6 +67,19 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
     try {
       const data = await apiPost(`/api/jobs/${job.id}/quotes`, {})
       if (data && data.quote && data.quote.id) onOpenQuote(data.quote.id)
+    } finally {
+      setActionStatus('idle')
+    }
+  }
+
+  async function createOrOpenInvoice() {
+    if (!job) return
+    setActionStatus('saving')
+    try {
+      const out = await apiPost(`/api/jobs/${job.id}/invoice`, {})
+      if (out && out.invoice) {
+        await load()
+      }
     } finally {
       setActionStatus('idle')
     }
@@ -116,6 +132,9 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
             disabled={actionStatus === 'saving'}
           >
             {actionStatus === 'saving' ? 'Working…' : 'Create/Open quote'}
+          </button>
+          <button type="button" className="secondaryButton" onClick={createOrOpenInvoice}>
+            Create/Open invoice
           </button>
         </div>
       </header>
@@ -235,11 +254,14 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       <div className="cardBox" style={{ marginTop: 12 }}>
         <div className="cardTop">
           <h3 className="cardTitle">Job Sheet</h3>
-          <button type="button" className="secondaryButton noPrint" onClick={() => window.print()}>
-            Print job sheet
+          <button type="button" className="secondaryButton noPrint" onClick={() => onOpenJobSheet && onOpenJobSheet(job.id)}>
+            View job sheet
           </button>
         </div>
-        <div className="fieldHint">Use browser Print → Save as PDF.</div>
+        <div className="pageHeaderActions" style={{ marginTop: 8 }}>
+          <button type="button" className="secondaryButton noPrint" onClick={() => onOpenJobSheet && onOpenJobSheet(job.id)}>View job sheet</button>
+          <button type="button" className="secondaryButton noPrint" onClick={() => window.print()}>Print job sheet</button>
+        </div>
         <div className="fieldGrid" style={{ marginTop: 12 }}>
           <div className="field" style={{ gridColumn: 'span 3' }}>
             <div className="fieldLabel">Technician</div>
@@ -274,6 +296,30 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
             <div className="printBox">{jobSheet?.job?.final_checks || 'TECHNICIAN SIGN-OFF: ____________________  DATE: __________'}</div>
           </div>
         </div>
+      </div>
+
+      <div className="cardBox" style={{ marginTop: 12 }}>
+        <div className="cardTop">
+          <h3 className="cardTitle">Invoices</h3>
+          <div className="fieldHint">{invoices.length} invoice(s)</div>
+        </div>
+        {invoices.length ? (
+          <div className="quoteTableWrap" style={{ marginTop: 10 }}>
+            <table className="quoteTable">
+              <thead><tr><th>Invoice</th><th>Status</th><th>Subtotal</th><th>Total</th></tr></thead>
+              <tbody>
+                {invoices.map((inv) => (
+                  <tr key={inv.id}>
+                    <td className="mono">{inv.invoice_number}</td>
+                    <td>{inv.status}</td>
+                    <td>£{Number(inv.subtotal_ex_vat || 0).toFixed(2)}</td>
+                    <td>£{Number(inv.total_inc_vat || 0).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <div className="emptyState" style={{ marginTop: 10 }}>No invoice yet.</div>}
       </div>
 
       <div className="cardBox" style={{ marginTop: 12 }}>

@@ -6,7 +6,7 @@
 
 export const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', path: '/', title: 'Dashboard', icon: '🏠' },
-  { key: 'new-intake', label: 'New Intake', path: '/intake', title: 'New Intake', icon: '📞' },
+  { key: 'new-intake', label: 'Onboarding', path: '/intake', title: 'Onboarding', icon: '📞' },
   { key: 'search', label: 'Search', path: '/search', title: 'Search', icon: '🔎' },
   { key: 'vehicles', label: 'Vehicles', path: '/vehicles', title: 'Vehicles', hidden: true, icon: '🚗' },
   { key: 'jobs', label: 'Jobs', path: '/jobs', title: 'Jobs', icon: '🧾' },

@@ -85,11 +85,11 @@ cd frontend
 npm run dev
 ```
 
-## Test the New Intake locally
+## Test the Onboarding locally
 
 1. Start the backend (after seeding).
 2. Start the frontend.
-3. Open the app and go to `New Intake`.
+3. Open the app and go to `Onboarding`.
 
 Notes:
 
@@ -142,7 +142,7 @@ Notes:
 
 Preferred workflow:
 
-1. Create a job via `New Intake` (creates `jobs` row)
+1. Create a job via `Onboarding` (creates `jobs` row)
 2. From the success panel click **Create quote now** (creates or opens a draft quote linked to the job)
 3. Alternatively, open `Jobs` and use **Create/Open quote** from the job list or job detail view
 
@@ -164,7 +164,7 @@ Note:
 
 Workflow:
 
-1. Create a job via `New Intake`
+1. Create a job via `Onboarding`
 2. Create/open a quote for the job
 3. Add part/service lines and select supplier options where needed
 4. Change quote status to **Accepted**
@@ -488,3 +488,18 @@ For the planned MVP build order and data model, see:
 - `docs/MVP_SCOPE.md`
 - `docs/DATABASE_PLAN.md`
 
+
+## Current workflow focus (May 2026)
+
+- `Onboarding` is now shown in the UI as **Onboarding** (route stays `/intake` for compatibility).
+- Workflow is vehicle/job-centred: onboarding creates and links job context, quotes sit under jobs, parts are grouped by job/REG.
+- Quote editor includes explicit **Save quote** and **Customer accepts** actions with save-state feedback.
+- Parts page defaults to job/REG group cards, then expands to part-line actions.
+- Job sheets are available as dedicated A4-friendly document views via `/job-sheets/:id`.
+- Invoice foundation is now available:
+  - `POST /api/jobs/:id/invoice`
+  - `GET /api/jobs/:id/invoices`
+  - `GET /api/invoices/:id`
+  - `PATCH /api/invoices/:id`
+
+Hostinger deployment remains Git-based from repository root. Do not use manual zip/dist uploads.

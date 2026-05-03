@@ -52,7 +52,7 @@ export default function Dashboard({
             className="primaryButton"
             onClick={onStartNewIntake}
           >
-            Start New Intake
+            Start Onboarding
           </button>
           <button
             type="button"

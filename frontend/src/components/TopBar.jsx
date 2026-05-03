@@ -49,7 +49,7 @@ export default function TopBar({
           />
         </form>
         <button type="button" className="primaryButton" onClick={onNewIntake}>
-          New Intake
+          Onboarding
         </button>
         <button
           type="button"

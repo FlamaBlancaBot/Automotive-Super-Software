@@ -119,7 +119,7 @@ export default function Jobs({ locationPath, onOpenJob, onOpenQuote }) {
         <div>
           <h2 className="pageTitle">Jobs</h2>
           <p className="pageSubtitle">
-            Search by REG, customer, phone, or job title. Create/open a quote from the job row.
+            Vehicle/job-first board. REG is the primary identifier for each job.
           </p>
         </div>
         <span className="setupPill" title="Database-backed">
@@ -204,7 +204,7 @@ export default function Jobs({ locationPath, onOpenJob, onOpenQuote }) {
               <thead>
                 <tr>
                   <th>Status</th>
-                  <th>Vehicle</th>
+                  <th>REG / Vehicle</th>
                   <th>Customer</th>
                   <th>Job</th>
                   <th>Booked</th>

@@ -2,6 +2,10 @@ export function toOperationalUpper(value) {
   return String(value || '').trim().toUpperCase()
 }
 
+export function normaliseOperationalText(value) {
+  return toOperationalUpper(value)
+}
+
 export function cleanPhone(value) {
   return String(value || '')
     .replace(/[^\d +]/g, '')
@@ -17,4 +21,3 @@ export function normaliseReg(value) {
     .trim()
     .slice(0, 9)
 }
-

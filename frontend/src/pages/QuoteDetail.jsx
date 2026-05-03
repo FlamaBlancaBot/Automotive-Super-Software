@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiDelete, apiGet, apiPatch, apiPost } from '../api/http'
 import { setDocumentTitle } from '../utils/title'
+import { toOperationalUpper } from '../utils/text'
 import VehicleHeader from '../components/VehicleHeader'
 import StatusChip from '../components/StatusChip'
 import MoneyDisplay from '../components/MoneyDisplay'
@@ -53,6 +54,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [saveBusy, setSaveBusy] = useState(false)
+  const [saveState, setSaveState] = useState('saved')
 
   const [quote, setQuote] = useState(null)
   const [items, setItems] = useState([])
@@ -159,6 +161,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
         internal_notes: q.quote?.internal_notes || '',
         customer_notes: q.quote?.customer_notes || '',
       })
+      setSaveState('saved')
       setSuppliers(s.suppliers || [])
       setPredefined(p.items || [])
       setPartsOrders(po.parts_orders || [])
@@ -181,13 +184,16 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
 
   async function saveQuoteMeta() {
     setSaveBusy(true)
+    setSaveState('saving')
     setError('')
     try {
       const out = await apiPatch(`/api/quotes/${quoteId}`, quoteDraft)
       setQuote(out.quote)
       setNotice('Quote details saved.')
+      setSaveState('saved')
     } catch (err) {
       setError(err.message || 'Failed to save quote details.')
+      setSaveState('failed')
     } finally {
       setSaveBusy(false)
     }
@@ -196,6 +202,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
   async function setQuoteStatus(nextStatus) {
     if (!QUOTE_STATUSES.includes(nextStatus)) return
     setSaveBusy(true)
+    setSaveState('saving')
     setError('')
     setNotice('')
     try {
@@ -205,8 +212,10 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
         setNotice(`Quote accepted. ${Number(out.parts_orders_created || 0)} parts order(s) created.`)
       }
       await load({ preserveScroll: true, keepStatus: true })
+      setSaveState('saved')
     } catch (err) {
       setError(err.message || 'Failed to update quote status.')
+      setSaveState('failed')
     } finally {
       setSaveBusy(false)
     }
@@ -425,6 +434,12 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           </p>
         </div>
         <div className="pageHeaderActions">
+          <button type="button" className="primaryButton" style={{ background: '#f2c94c', color: '#1a1a1a' }} onClick={saveQuoteMeta} disabled={saveBusy}>
+            Save quote
+          </button>
+          <button type="button" className="primaryButton" style={{ background: '#23a455' }} onClick={() => setQuoteStatus('accepted')} disabled={saveBusy}>
+            Customer accepts
+          </button>
           <StatusChip label={quote.status} tone="chipGrey" />
           <select className="select" value={quote.status} onChange={(e) => setQuoteStatus(e.target.value)}>
             {QUOTE_STATUSES.map((s) => (
@@ -442,6 +457,9 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
             Print quote
           </button>
         </div>
+        <div className="fieldHint" style={{ marginTop: 6 }}>
+          {saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving...' : saveState === 'failed' ? 'Save failed' : 'Unsaved changes'}
+        </div>
       </header>
 
       {notice ? <div className="notice good">{notice}</div> : null}
@@ -455,7 +473,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
         <div className="fieldGrid" style={{ marginTop: 12 }}>
           <div className="field" style={{ gridColumn: 'span 6' }}>
             <div className="fieldLabel">Title</div>
-            <input className="input" value={quoteDraft.title} onChange={(e) => setQuoteDraft((p) => ({ ...p, title: e.target.value }))} placeholder="QUOTE TITLE" />
+            <input className="input" value={quoteDraft.title} onChange={(e) => { setQuoteDraft((p) => ({ ...p, title: e.target.value })); setSaveState('unsaved') }} onBlur={(e) => setQuoteDraft((p) => ({ ...p, title: toOperationalUpper(e.target.value) }))} placeholder="QUOTE TITLE" />
           </div>
           <div className="field" style={{ gridColumn: 'span 6' }}>
             <div className="fieldLabel">Customer</div>
@@ -466,7 +484,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           </div>
           <div className="field" style={{ gridColumn: 'span 6' }}>
             <div className="fieldLabel">Internal notes</div>
-            <textarea className="textarea" value={quoteDraft.internal_notes} onChange={(e) => setQuoteDraft((p) => ({ ...p, internal_notes: e.target.value }))} placeholder="INTERNAL NOTES" />
+            <textarea className="textarea" value={quoteDraft.internal_notes} onChange={(e) => { setQuoteDraft((p) => ({ ...p, internal_notes: e.target.value })); setSaveState('unsaved') }} onBlur={(e) => setQuoteDraft((p) => ({ ...p, internal_notes: toOperationalUpper(e.target.value) }))} placeholder="INTERNAL NOTES" />
           </div>
           <div className="field" style={{ gridColumn: 'span 6' }}>
             <div className="fieldLabel">Customer notes</div>
@@ -594,9 +612,9 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
                     </td>
                     <td>
                       <div className="partNameCell">
-                        <input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: e.target.value })} placeholder="PART NAME" />
+                        <input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: toOperationalUpper(e.target.value) })} placeholder="PART NAME" />
                         <div className="partMetaRow">
-                          <input className="input compactInput" value={item.part_number || ''} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, part_number: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { part_number: e.target.value })} placeholder="PART #" />
+                          <input className="input compactInput" value={item.part_number || ''} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, part_number: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { part_number: toOperationalUpper(e.target.value) })} placeholder="PART #" />
                           <input className="input compactInput" value={String(item.quantity || 1)} onChange={(e) => setItems((prev) => prev.map((x) => x.id === item.id ? { ...x, quantity: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { quantity: e.target.value })} placeholder="Qty" />
                         </div>
                         <div className="fieldHint">Selected: {effective ? `${effective.supplier_name || 'SUP'} · ${formatMoney(effective.sell_price)}` : 'None selected'}</div>
@@ -636,7 +654,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
                             <input
                               className="input compactInput"
                               defaultValue={option?.brand || ''}
-                              onBlur={(e) => ensureOptionAndPatch(item, supplier.id, { brand: e.target.value || null })}
+                              onBlur={(e) => ensureOptionAndPatch(item, supplier.id, { brand: toOperationalUpper(e.target.value) || null })}
                               placeholder="e.g. BOSCH"
                             />
                             <div className="fieldHint">ETA date/time</div>
@@ -764,7 +782,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
                 return (
                   <tr key={item.id}>
                     <td><input type="checkbox" checked={Number(item.selected_for_quote) === 1} onChange={(e) => patchItem(item.id, { selected_for_quote: e.target.checked ? 1 : 0 })} /></td>
-                    <td><input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: e.target.value })} /></td>
+                    <td><input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: toOperationalUpper(e.target.value) })} /></td>
                     <td><input className="input compactInput" value={String(item.quantity || 1)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, quantity: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { quantity: e.target.value })} /></td>
                     <td><input className="input compactInput" value={String(item.unit_cost || 0)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, unit_cost: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { unit_cost: e.target.value })} /></td>
                     <td><input className="input compactInput" value={String(item.unit_sell || 0)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, unit_sell: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { unit_sell: e.target.value })} /></td>

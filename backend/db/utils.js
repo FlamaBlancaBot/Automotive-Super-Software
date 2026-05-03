@@ -18,6 +18,10 @@ function toOperationalUpper(input) {
   return String(input || '').trim().toUpperCase()
 }
 
+function normaliseOperationalText(input) {
+  return toOperationalUpper(input)
+}
+
 function cleanPhone(input) {
   return String(input || '')
     .replace(/[^\d +]/g, '')
@@ -68,6 +72,7 @@ module.exports = {
   normaliseRegistration,
   isLikelyUkRegistration,
   toOperationalUpper,
+  normaliseOperationalText,
   cleanPhone,
   nowIso,
   toDbDateTime,

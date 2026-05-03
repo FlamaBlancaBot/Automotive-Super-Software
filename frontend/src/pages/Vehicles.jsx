@@ -69,7 +69,7 @@ export default function Vehicles({ onOpenIntake }) {
       <div className="cardBox" style={{ marginTop: 12 }}>
         <div className="cardTop">
           <h3 className="cardTitle">Results</h3>
-          <div className="fieldHint">Open a vehicle in New Intake to view linked customers and start a job.</div>
+          <div className="fieldHint">Open a vehicle in Onboarding to view linked customers and start a job.</div>
         </div>
 
         {vehicles.length ? (

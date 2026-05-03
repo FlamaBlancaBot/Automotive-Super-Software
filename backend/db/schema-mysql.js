@@ -283,6 +283,45 @@ const MYSQL_SCHEMA_STATEMENTS = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
   `
+  CREATE TABLE IF NOT EXISTS invoices (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    job_id BIGINT UNSIGNED NOT NULL,
+    quote_id BIGINT UNSIGNED NULL,
+    customer_id BIGINT UNSIGNED NULL,
+    vehicle_id BIGINT UNSIGNED NULL,
+    invoice_number VARCHAR(30) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'draft',
+    subtotal_ex_vat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    vat_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    total_inc_vat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    notes TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_invoices_invoice_number (invoice_number),
+    KEY idx_invoices_job_id (job_id),
+    KEY idx_invoices_quote_id (quote_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS invoice_items (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    invoice_id BIGINT UNSIGNED NOT NULL,
+    item_type VARCHAR(30) NOT NULL,
+    description TEXT NOT NULL,
+    quantity DECIMAL(10,2) NOT NULL DEFAULT 1.00,
+    unit_price_ex_vat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    vat_rate DECIMAL(6,4) NOT NULL DEFAULT 0.2000,
+    total_ex_vat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    total_inc_vat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_invoice_items_invoice_id (invoice_id),
+    CONSTRAINT fk_invoice_items_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
   CREATE TABLE IF NOT EXISTS company_settings (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     company_name VARCHAR(180) NULL,

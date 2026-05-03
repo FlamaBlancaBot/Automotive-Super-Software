@@ -217,6 +217,7 @@ function App() {
                 onBackToJobs={() => navigateToPath('/jobs')}
                 onOpenQuote={(id) => navigateToPath(`/quotes/${id}`)}
                 onViewPartsOrders={(jobId) => navigateToPath(`/parts?job_id=${jobId}`)}
+                onOpenJobSheet={(id) => navigateToPath(`/job-sheets/${id}`)}
               />
             ) : (
               <Jobs

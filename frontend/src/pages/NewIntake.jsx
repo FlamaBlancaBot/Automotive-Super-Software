@@ -586,7 +586,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
     <div className="intake">
       <header className="pageHeader">
         <div>
-          <h2 className="pageTitle">New Intake</h2>
+          <h2 className="pageTitle">Onboarding</h2>
           <p className="pageSubtitle">
             Intake workflow (database-backed). Vehicle lookups may also use the configured webhook when not found locally.
           </p>
@@ -1173,7 +1173,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
                 <div className="remindersBox">
                   <div className="remindersTitle">Default reminders (external MOT)</div>
                   <div className="remindersHint">
-                    TODO: Admin-configurable reminder templates will be added later. For now you can untick reminders for this intake.
+                    TODO: Admin-configurable reminder templates will be added later. For now you can untick reminders for this onboarding.
                   </div>
                   <div className="remindersGrid">
                     {DEFAULT_REMINDER_OFFSETS.map((off) => (
@@ -1265,7 +1265,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
               disabled={!canSave}
               onClick={onSaveIntake}
             >
-              {saveStatus === 'saving' ? 'Saving…' : 'Save intake'}
+              {saveStatus === 'saving' ? 'Saving…' : 'Save onboarding'}
             </button>
 
             <div className="requiredBox" role="status" aria-live="polite">
@@ -1319,7 +1319,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
                     className="secondaryButton"
                     onClick={resetForAnother}
                   >
-                    Start another intake
+                    Start another onboarding
                   </button>
                 </div>
               </div>

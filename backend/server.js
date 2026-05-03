@@ -63,6 +63,7 @@ async function main() {
   const { createAuthRouter } = require('./routes/auth')
   const { createActivityRouter } = require('./routes/activity')
   const { createMotEventsRouter } = require('./routes/mot-events')
+  const { createInvoicesRouter } = require('./routes/invoices')
   const {
     createCustomerDetailRequestsRouter,
   } = require('./routes/customer-detail-requests')
@@ -127,6 +128,7 @@ async function main() {
   app.use('/api', requireAuth, requireRole(['admin', 'office']), createAdminRouter({ db }))
   app.use('/api', createCalendarRouter({ db }))
   app.use('/api', createMotEventsRouter({ db }))
+  app.use('/api', createInvoicesRouter({ db }))
 
   // In production, serve the built React app from `backend/public/`.
   // Non-API routes should return index.html so browser refresh works on SPA routes.

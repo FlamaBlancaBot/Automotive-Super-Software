@@ -266,12 +266,12 @@ export default function Quotes({ onOpenQuote, locationPath }) {
         {intakePrefill.customerId && intakePrefill.vehicleId && intakePrefill.jobId ? (
           <div className="notice info" style={{ marginTop: 12 }}>
             <div style={{ fontWeight: 900 }}>
-              Next step after intake: create a quote for job #{intakePrefill.jobId}
+              Next step after onboarding: create a quote for job #{intakePrefill.jobId}
             </div>
             <div className="fieldHint" style={{ marginTop: 6 }}>
               {intakePrefill.reg ? `Vehicle: ${intakePrefill.reg}. ` : ''}
               {intakePrefill.service ? `Service: ${intakePrefill.service}. ` : ''}
-              This uses the saved intake/job IDs (no demo data).
+              This uses the saved onboarding/job IDs (no demo data).
             </div>
             <div className="pageHeaderActions" style={{ marginTop: 10 }}>
               <button

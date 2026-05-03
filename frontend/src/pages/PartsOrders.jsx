@@ -46,6 +46,7 @@ export default function PartsOrders({ locationPath }) {
   const [listStatus, setListStatus] = useState('idle')
   const [listError, setListError] = useState('')
   const [orders, setOrders] = useState([])
+  const [expandedJobs, setExpandedJobs] = useState({})
 
   const [goodsModal, setGoodsModal] = useState(null) // { order }
   const [editModal, setEditModal] = useState(null) // { orderId }
@@ -115,6 +116,27 @@ export default function PartsOrders({ locationPath }) {
       setModalError(err.message || 'Failed to update status.')
     }
   }
+
+  const groupedByJob = useMemo(() => {
+    const map = new Map()
+    for (const o of orders || []) {
+      const key = Number(o.job_id || 0) || `no-job-${o.id}`
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          job_id: o.job_id || null,
+          reg: o.vehicle_registration || '—',
+          make: o.vehicle_make || '',
+          model: o.vehicle_model || '',
+          job_title: o.job_title || 'JOB',
+          job_status: o.job_status || '—',
+          rows: [],
+        })
+      }
+      map.get(key).rows.push(o)
+    }
+    return [...map.values()]
+  }, [orders])
 
   return (
     <div className="partsPage">
@@ -219,74 +241,59 @@ export default function PartsOrders({ locationPath }) {
 
       <div className="cardBox" style={{ marginTop: 12 }}>
         <div className="cardTop">
-          <h3 className="cardTitle">Orders</h3>
-          <div className="fieldHint">{orders.length} order(s)</div>
+          <h3 className="cardTitle">Jobs / REG Groups</h3>
+          <div className="fieldHint">{groupedByJob.length} job group(s)</div>
         </div>
 
-        {orders.length ? (
-          <div className="quoteTableWrap" style={{ marginTop: 12 }}>
-            <table className="quoteTable" style={{ minWidth: 980 }}>
-              <thead>
-                <tr>
-                  <th>REG</th>
-                  <th>Vehicle</th>
-                  <th>Job</th>
-                  <th>Part</th>
-                  <th>Brand</th>
-                  <th>Supplier</th>
-                  <th>ETA</th>
-                  <th>Qty</th>
-                  <th>Status</th>
-                  <th>Invoice</th>
-                  <th aria-label="Actions"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => (
-                  <tr key={o.id}>
-                    <td colSpan={2}>
-                      <VehicleHeader
-                        small
-                        reg={o.vehicle_registration}
-                        make={o.vehicle_make}
-                        model={o.vehicle_model}
-                      />
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 900 }}>{o.job_title || '—'}</div>
-                      <div className="fieldHint">{o.quote_number ? `Quote ${o.quote_number}` : ''}</div>
-                    </td>
-                    <td>{o.part_name || o.description || '—'}</td>
-                    <td>{o.brand || '—'}</td>
-                    <td>{o.supplier_name || '—'}</td>
-                    <td>{o.eta_text || formatDate(o.expected_at || o.eta_datetime)}</td>
-                    <td className="mono">{o.quantity}</td>
-                    <td>
-                      <StatusChip label={o.status} tone={partsOrderTone(o.status)} />
-                    </td>
-                    <td className="mono">{o.supplier_invoice_number || '—'}</td>
-                    <td>
-                      <div className="rowActions">
-                        {o.status === 'pending' ? (
-                          <button type="button" className="miniButton" onClick={() => setStatus(o.id, 'ordered')}>
-                            Mark ordered
-                          </button>
-                        ) : null}
-                        <button type="button" className="miniButton primary" onClick={() => setGoodsModal({ order: o })}>
-                          Goods received
-                        </button>
-                        <button type="button" className="miniButton" onClick={() => setStatus(o.id, 'return_required')}>
-                          Return required
-                        </button>
-                        <button type="button" className="miniButton" onClick={() => setEditModal({ orderId: o.id })}>
-                          View/edit
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {groupedByJob.length ? (
+          <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
+            {groupedByJob.map((group) => {
+              const pending = group.rows.filter((r) => r.status === 'pending').length
+              const ordered = group.rows.filter((r) => r.status === 'ordered').length
+              const received = group.rows.filter((r) => r.status === 'received').length
+              const returns = group.rows.filter((r) => String(r.status || '').includes('return') || String(r.status || '').includes('credit')).length
+              const expanded = Boolean(expandedJobs[group.key])
+              return (
+                <article key={group.key} className="cardBox">
+                  <div className="cardTop">
+                    <div>
+                      <VehicleHeader small reg={group.reg} make={group.make} model={group.model} />
+                      <div className="fieldHint">{group.job_title} · {group.job_status}</div>
+                    </div>
+                    <div className="fieldHint">Pending {pending} · Ordered {ordered} · Received {received} · Returns {returns}</div>
+                  </div>
+                  <div className="pageHeaderActions" style={{ marginTop: 10 }}>
+                    <button type="button" className="miniButton" onClick={() => setExpandedJobs((s) => ({ ...s, [group.key]: !expanded }))}>
+                      {expanded ? 'Hide parts' : 'View parts'}
+                    </button>
+                  </div>
+                  {expanded ? (
+                    <div className="quoteTableWrap" style={{ marginTop: 10 }}>
+                      <table className="quoteTable" style={{ minWidth: 900 }}>
+                        <thead><tr><th>Part</th><th>Supplier</th><th>ETA</th><th>Status</th><th>Invoice/Note</th><th></th></tr></thead>
+                        <tbody>
+                          {group.rows.map((o) => (
+                            <tr key={o.id}>
+                              <td>{o.part_name || o.description || '—'}</td>
+                              <td>{o.supplier_name || '—'}</td>
+                              <td>{o.eta_text || formatDate(o.expected_at || o.eta_datetime)}</td>
+                              <td><StatusChip label={o.status} tone={partsOrderTone(o.status)} /></td>
+                              <td className="mono">{o.supplier_invoice_number || o.delivery_note_number || '—'}</td>
+                              <td>
+                                <div className="rowActions">
+                                  <button type="button" className="miniButton primary" onClick={() => setGoodsModal({ order: o })}>Goods received</button>
+                                  <button type="button" className="miniButton" onClick={() => setEditModal({ orderId: o.id })}>View/edit</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </article>
+              )
+            })}
           </div>
         ) : (
           <div className="emptyState" style={{ marginTop: 12 }}>

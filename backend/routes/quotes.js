@@ -1,7 +1,7 @@
 'use strict'
 
 const express = require('express')
-const { toOperationalUpper } = require('../db/utils')
+const { normaliseOperationalText } = require('../db/utils')
 const { logActivity } = require('../lib/activity')
 
 const QUOTE_STATUSES = [
@@ -252,9 +252,10 @@ async function ensurePartsOrdersForAcceptedQuote(tx, quoteId) {
     if (job && job.id) {
       const current = String(job.status || '').toLowerCase()
       if (current !== 'completed' && current !== 'in_progress') {
+        const nextJobStatus = created > 0 || existing > 0 ? 'awaiting_parts_order' : 'in_progress'
         await tx.run(
-          `UPDATE jobs SET status = 'awaiting_parts_order', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          [quote.job_id],
+          `UPDATE jobs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          [nextJobStatus, quote.job_id],
         )
       }
     }
@@ -374,9 +375,9 @@ function createQuotesRouter({ db }) {
     if (!quoteId) return res.status(400).json({ ok: false, error: 'Invalid quote id.' })
 
     const body = req.body || {}
-    const title = body.title != null ? toOperationalUpper(body.title) : null
+    const title = body.title != null ? normaliseOperationalText(body.title) : null
     const internalNotes =
-      body.internal_notes != null ? toOperationalUpper(body.internal_notes) : null
+      body.internal_notes != null ? normaliseOperationalText(body.internal_notes) : null
     const customerNotes = body.customer_notes != null ? String(body.customer_notes).trim() : null
     const vatRate = body.vat_rate != null && body.vat_rate !== '' ? toDecimal(body.vat_rate, null) : null
 
@@ -428,14 +429,14 @@ function createQuotesRouter({ db }) {
     const customerId = toInt(body.customer_id, 0)
     const vehicleId = toInt(body.vehicle_id, 0)
     const jobId = body.job_id ? toInt(body.job_id, null) : null
-    const title = toOperationalUpper(body.title)
+    const title = normaliseOperationalText(body.title)
 
     if (!customerId || !vehicleId) {
       return res.status(400).json({ ok: false, error: 'customer_id and vehicle_id are required.' })
     }
     if (!title) return res.status(400).json({ ok: false, error: 'Quote title is required.' })
 
-    const internalNotes = body.internal_notes ? toOperationalUpper(body.internal_notes) : null
+    const internalNotes = body.internal_notes ? normaliseOperationalText(body.internal_notes) : null
     const customerNotes = body.customer_notes ? String(body.customer_notes).trim() : null
 
     try {
@@ -500,7 +501,7 @@ function createQuotesRouter({ db }) {
 
     const body = req.body || {}
     const itemType = String(body.item_type || '').trim().toLowerCase()
-    const description = toOperationalUpper(body.description)
+    const description = normaliseOperationalText(body.description)
     if (!ITEM_TYPES.includes(itemType)) return res.status(400).json({ ok: false, error: 'Invalid item_type.' })
     if (!description) return res.status(400).json({ ok: false, error: 'Item description is required.' })
 
@@ -514,7 +515,7 @@ function createQuotesRouter({ db }) {
       body.vat_rate == null || body.vat_rate === ''
         ? 0.2
         : toDecimal(body.vat_rate, 0.2)
-    const etaText = body.eta_text != null ? toOperationalUpper(body.eta_text) : null
+    const etaText = body.eta_text != null ? normaliseOperationalText(body.eta_text) : null
 
     let unitSell = body.unit_sell == null || body.unit_sell === '' ? null : body.unit_sell
     if (unitSell == null && markupPercent != null) {
@@ -522,8 +523,8 @@ function createQuotesRouter({ db }) {
     }
     if (unitSell == null) unitSell = 0
     const supplierId = body.supplier_id ? toInt(body.supplier_id, null) : null
-    const partBrand = body.part_brand ? toOperationalUpper(body.part_brand) : null
-    const partNumber = body.part_number ? toOperationalUpper(body.part_number) : null
+    const partBrand = body.part_brand ? normaliseOperationalText(body.part_brand) : null
+    const partNumber = body.part_number ? normaliseOperationalText(body.part_number) : null
     const selectedForQuote = body.selected_for_quote === 0 || body.selected_for_quote === false ? 0 : 1
 
     try {
@@ -612,14 +613,14 @@ function createQuotesRouter({ db }) {
         }
 
         const description =
-          body.description != null ? toOperationalUpper(body.description) : item.description
+          body.description != null ? normaliseOperationalText(body.description) : item.description
         const supplierId = body.supplier_id != null ? toInt(body.supplier_id, null) : item.supplier_id
         const partBrand =
-          body.part_brand != null ? toOperationalUpper(body.part_brand) : item.part_brand
+          body.part_brand != null ? normaliseOperationalText(body.part_brand) : item.part_brand
         const partNumber =
-          body.part_number != null ? toOperationalUpper(body.part_number) : item.part_number
+          body.part_number != null ? normaliseOperationalText(body.part_number) : item.part_number
         const etaText =
-          body.eta_text != null ? toOperationalUpper(body.eta_text) : item.eta_text
+          body.eta_text != null ? normaliseOperationalText(body.eta_text) : item.eta_text
         const markupPercent =
           body.markup_percent != null && body.markup_percent !== ''
             ? toDecimal(body.markup_percent, null)
@@ -815,10 +816,10 @@ function createQuotesRouter({ db }) {
     const supplierId = toInt(body.supplier_id, 0)
     if (!supplierId) return res.status(400).json({ ok: false, error: 'supplier_id is required.' })
 
-    const partName = body.part_name ? toOperationalUpper(body.part_name) : null
-    const description = body.description ? toOperationalUpper(body.description) : null
-    const brand = body.brand ? toOperationalUpper(body.brand) : null
-    const partNumber = body.part_number ? toOperationalUpper(body.part_number) : null
+    const partName = body.part_name ? normaliseOperationalText(body.part_name) : null
+    const description = body.description ? normaliseOperationalText(body.description) : null
+    const brand = body.brand ? normaliseOperationalText(body.brand) : null
+    const partNumber = body.part_number ? normaliseOperationalText(body.part_number) : null
     const isAvailable = body.is_available === 0 || body.is_available === false ? 0 : 1
     const isOrdered = body.is_ordered === 1 || body.is_ordered === true ? 1 : 0
     const markupPercent =
@@ -836,7 +837,7 @@ function createQuotesRouter({ db }) {
       sellPrice = roundMoney(toDecimal(costPrice, 0) * (1 + toDecimal(markupPercent, 0) / 100))
     }
     if (sellPrice == null) sellPrice = 0
-    const etaText = body.eta_text ? toOperationalUpper(body.eta_text) : null
+    const etaText = body.eta_text ? normaliseOperationalText(body.eta_text) : null
 
     try {
       const out = await db.transaction(async (tx) => {
@@ -997,9 +998,9 @@ function createQuotesRouter({ db }) {
 
     const body = req.body || {}
     const supplierId = body.supplier_id != null ? toInt(body.supplier_id, null) : null
-    const brand = body.brand != null ? toOperationalUpper(body.brand) : null
-    const partNumber = body.part_number != null ? toOperationalUpper(body.part_number) : null
-    const etaText = body.eta_text != null ? toOperationalUpper(body.eta_text) : null
+    const brand = body.brand != null ? normaliseOperationalText(body.brand) : null
+    const partNumber = body.part_number != null ? normaliseOperationalText(body.part_number) : null
+    const etaText = body.eta_text != null ? normaliseOperationalText(body.eta_text) : null
     const costPrice = body.cost_price != null && body.cost_price !== '' ? roundMoney(body.cost_price) : null
     const markupPercent =
       body.markup_percent != null && body.markup_percent !== ''
