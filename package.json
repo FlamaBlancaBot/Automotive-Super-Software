@@ -1,0 +1,13 @@
+{
+  "name": "automotive-super-software",
+  "version": "1.1.001",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix frontend ci && npm --prefix backend ci",
+    "build": "npm --prefix frontend run build && rm -rf backend/public/* && mkdir -p backend/public && cp -R frontend/dist/* backend/public/",
+    "start": "node backend/server.js"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
