@@ -1,6 +1,14 @@
 import { APP_LONG_NAME, APP_SHORT_NAME, LOGO_URL } from '../config/branding'
 import { APP_VERSION } from '../config/version'
 
+function userInitials(user) {
+  if (!user) return '?'
+  const name = user.name || user.email || ''
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
+}
+
 export default function TopBar({
   onToggleNav,
   onNewIntake,
@@ -17,9 +25,7 @@ export default function TopBar({
         onClick={onToggleNav}
         aria-label="Open navigation"
       >
-        <span className="menuIcon" aria-hidden="true">
-          ☰
-        </span>
+        <span className="menuIcon" aria-hidden="true">☰</span>
       </button>
 
       <div className="brand">
@@ -35,35 +41,40 @@ export default function TopBar({
           className="topSearch"
           onSubmit={(e) => {
             e.preventDefault()
-            const form = e.currentTarget
-            const input = form.elements.namedItem('q')
+            const input = e.currentTarget.elements.namedItem('q')
             const value = input && input.value ? String(input.value).trim() : ''
             if (value && typeof onSearch === 'function') onSearch(value)
           }}
         >
           <input
-            className="input topSearchInput"
+            className="topSearchInput"
             name="q"
             placeholder="Search REG / customer / job…"
             aria-label="Global search"
             autoComplete="off"
           />
         </form>
+
         <button type="button" className="primaryButton" onClick={onNewIntake}>
           Onboarding
         </button>
+
         <button
           type="button"
           className="secondaryButton"
           onClick={onSetup}
-          title="Database status/init/seed"
+          title="Database status / init / seed"
         >
           Set-up
         </button>
+
         {user ? (
           <>
             <div className="topUserBadge" title={user.email || ''}>
-              {user.name || user.email} · {String(user.role || '').toUpperCase()}
+              <div className="userAvatar" aria-hidden="true">
+                {userInitials(user)}
+              </div>
+              <span>{user.name || user.email} · {String(user.role || '').toUpperCase()}</span>
             </div>
             <button type="button" className="secondaryButton" onClick={onLogout}>
               Logout

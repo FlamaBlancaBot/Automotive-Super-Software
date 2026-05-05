@@ -4,13 +4,21 @@ import { APP_LONG_NAME, APP_SHORT_NAME } from '../config/branding'
 import Calendar from './Calendar'
 import Kanban from './Kanban'
 
-export default function Dashboard({
-  onStartNewIntake,
-  onViewJobsNeedingQuote,
-}) {
+const KPI_ICONS = {
+  jobs:     { icon: '🔧', colour: 'blue' },
+  quote:    { icon: '📋', colour: 'orange' },
+  chase:    { icon: '📞', colour: 'purple' },
+  parts:    { icon: '📦', colour: 'cyan' },
+  waiting:  { icon: '⏳', colour: 'orange' },
+  expected: { icon: '🚚', colour: 'green' },
+  returns:  { icon: '↩️', colour: 'red' },
+  mot:      { icon: '✅', colour: 'green' },
+}
+
+export default function Dashboard({ onStartNewIntake, onViewJobsNeedingQuote }) {
   const [summary, setSummary] = useState(null)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState('overview') // overview|calendar|kanban
+  const [tab, setTab] = useState('overview')
 
   useEffect(() => {
     let cancelled = false
@@ -26,18 +34,14 @@ export default function Dashboard({
       }
     }
     load()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
-  const tabs = useMemo(() => {
-    return [
-      { key: 'overview', label: 'Overview' },
-      { key: 'calendar', label: 'Calendar' },
-      { key: 'kanban', label: 'Kanban' },
-    ]
-  }, [])
+  const tabs = useMemo(() => [
+    { key: 'overview', label: 'Overview' },
+    { key: 'calendar', label: 'Calendar' },
+    { key: 'kanban', label: 'Kanban' },
+  ], [])
 
   return (
     <div className="dashboard">
@@ -47,23 +51,13 @@ export default function Dashboard({
           <p className="pageSubtitle">{APP_LONG_NAME}</p>
         </div>
         <div className="pageHeaderActions">
-          <button
-            type="button"
-            className="primaryButton"
-            onClick={onStartNewIntake}
-          >
-            Start Onboarding
+          <button type="button" className="primaryButton" onClick={onStartNewIntake}>
+            + Onboarding
           </button>
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={onViewJobsNeedingQuote}
-          >
-            View Jobs Needing Quote
+          <button type="button" className="secondaryButton" onClick={onViewJobsNeedingQuote}>
+            Jobs Needing Quote
           </button>
-          <span className="setupPill" title="Early preview">
-            Early set-up preview
-          </span>
+          <span className="setupPill">Early preview</span>
         </div>
       </header>
 
@@ -84,52 +78,54 @@ export default function Dashboard({
 
       {tab === 'overview' ? (
         <section className="cards">
-          <DashboardCard
+          <KpiCard
+            {...KPI_ICONS.jobs}
             title="Jobs Today"
             value={summary ? String(summary.jobs_booked_today || 0) : '—'}
-            hint="Jobs requested/booked today"
+            hint="Booked or requested today"
           />
-          <DashboardCard
+          <KpiCard
+            {...KPI_ICONS.quote}
             title="Jobs Needing Quote"
             value={summary ? String(summary.jobs_needing_quote || 0) : '—'}
             hint="Open jobs with no quote yet"
+            onClick={onViewJobsNeedingQuote}
           />
-          <DashboardCard
+          <KpiCard
+            {...KPI_ICONS.chase}
             title="Quotes to Chase"
-            value={
-              summary
-                ? String(
-                    (summary.quotes_by_status?.sent || 0) +
-                      (summary.quotes_by_status?.ready || 0),
-                  )
-                : '—'
-            }
-            hint="Ready/sent quotes (follow-up)"
+            value={summary ? String((summary.quotes_by_status?.sent || 0) + (summary.quotes_by_status?.ready || 0)) : '—'}
+            hint="Ready / sent — follow up"
           />
-          <DashboardCard
+          <KpiCard
+            {...KPI_ICONS.parts}
             title="Parts to Order"
             value={summary ? String(summary.parts_to_order || 0) : '—'}
-            hint="Accepted quote lines needing ordering"
+            hint="Accepted lines not yet ordered"
           />
-          <DashboardCard
+          <KpiCard
+            {...KPI_ICONS.waiting}
             title="Waiting for Parts"
             value={summary ? String(summary.parts_ordered || 0) : '—'}
-            hint="Ordered parts not yet received"
+            hint="Ordered — not yet received"
           />
-          <DashboardCard
+          <KpiCard
+            {...KPI_ICONS.expected}
             title="Parts Expected Today"
             value={summary ? String(summary.parts_expected_today || 0) : '—'}
-            hint="Due today (ETA/expected date)"
+            hint="ETA / expected today"
           />
-          <DashboardCard
+          <KpiCard
+            {...KPI_ICONS.returns}
             title="Returns Pending"
             value={summary ? String(summary.returns_pending || 0) : '—'}
-            hint="Wrong parts / returns / awaiting credit"
+            hint="Wrong parts / awaiting credit"
           />
-          <DashboardCard
+          <KpiCard
+            {...KPI_ICONS.mot}
             title="MOTs In Progress"
             value={summary ? String(summary.mot_jobs_in_progress || 0) : '—'}
-            hint="MOT jobs not completed"
+            hint="MOT jobs not yet completed"
           />
         </section>
       ) : tab === 'calendar' ? (
@@ -138,27 +134,37 @@ export default function Dashboard({
         <Kanban embedded />
       )}
 
-      {error ? <div className="notice bad">{error}</div> : null}
+      {error ? <div className="notice bad" style={{ marginTop: 12 }}>{error}</div> : null}
 
-      <section className="callout">
+      <section className="callout" style={{ marginTop: 16 }}>
         <h3 className="calloutTitle">Set-up phase</h3>
         <p className="calloutText">
-          This is an early MVP. Login, permissions, and deeper job/parts workflows
-          will be added in later stages.
+          Early MVP — login permissions and deeper workflows will be added in later stages.
         </p>
       </section>
     </div>
   )
 }
 
-function DashboardCard({ title, value, hint }) {
+function KpiCard({ title, value, hint, icon, colour, onClick }) {
+  const Tag = onClick ? 'button' : 'article'
   return (
-    <article className="cardBox">
-      <div className="cardTop">
-        <h3 className="cardTitle">{title}</h3>
-        <span className="cardValue">{value}</span>
+    <Tag
+      className="kpiCard"
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      style={onClick ? { cursor: 'pointer', textAlign: 'left', width: '100%' } : undefined}
+    >
+      <div className="kpiCardHeader">
+        <div className={`kpiIconBadge ${colour}`} aria-hidden="true">
+          {icon}
+        </div>
       </div>
-      <p className="cardHint">{hint}</p>
-    </article>
+      <div>
+        <div className="kpiValue">{value}</div>
+        <div className="kpiLabel">{title}</div>
+        {hint && <div className="kpiHint">{hint}</div>}
+      </div>
+    </Tag>
   )
 }

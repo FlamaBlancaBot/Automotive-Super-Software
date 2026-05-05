@@ -1,25 +1,47 @@
 :root {
-  /* Dark "garage software" theme (simple on purpose). */
-  --bg: #0b1020;
-  --panel: #0f172a;
-  --panel-2: #111c36;
-  --text: #e5e7eb;
-  --muted: #94a3b8;
-  --border: rgba(148, 163, 184, 0.18);
-  --accent: #60a5fa;
+  /* === Design system palette (dark theme, automotive management) === */
+  --bg: #0a0e1a;
+  --panel: #0f1420;
+  --panel-2: #121929;
+  --text: #f3f4f6;
+  --muted: #9ca3af;
+  --border: rgba(55, 65, 81, 0.7);
+  --accent: #3b82f6;
   --accent-2: #22c55e;
-  --shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-  --surface-0: #0b1020;
-  --surface-1: #10182d;
-  --surface-2: #15213d;
-  --surface-3: #1b2a4b;
-  --text-strong: #f8fafc;
-  --text-muted: #9aa8bd;
-  --separator: rgba(148, 163, 184, 0.24);
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  --surface-0: #0a0e1a;
+  --surface-1: #0f1420;
+  --surface-2: #141b2d;
+  --surface-3: #1a2236;
+  --text-strong: #f9fafb;
+  --text-muted: #9ca3af;
+  --separator: rgba(55, 65, 81, 0.65);
 
-  /* Hint to the browser that this app is dark themed (helps some form controls). */
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #2563eb 0%, #9333ea 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%);
+  --gradient-green: linear-gradient(135deg, #16a34a 0%, #059669 100%);
+  --gradient-blue: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  --gradient-icon-blue: linear-gradient(135deg, #2563eb, #9333ea);
+  --gradient-icon-green: linear-gradient(135deg, #16a34a, #059669);
+  --gradient-icon-orange: linear-gradient(135deg, #ea580c, #d97706);
+  --gradient-icon-purple: linear-gradient(135deg, #9333ea, #7c3aed);
+  --gradient-icon-red: linear-gradient(135deg, #dc2626, #b91c1c);
+  --gradient-icon-cyan: linear-gradient(135deg, #0891b2, #0e7490);
+
+  /* Semantic colours */
+  --success: #22c55e;
+  --warning: #eab308;
+  --danger: #ef4444;
+  --info: #3b82f6;
+
+  /* Border radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
   color-scheme: dark;
-
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   line-height: 1.5;
   color: var(--text);
@@ -30,22 +52,28 @@
 }
 
 :root[data-theme='light'] {
-  --bg: #f6f7fb;
+  --bg: #f4f6fb;
   --panel: #ffffff;
-  --panel-2: #eef2f7;
+  --panel-2: #eef2f9;
   --text: #0f172a;
   --muted: #475569;
-  --border: rgba(15, 23, 42, 0.14);
+  --border: rgba(15, 23, 42, 0.13);
   --accent: #2563eb;
   --accent-2: #0f766e;
-  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-  --surface-0: #f4f7fb;
+  --shadow: 0 4px 20px rgba(15, 23, 42, 0.07);
+  --surface-0: #f4f6fb;
   --surface-1: #ffffff;
   --surface-2: #f7f9fd;
-  --surface-3: #eef3fb;
+  --surface-3: #edf0f8;
   --text-strong: #0b1220;
   --text-muted: #334155;
-  --separator: rgba(15, 23, 42, 0.2);
+  --separator: rgba(15, 23, 42, 0.18);
+
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --danger: #dc2626;
+  --info: #2563eb;
+
   color-scheme: light;
 }
 

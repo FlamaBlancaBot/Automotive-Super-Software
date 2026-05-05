@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../api/http'
 import { setDocumentTitle } from '../utils/title'
-import { APP_SHORT_NAME } from '../config/branding'
+import { APP_SHORT_NAME, APP_LONG_NAME } from '../config/branding'
+import { APP_VERSION } from '../config/version'
 
 const LOCAL_FALLBACK_USERS = [
   { id: 'test-admin', name: 'Admin User', email: 'admin@autoss.local', role: 'admin' },
@@ -16,7 +17,7 @@ export default function Login({ onLoggedIn }) {
   const [selectedUserId, setSelectedUserId] = useState(LOCAL_FALLBACK_USERS[0].id)
 
   useEffect(() => {
-    setDocumentTitle('Login | A.S.S')
+    setDocumentTitle('Sign In')
     async function loadUsers() {
       try {
         const out = await apiGet('/api/auth/users')
@@ -47,36 +48,48 @@ export default function Login({ onLoggedIn }) {
 
   return (
     <div className="loginPage">
-      <div className="cardBox loginCard">
-        <h2 className="cardTitle">{APP_SHORT_NAME} sign in</h2>
-        <p className="fieldHint">Testing access mode</p>
-        <div className="notice info" style={{ marginTop: 10 }}>
-          Testing mode — login security will be added later.
+      <div className="loginCard">
+        <div className="loginBrand">
+          <div className="loginIconBadge" aria-hidden="true">🔧</div>
+          <div className="loginTitle">{APP_SHORT_NAME}</div>
+          <div className="loginSubtitle">{APP_LONG_NAME} · v{APP_VERSION}</div>
         </div>
-        <form onSubmit={onSubmit} className="settingsGrid" style={{ marginTop: 12 }}>
-          <label className="field" style={{ gridColumn: 'span 12' }}>
-            <span className="fieldLabel">Choose user</span>
+
+        <div className="notice info" style={{ marginBottom: 16, marginTop: 0 }}>
+          Testing mode — select a user to continue.
+        </div>
+
+        <form onSubmit={onSubmit}>
+          <div className="field" style={{ gridColumn: 'span 12', marginBottom: 14 }}>
+            <label className="fieldLabel" htmlFor="loginUserSelect">Sign in as</label>
             <select
+              id="loginUserSelect"
               className="select"
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
             >
               {(users || []).map((u) => (
                 <option key={String(u.id)} value={String(u.id)}>
-                  {u.name} ({u.role}) - {u.email}
+                  {u.name} ({u.role}) — {u.email}
                 </option>
               ))}
             </select>
-          </label>
-          {error ? <div className="fieldError">{error}</div> : null}
-          <div className="settingsActions">
-            <button className="primaryButton" type="submit" disabled={busy}>
-              {busy ? 'Continuing…' : 'Continue'}
-            </button>
           </div>
+
+          {error ? (
+            <div className="notice bad" style={{ marginBottom: 12 }}>{error}</div>
+          ) : null}
+
+          <button
+            className="primaryButton"
+            type="submit"
+            disabled={busy}
+            style={{ width: '100%', height: 42, fontSize: 14, borderRadius: 12 }}
+          >
+            {busy ? 'Continuing…' : 'Continue →'}
+          </button>
         </form>
       </div>
     </div>
   )
 }
-
