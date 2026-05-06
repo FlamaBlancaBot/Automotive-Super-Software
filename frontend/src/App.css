@@ -15,25 +15,25 @@
   overflow: hidden;
 }
 
+/* ── Top Bar ── */
 .topBar {
   min-height: 64px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   padding: 0 24px;
   border-bottom: 1px solid var(--separator);
   background: var(--surface-1);
   position: sticky;
   top: 0;
   z-index: 30;
-  box-shadow: 0 1px 0 var(--separator);
   flex-shrink: 0;
 }
 
-.topBarTitleGroup {
+.topBarLeft {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -49,12 +49,45 @@
   max-width: 30vw;
 }
 
-.topBarVersion {
-  font-size: 11px;
+.topBarRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.topSearch {
+  display: none;
+  flex: 0 0 auto;
+}
+
+.topSearchInput {
+  height: 34px;
+  width: min(260px, 26vw);
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--separator);
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.topSearchInput::placeholder {
   color: var(--muted);
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0.75;
+}
+
+.topSearchInput:focus {
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+@media (min-width: 900px) {
+  .topSearch {
+    display: block;
+  }
 }
 
 .topBarIconBtn {
@@ -75,6 +108,33 @@
 .topBarIconBtn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);
+}
+
+.topUserBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--separator);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 6px 12px;
+  max-width: 200px;
+  overflow: hidden;
+}
+
+.userAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
 }
 
 .topUserInfo {
@@ -110,6 +170,7 @@
   color: var(--text);
   cursor: pointer;
   flex-shrink: 0;
+  padding: 0;
 }
 
 .menuButton:hover {
@@ -119,6 +180,12 @@
 .menuIcon {
   font-size: 18px;
   line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .menuButton {
+    display: flex;
+  }
 }
 
 /* brand styles kept for compatibility (login page uses brandShort) */
@@ -440,7 +507,7 @@
   font-size: 11px;
 }
 
-/* ── Sidebar ── */
+/* ── Sidebar (Icon Rail) ── */
 .sidebar {
   width: 80px;
   border-right: 1px solid var(--separator);
@@ -457,11 +524,25 @@
   z-index: 20;
 }
 
+.sidebar::-webkit-scrollbar {
+  display: none;
+}
+
 .sidebarOverlay {
   display: none;
 }
 
-/* Gradient logo badge at the top of the sidebar */
+.sidebarOverlay.isOpen {
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 30;
+}
+
+/* Logo badge at top */
 .sidebarLogo {
   width: 48px;
   height: 48px;
@@ -483,8 +564,8 @@
   filter: brightness(1.1);
 }
 
-/* Nav list */
-.nav {
+/* Main nav list */
+.sidebarNav {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -494,7 +575,11 @@
   scrollbar-width: none;
 }
 
-/* Each nav button: 48x48, centred icon */
+.sidebarNav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Nav item button: 48x48 icon button */
 .navItem {
   width: 48px;
   height: 48px;
@@ -510,6 +595,7 @@
   transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
   margin: 0 auto;
+  padding: 0;
 }
 
 .navItem:hover {
@@ -518,16 +604,16 @@
 }
 
 .navItem.active {
-  background: #2563eb;
+  background: var(--gradient-primary);
   color: #fff;
   box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45);
 }
 
 .navItem.active:hover {
-  background: #3b82f6;
+  filter: brightness(1.1);
 }
 
-/* Icon inside nav button */
+/* Icon inside nav item */
 .navIcon {
   width: 20px;
   height: 20px;
@@ -537,7 +623,7 @@
   flex-shrink: 0;
 }
 
-/* Tooltip that appears to the right of the icon button */
+/* Tooltip on hover */
 .navTooltip {
   position: absolute;
   left: calc(100% + 14px);
@@ -583,10 +669,43 @@
   flex-shrink: 0;
 }
 
-/* Logout button inherits navItem but turns red on hover */
 .navLogout:hover {
   background: rgba(239, 68, 68, 0.18);
   color: #f87171;
+}
+
+/* Mobile sidebar overlay */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    z-index: 40;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.isOpen {
+    transform: translateX(0);
+  }
+
+  .sidebarOverlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+    z-index: 30;
+  }
+
+  .sidebarOverlay.isOpen {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .main {

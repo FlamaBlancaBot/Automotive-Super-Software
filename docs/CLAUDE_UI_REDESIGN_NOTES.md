@@ -188,3 +188,96 @@ This document is the visual/design source of truth. The design uses:
 - **`docs/Redesign Automotive Management UI/`** is the Figma visual source of truth — inspect actual TSX/CSS files, not just `UI_DESIGN_SYSTEM.md`.
 - `lucide-react` is NOT installed — all icons must be inline SVG (see Sidebar.jsx and Dashboard.jsx for patterns).
 - **Do NOT touch `QuoteDetail.jsx`** without reading `docs/CLAUDE_QUOTE_PAGE_NOTES.md` first.
+
+---
+
+## App shell Figma port — v1.1.011
+
+**Date:** 2026-05-04
+**Version bumped to:** 1.1.011
+**Scope:** PHASE 1: App shell redesign only. Dashboard logic, QuoteDetail, page functionality all untouched.
+**Reason:** The v1.1.010 pass was too vague and changed many things at once. This phase focuses solely on the app shell (Sidebar + TopBar) to match the Figma/reference UI visually.
+
+### Reference files used
+
+- `docs/Redesign Automotive Management UI/src/app/layouts/RootLayout.tsx` — icon rail structure, topbar layout, nav items
+
+### Files changed
+
+**`frontend/src/components/Sidebar.jsx`** — Complete rewrite.
+- Replaced old prop-based nav icon system with inline SVG icon components (`IcoHome`, `IcoPlus`, `IcoSearch`, `IcoWrench`, `IcoFile`, `IcoPackage`, `IcoClipboard`, `IcoSettings`, `IcoLogout`, `IcoCar`)
+- Sidebar is now a 80px wide vertical icon rail
+- Logo badge at top (48×48 gradient car icon)
+- Main nav items are 48×48 rounded button icons with tooltips on hover (no labels visible by default)
+- Settings and Logout buttons moved to `.sidebarBottom` section
+- Mobile overlay support with `.sidebarOverlay`
+
+**`frontend/src/components/TopBar.jsx`** — Complete rewrite.
+- Removed all custom brand/logo elements
+- TopBar now has three sections: `.topBarLeft` (menu button + page title), `.topSearch` (search input), `.topBarRight` (bell + user badge)
+- Search input hidden on mobile, shown on desktop (`@media (min-width: 900px)`)
+- User badge shows initials avatar + name + role
+- No version display in TopBar (kept in app shell only)
+
+**`frontend/src/App.css`** — Sidebar + TopBar CSS rewritten.
+- `.sidebar` updated for 80px icon rail with no scrollbar
+- `.sidebarLogo` - 48px gradient badge with car icon
+- `.sidebarNav` - flex column, no scrollbar, flex: 1 to take remaining space
+- `.navItem` - 48×48 button, grey inactive, gradient active
+- `.navIcon` - 20×20 icon container
+- `.navTooltip` - hover tooltip to the right of icon
+- `.sidebarBottom` - fixed settings + logout at bottom
+- `.topBar` - three-section layout (left/middle/right)
+- `.topBarLeft`, `.topBarTitle`, `.topSearch`, `.topBarRight`, `.topBarIconBtn`
+- `.topUserBadge`, `.userAvatar`, `.topUserInfo`, `.topUserName`, `.topUserRole`
+- `.menuButton` - hamburger shown only on mobile (`@media (max-width: 900px)`)
+- Mobile sidebar overlay and slide-in animation
+
+**`frontend/src/config/version.js`** — Bumped to `1.1.011`
+
+**`backend/package.json`** — Bumped to `1.1.011`
+
+### Files untouched
+
+- **`frontend/src/pages/Dashboard.jsx`** — Dashboard logic, KPI cards, service bay, alerts all preserved. Only the shell around it changed.
+- **`frontend/src/pages/QuoteDetail.jsx`** — No changes. Quote supplier comparison, sticky totals, print behaviour all untouched.
+- All other pages, components, API calls, routing logic unchanged.
+
+### Visual changes summary
+
+| Element | Before | After |
+|---|---|---|
+| Sidebar width | Varied | Fixed 80px |
+| Sidebar icons | Props-based generic | Inline SVG icons |
+| Icon rail look | Not present | Figma-style icon rail with tooltips |
+| Active icon | Translucent blue | Blue-purple gradient |
+| Nav labels | Mixed | Hidden by default, tooltip on hover |
+| Scrollbar in sidebar | Visible | Hidden (`scrollbar-width: none`) |
+| TopBar layout | Linear (brand + title + search + user) | Three-section (left + middle + right) |
+| Page title | No version | No version in TopBar (kept in app metadata) |
+| Search visibility | Always shown | Hidden on mobile |
+| Mobile hamburger | No | Yes, on mobile |
+
+### Why this phase-based approach
+
+The previous redesign attempts tried to change too many things at once (Dashboard + TopBar + sidebar + CSS tokens) which made it unclear what broke and why. By doing PHASE 1 (app shell only), we:
+1. Establish a solid visual foundation matching Figma
+2. Verify the shell works with all existing pages
+3. Keep changes atomic and testable
+4. Document the exact visual transformation for future work
+5. Make it easy to identify which future changes are cosmetic vs functional
+
+### QuoteDetail.jsx preserved
+
+- No changes to `QuoteDetail.jsx` whatsoever
+- All quote-specific CSS classes (`.partCard`, `.supplierCell`, `.supplierPriceGrid`, `.quoteTotalsBar`, etc.) untouched
+- Quote logic, API calls, supplier comparison, sticky totals, print CSS all preserved
+- CSS variables are backward-compatible — `var(--surface-1)`, `var(--separator)`, etc. still resolve correctly
+
+### Recommendations for future redesign phases
+
+1. **Phase 2:** Dashboard — reorder sections, improve KPI cards, service bay panels (if Dashboard-specific changes are needed after testing Phase 1)
+2. **Phase 3:** Page visuals — improve Jobs, Parts, Settings, MOT pages to match Figma reference layouts
+3. **Phase 4:** Detail pages — QuoteDetail, JobDetail, JobSheetDetail visual refinements (cautiously, after reading CLAUDE_QUOTE_PAGE_NOTES.md)
+4. Always work in single-concern phases, test thoroughly before moving to the next phase
+5. Keep this documentation updated as you go

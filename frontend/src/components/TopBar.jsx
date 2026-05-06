@@ -26,41 +26,42 @@ function BellIcon() {
 export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
   return (
     <header className="topBar">
-      <button
-        type="button"
-        className="menuButton"
-        onClick={onToggleNav}
-        aria-label="Open navigation"
-      >
-        <span className="menuIcon" aria-hidden="true">☰</span>
-      </button>
-
-      {pageTitle ? (
-        <div className="topBarTitleGroup">
-          <h1 className="topBarTitle">{pageTitle}</h1>
-          <span className="topBarVersion">v{APP_VERSION}</span>
-        </div>
-      ) : null}
-
-      <div className="topBarRight">
-        <form
-          className="topSearch"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const input = e.currentTarget.elements.namedItem('q')
-            const value = input && input.value ? String(input.value).trim() : ''
-            if (value && typeof onSearch === 'function') onSearch(value)
-          }}
+      {/* Left: page title */}
+      <div className="topBarLeft">
+        <button
+          type="button"
+          className="menuButton"
+          onClick={onToggleNav}
+          aria-label="Open navigation"
         >
-          <input
-            className="topSearchInput"
-            name="q"
-            placeholder="Search REG / customer / job…"
-            aria-label="Global search"
-            autoComplete="off"
-          />
-        </form>
+          <span className="menuIcon" aria-hidden="true">☰</span>
+        </button>
+        {pageTitle && (
+          <h1 className="topBarTitle">{pageTitle}</h1>
+        )}
+      </div>
 
+      {/* Middle: search */}
+      <form
+        className="topSearch"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const input = e.currentTarget.elements.namedItem('q')
+          const value = input && input.value ? String(input.value).trim() : ''
+          if (value && typeof onSearch === 'function') onSearch(value)
+        }}
+      >
+        <input
+          className="topSearchInput"
+          name="q"
+          placeholder="Search REG / customer / job…"
+          aria-label="Global search"
+          autoComplete="off"
+        />
+      </form>
+
+      {/* Right: bell + user badge */}
+      <div className="topBarRight">
         <button
           type="button"
           className="topBarIconBtn"
