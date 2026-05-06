@@ -57,7 +57,6 @@ function App() {
     getKeyFromPath(`${window.location.pathname}${window.location.search}`),
   )
   const [navOpen, setNavOpen] = useState(false)
-  const [navCollapsed] = useState(true)
   const [authStatus, setAuthStatus] = useState('loading')
   const [authUser, setAuthUser] = useState(null)
 
@@ -185,25 +184,22 @@ function App() {
         </main>
       ) : (
         <>
+          <Sidebar
+            activeKey={activeKey}
+            onNavigate={navigate}
+            isOpen={navOpen}
+            onClose={() => setNavOpen(false)}
+            onLogout={logout}
+          />
+          <div className="appPanel">
           <TopBar
             onToggleNav={() => setNavOpen(true)}
-            onNewIntake={() => navigate('new-intake')}
-            onSetup={() => navigate('setup')}
             onSearch={(q) =>
               navigateToPath(`/search?q=${encodeURIComponent(String(q || '').trim())}`)
             }
+            pageTitle={activeLabel}
             user={authUser}
-            onLogout={logout}
           />
-          <div className="appBody">
-            <Sidebar
-              activeKey={activeKey}
-              onNavigate={navigate}
-              isOpen={navOpen}
-              onClose={() => setNavOpen(false)}
-              isCollapsed={navCollapsed}
-              onToggleCollapse={() => {}}
-            />
             <main className="main" role="main">
           {activeKey === 'dashboard' ? (
             <Dashboard
@@ -300,5 +296,6 @@ function App() {
     </div>
   )
 }
+
 
 export default App

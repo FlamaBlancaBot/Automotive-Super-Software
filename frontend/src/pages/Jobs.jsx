@@ -231,8 +231,15 @@ export default function Jobs({ locationPath, onOpenJob, onOpenQuote }) {
                       {j.customer_first_name} {j.customer_surname}
                     </td>
                     <td>
-                      <div style={{ fontWeight: 900 }}>{j.title}</div>
-                      <div className="fieldHint">{j.service_template_name} · JOB #{j.id}</div>
+                      <div className="jobRowIdCell">
+                        <div className="jobRowBadge" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, display: 'block', strokeLinecap: 'round', strokeLinejoin: 'round' }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{j.title || `Job #${j.id}`}</div>
+                          <div className="fieldHint">{j.service_template_name}{j.service_template_name ? ' · ' : ''}#{j.id}</div>
+                        </div>
+                      </div>
                     </td>
                     <td>{formatDateTime(j.booked_start)}</td>
                     <td>

@@ -1,4 +1,3 @@
-import { APP_LONG_NAME, APP_SHORT_NAME, LOGO_URL } from '../config/branding'
 import { APP_VERSION } from '../config/version'
 
 function userInitials(user) {
@@ -9,14 +8,22 @@ function userInitials(user) {
   return name.slice(0, 2).toUpperCase()
 }
 
-export default function TopBar({
-  onToggleNav,
-  onNewIntake,
-  onSetup,
-  onSearch,
-  user,
-  onLogout,
-}) {
+function BellIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      style={{ width: 18, height: 18, display: 'block', strokeLinecap: 'round', strokeLinejoin: 'round' }}
+    >
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+  )
+}
+
+export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
   return (
     <header className="topBar">
       <button
@@ -28,13 +35,12 @@ export default function TopBar({
         <span className="menuIcon" aria-hidden="true">☰</span>
       </button>
 
-      <div className="brand">
-        <img className="brandLogo" src={LOGO_URL} alt="" />
-        <div className="brandText">
-          <div className="brandShort">{APP_SHORT_NAME}</div>
-          <div className="brandLong">{APP_LONG_NAME} · v{APP_VERSION}</div>
+      {pageTitle ? (
+        <div className="topBarTitleGroup">
+          <h1 className="topBarTitle">{pageTitle}</h1>
+          <span className="topBarVersion">v{APP_VERSION}</span>
         </div>
-      </div>
+      ) : null}
 
       <div className="topBarRight">
         <form
@@ -55,31 +61,25 @@ export default function TopBar({
           />
         </form>
 
-        <button type="button" className="primaryButton" onClick={onNewIntake}>
-          Onboarding
-        </button>
-
         <button
           type="button"
-          className="secondaryButton"
-          onClick={onSetup}
-          title="Database status / init / seed"
+          className="topBarIconBtn"
+          title="Notifications"
+          aria-label="Notifications"
         >
-          Set-up
+          <BellIcon />
         </button>
 
         {user ? (
-          <>
-            <div className="topUserBadge" title={user.email || ''}>
-              <div className="userAvatar" aria-hidden="true">
-                {userInitials(user)}
-              </div>
-              <span>{user.name || user.email} · {String(user.role || '').toUpperCase()}</span>
+          <div className="topUserBadge" title={user.email || ''}>
+            <div className="userAvatar" aria-hidden="true">
+              {userInitials(user)}
             </div>
-            <button type="button" className="secondaryButton" onClick={onLogout}>
-              Logout
-            </button>
-          </>
+            <div className="topUserInfo">
+              <span className="topUserName">{user.name || user.email}</span>
+              <span className="topUserRole">{String(user.role || '').toUpperCase()}</span>
+            </div>
+          </div>
         ) : null}
       </div>
     </header>

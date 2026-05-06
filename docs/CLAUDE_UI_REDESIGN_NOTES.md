@@ -104,6 +104,87 @@ This document is the visual/design source of truth. The design uses:
 2. Always read `docs/CLAUDE_QUOTE_PAGE_NOTES.md` before touching `QuoteDetail.jsx`
 3. CSS variables are in `frontend/src/index.css` — change them there, not inline
 4. Gradient variables are: `--gradient-primary`, `--gradient-primary-hover`, `--gradient-green`, `--gradient-icon-*`
-5. The sidebar expand/collapse is purely CSS (`:hover` on `.sidebar.isCollapsed`)
+5. From v1.1.010 the sidebar is a fixed 80px wide icon rail — no hover-expand, tooltips instead
 6. The KPI card grid is responsive via CSS media queries (12→6→4→3 col spans)
 7. Do not add Tailwind or a component library — this app uses custom CSS classes only
+8. The app layout is `flex-row`: sidebar (80px) + `.appPanel` (flex-col containing TopBar + `.main`)
+9. `lucide-react` is NOT installed — use inline SVG icons (see Sidebar.jsx)
+
+---
+
+## Figma visual match pass — v1.1.010
+
+**Date:** 2026-05-06
+**Version bumped to:** 1.1.010
+**Reason:** Previous 1.1.009 pass was insufficient — only changed CSS tokens, dashboard cards, login, and top bar. The live app still did not visually resemble the Figma/reference UI.
+
+### Reference files used
+
+- `docs/Redesign Automotive Management UI/src/app/layouts/RootLayout.tsx` — app shell structure, sidebar icon rail
+- `docs/Redesign Automotive Management UI/src/app/pages/Dashboard.tsx` — dashboard layout (tabs, KPI, service bay, recent jobs, alerts)
+- `docs/Redesign Automotive Management UI/src/app/components/Dashboard.tsx` — panel card patterns
+- `docs/Redesign Automotive Management UI/src/app/pages/Jobs.tsx` — reference job list style
+- `docs/Redesign Automotive Management UI/src/styles/theme.css` — design tokens reference
+
+### App shell changes
+
+- **`frontend/src/App.jsx`**: Restructured layout — `<Sidebar>` is now a direct sibling of `<div.appPanel>` instead of being inside `appBody`. TopBar now lives inside `appPanel`. Removed `navCollapsed` state. TopBar receives `pageTitle={activeLabel}`. Sidebar receives `onLogout={logout}`.
+- **`frontend/src/components/Sidebar.jsx`**: Completely rewritten. Removed emoji icons. Added inline SVG icon components (home, plus, search, wrench, file-text, package, clipboard-check, settings, logout). Sidebar logo is a 48×48 gradient badge with a car SVG icon. Each nav item is 48×48, rounded-xl, dark grey inactive, solid blue active. Tooltips appear to the right on hover (no hover-expand). Settings and Logout move to a `sidebarBottom` section.
+- **`frontend/src/components/TopBar.jsx`**: Completely rewritten. Removed brand/logo and action buttons (Onboarding, Set-up, Logout). Shows `pageTitle` on the left. Adds a notification bell icon button. User badge shows avatar initials + name column + role.
+- **`frontend/src/App.css`**: Major overhaul:
+  - `.app` changed to `flex-direction: row`
+  - New `.appPanel` class (flex-col, `flex: 1`)
+  - `.sidebar` is now `width: 80px`, full-height (`height: 100vh`), `position: sticky; top: 0`; no hover-expand
+  - New `.sidebarLogo` (48px gradient badge), `.navItem` (48×48, centred), `.navTooltip` (absolute, right of icon), `.sidebarBottom`, `.navLogout`
+  - `.topBar` height increased to 64px; new `.topBarTitle`, `.topBarIconBtn`, `.topUserInfo`, `.topUserName`, `.topUserRole` classes
+  - `.tabs` changed from pill buttons to border-bottom tab style
+  - Mobile sidebar now overlays from `top: 0` (full viewport height)
+  - Added dashboard panel CSS: `.panelCard`, `.panelCardHeader`, `.panelCardTitle`, `.panelLinkBtn`, `.dashContentGrid`, `.serviceBayGrid`, `.bayCard`, `.recentJobRow`, `.recentJobAvatar`, `.alertItem`, `.quickStatRow`, `.progressBar`, `.demoLabel`
+
+### Dashboard changes
+
+- **`frontend/src/pages/Dashboard.jsx`**: Major rework.
+  - Tabs changed to border-bottom style (matching Figma)
+  - KPI cards grid retained (8 cards, responsive)
+  - Added **Service Bay Status** panel — 6 static demo bays clearly labelled "Demo"
+  - Added **Recent Jobs** panel — fetches `/api/jobs?limit=5` and shows real job rows with customer initials avatar, REG, status chip
+  - Added **Alerts** panel — derived from `summary` API data (jobs needing quote, parts to order, returns pending, MOT in progress)
+  - Added **Workshop** quick stats panel — bay capacity progress bar, parts ordered/expected, MOT count
+  - Added **Quick Actions** panel — Onboarding + Jobs Needing Quote buttons
+  - All real API data preserved; service bay is the only static placeholder (clearly labelled)
+
+### Quote page precautions
+
+- `QuoteDetail.jsx` was NOT modified
+- All quote-specific CSS classes preserved (`.partCard`, `.supplierCell`, `.supplierPriceGrid`, `.quoteTotalsBar`, `.partSupplierScroller`, etc.)
+- CSS variables backward-compatible
+- Supplier comparison logic, per-part scoping, sticky totals, print behaviour all untouched
+
+### Functionality preserved
+
+- All API calls and workflows unchanged
+- Login/testing user selector preserved
+- Onboarding, jobs, quotes, parts, MOT, settings, invoice, job sheet flows all intact
+- Print CSS untouched
+- Light/dark theme toggle preserved
+- Mobile hamburger sidebar overlay preserved
+
+---
+
+## Figma icon + header pass — v1.1.010 (follow-up)
+
+**Date:** 2026-05-04
+**Reason:** KPI card emoji icons still looked incorrect after the initial v1.1.010 pass; dashboard lacked a header; TopBar did not show the version; Jobs rows needed a visual icon badge.
+
+### Changes made
+
+- **`frontend/src/pages/Dashboard.jsx`**: Replaced all emoji KPI icon strings (🔧, 📋, 📞, 📦, ⏳, 🚚, ↩️, ✅) with inline SVG icon components (`IcoWrench`, `IcoFile`, `IcoPhone`, `IcoPackage`, `IcoClock`, `IcoTruck`, `IcoRotate`, `IcoCheck`). Added dashboard header section with title ("Dashboard") and current date.
+- **`frontend/src/components/TopBar.jsx`**: Imports `APP_VERSION` and renders `v{APP_VERSION}` as `.topBarVersion` next to the page title.
+- **`frontend/src/pages/Jobs.jsx`**: Added `.jobRowIdCell` layout with `.jobRowBadge` (gradient wrench icon) next to the job title/number in each table row.
+- **`frontend/src/App.css`**: Changed `.kpiIconBadge` to use `color: #fff` (for SVG stroke) instead of `font-size: 20px` (for emoji). Added `.dashHeader`, `.dashHeaderTitle`, `.dashHeaderDate`, `.topBarTitleGroup`, `.topBarVersion`, `.jobRowIdCell`, `.jobRowBadge` CSS classes.
+
+### Source of truth reminder
+
+- **`docs/Redesign Automotive Management UI/`** is the Figma visual source of truth — inspect actual TSX/CSS files, not just `UI_DESIGN_SYSTEM.md`.
+- `lucide-react` is NOT installed — all icons must be inline SVG (see Sidebar.jsx and Dashboard.jsx for patterns).
+- **Do NOT touch `QuoteDetail.jsx`** without reading `docs/CLAUDE_QUOTE_PAGE_NOTES.md` first.
