@@ -469,4 +469,117 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 - ✅ `frontend/src/pages/Onboarding.jsx`
 - ✅ `frontend/src/pages/Login.jsx`
 - ✅ Backend routes
+
+---
+
+## Onboarding Figma port — v1.1.014
+
+**Date:** 2026-05-06
+**Version bumped to:** 1.1.014
+**Scope:** PHASE 4: Onboarding page redesign only. QuoteDetail, Dashboard, Jobs, JobDetail, other pages untouched.
+**Reason:** The Phase 1-3 (app shell, dashboard, jobs) are now solid. Phase 4 focuses on the Onboarding page (NewIntake) to match Figma/reference UI while preserving all intake workflow functionality.
+
+### Reference files used
+
+- `docs/Redesign Automotive Management UI/src/app/components/OnboardingFlow.tsx` — stepped workflow layout, sidebar with progress, step navigation
+- `docs/Redesign Automotive Management UI/src/app/pages/Intake.tsx` — intake form patterns
+- `docs/Redesign Automotive Management UI/UI_DESIGN_SYSTEM.md` — design tokens and component patterns
+
+### Files changed
+
+**`frontend/src/pages/NewIntake.jsx`** — Visual and structural overhaul.
+- Added `currentStep` state (1-5) for stepped navigation
+- Added `steps` array defining workflow: Vehicle Registration → Customer Details → Service Selection → Booking Details → Notes & Summary
+- Reorganized return JSX to use 2-column layout (sidebar + content)
+- Sidebar shows:
+  - Step list with icons/numbers
+  - Current step highlighted with gradient background
+  - Completed steps show checkmark
+  - Progress bar at bottom showing step N/total
+  - Steps are clickable to jump between them
+- Main content area:
+  - Shows only current step's form content
+  - All existing form fields, validations, and API calls preserved
+  - REG lookup, vehicle summary, manual entry, customer matching, service selection, booking details, MOT fields, notes all intact
+- All state management, event handlers, and API calls unchanged:
+  - REG lookup with n8n webhook fallback
+  - Vehicle matching to existing customers
+  - Service template loading and selection
+  - Availability/calendar hints
+  - MOT-specific fields
+  - Save/Draft functionality
+  - Post-save actions (create quote, view job, start another)
+- Removed legacy `Step` component wrapper; replaced with conditional rendering based on `currentStep`
+
+**`frontend/src/App.css`** — New Onboarding CSS classes.
+- `.intake` — main container
+- `.intakePageHeader`, `.intakePageTitle`, `.intakePageSubtitle` — page header
+- `.intakeContainer` — 2-column grid (sidebar + content), responsive to 1 col on mobile
+- `.intakeSidebar` — left sidebar, sticky positioning
+- `.intakeSidebarTitle` — sidebar heading
+- `.intakeStepsList` — flex container for step list
+- `.intakeStep` — individual step button
+- `.intakeStep.current` — current step (gradient background, white text)
+- `.intakeStep.completed` — completed step (green background)
+- `.intakeStepNumber` — step icon/number display
+- `.intakeStepContent`, `.intakeStepTitle`, `.intakeStepDescription` — step labels
+- `.intakeProgressSection`, `.intakeProgressLabel`, `.intakeProgressBar`, `.intakeProgressFill`, `.intakeProgressText` — progress tracking
+- `.intakeContent` — main content area
+- Dark theme with semantic color tokens for light mode support
+- Responsive: sidebar sticks to top on desktop, flows normally on mobile
+
+**`frontend/src/config/version.js`** — Bumped to `1.1.014`
+
+**`backend/package.json`** — Bumped to `1.1.014`
+
+**`docs/CLAUDE_UI_REDESIGN_NOTES.md`** — This file, appended with Phase 4 documentation
+
+### Functionality preserved
+
+- REG lookup: Works exactly as before, with n8n webhook fallback for DVLA/DVSA lookups
+- Manual vehicle entry: All 6 fields (make, model, year, fuel, engine, colour) functional
+- Vehicle summary: Displays queried or manually entered vehicle data
+- Customer matching: Checks existing customers by name/phone, shows linked customers for vehicle
+- New customer creation: Auto-creates new customer if not found
+- Service selection: Loads all service templates from backend, displays in dropdown
+- Duration tracking: Displays estimated duration (days + hours), overrideable
+- Booking details: Date, time, priority fields all functional
+- Availability checking: Calendar hints and workshop availability checks working
+- MOT fields: Supplier name, contact, time, external flag, reminder offsets all present
+- Notes: Customer words and internal notes sections preserved
+- Save/Draft: Full save workflow with required field validation, creates job in database
+- Post-save actions: Create quote, view job, start another intake all functional
+- All API calls preserved: `/api/service-templates`, `/api/vehicle-lookup`, `/api/customers/match`, etc.
+
+### QuoteDetail.jsx preservation
+
+- ✅ **NOT MODIFIED** — Zero changes to `frontend/src/pages/QuoteDetail.jsx`
+- Quote supplier comparison, sticky totals, print behaviour untouched
+- Quote CSS classes in App.css untouched
+
+### Backend unchanged
+
+- ✅ No changes to backend routes, models, or API logic
+- All intake endpoints, vehicle lookup, customer matching, service loading unchanged
+- n8n webhook integration unchanged
+- Job creation logic unchanged
+
+### What future phases should handle
+
+1. **Phase 5**: Refine service/parts pages visual style (Parts list, MOT page) to match Figma
+2. **Phase 6**: Detail pages visual refinements (InvoiceDetail, JobSheetDetail) — cautiously, after reading relevant notes
+3. **Phase 7**: Calendar and Kanban page enhancements
+4. **Phase 8**: Light mode testing/refinements — all new CSS uses semantic tokens, so light mode should work automatically
+5. **Phase 9**: Advanced features (search page, technician management, supplier management) if needed
+
+### Files untouched
+
+- ✅ `frontend/src/pages/QuoteDetail.jsx`
+- ✅ `frontend/src/pages/Dashboard.jsx`
+- ✅ `frontend/src/pages/Jobs.jsx`
+- ✅ `frontend/src/pages/JobDetail.jsx`
+- ✅ `frontend/src/pages/Parts.jsx`
+- ✅ `frontend/src/pages/Settings.jsx`
+- ✅ `frontend/src/pages/MOT.jsx`
+- ✅ Backend routes
 - ✅ All API calls and data loading — preserved
