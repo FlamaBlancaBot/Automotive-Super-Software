@@ -354,4 +354,119 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 - ✅ `frontend/src/pages/Calendar.jsx` — imported as-is
 - ✅ `frontend/src/pages/Kanban.jsx` — imported as-is
 - ✅ Backend routes — no changes to backend logic
+
+---
+
+## Jobs and Job Detail Figma port — v1.1.013
+
+**Date:** 2026-05-06
+**Version bumped to:** 1.1.013
+**Scope:** PHASE 3: Jobs and JobDetail page redesign only. QuoteDetail, Dashboard, other pages untouched.
+**Reason:** The Phase 1 (app shell) and Phase 2 (dashboard) are now solid. Phase 3 focuses on the Jobs and Job Detail pages to match Figma/reference UI while preserving all live data and functionality.
+
+### Reference files used
+
+- `docs/Redesign Automotive Management UI/src/app/pages/Jobs.tsx` — jobs page layout, search, filters, table
+- `docs/Redesign Automotive Management UI/src/app/pages/JobDetail.tsx` — job detail header, info cards, activity timeline, actions sidebar
+- `docs/Redesign Automotive Management UI/UI_DESIGN_SYSTEM.md` — design tokens and component patterns
+
+### Files changed
+
+**`frontend/src/pages/Jobs.jsx`** — Visual and structural overhaul.
+- New header section with "Jobs" title, subtitle, and "New Job" button (aligned to Figma reference)
+- Search box redesign: inline Search icon, placeholder text matching Figma, Filter button
+- Results section with filter tabs: All, Today, Needs Quote, Waiting Parts, In Progress, Completed
+- Table redesign with Job ID badge (gradient icon), Customer, Vehicle, Service, Status chip, Booked date, Quote status, Parts status, Actions
+- View Details button in actions column (replaces dual "View" + "Create quote" buttons in one row)
+- All API calls preserved (`/api/jobs`, search params, filter logic, create/open quote functionality)
+- StatusChip components and VehicleHeader component unchanged in functionality
+
+**`frontend/src/pages/JobDetail.jsx`** — Major structural reorganization.
+- New header: Back button, "Job {ID}" title, service subtitle, "Create Quote" button (matches Figma header style)
+- 3-column grid layout (2-col main, 1-col sidebar):
+  - **Main (left):**
+    - Job Information card: Status, Priority, Customer, Vehicle, REG, Phone in 2-column grid
+    - Activity Timeline card: Blue marker dots, entry text, timestamp + user meta
+  - **Sidebar (right):**
+    - Quick Actions card: Create Quote, View Job Sheet, Create Invoice buttons (full width)
+    - Summary card: Booked start/end times
+- Below the grid layout, preserved sections (unchanged in function but with new section styling):
+  - Notes section (Customer Notes, Internal Notes)
+  - Quotes section (quoted unchanged, added View/Open buttons)
+  - Job Sheet section (Technician, Mileage in/out, Quote, Checklist, Notes, Sign-off)
+  - Invoices section (table with invoice number, status, subtotal, total)
+  - Parts orders section (status, part, supplier, qty, ETA, invoice number)
+- All API calls preserved: `/api/jobs/{id}`, `/api/jobs/{id}/invoices`, `/api/jobs/{id}/job-sheet`, `/api/activity`
+- All action handlers preserved: createOrOpenQuote, createOrOpenInvoice, onOpenJobSheet, onViewPartsOrders, onBackToJobs
+- Activity timeline data unchanged, just visually restructured
+
+**`frontend/src/App.css`** — New Jobs and JobDetail CSS classes.
+- `.jobsPageHeader` — flex row, title + New Job button
+- `.jobsPageTitle`, `.jobsPageSubtitle` — title styling
+- `.jobsSearchCard` — card wrapper with flexbox layout
+- `.jobsSearchInput` — input with inline Search icon (absolute positioned)
+- `.jobsResultsCard` — results container
+- `.jobsFilterTabs` — flex row of filter buttons, active state uses gradient background
+- `.jobsTableWrapper`, `.jobsTable` — dark-themed table with headers, hover effects
+- `.jobIdCell`, `.jobIdBadge` — gradient badge with icon for job ID
+- `.jobCustomerCell`, `.jobVehicleCell`, `.jobServiceCell`, `.jobBookedCell`, `.jobActionsCell` — table cell styling
+- `.jobDetailHeader` — back button, title content, create quote button layout
+- `.headerBackBtn` — back button styling with hover state
+- `.jobDetailTitle`, `.jobDetailSubtitle` — header text styling
+- `.jobDetailGrid` — 2-col grid (responsive to 1 col on mobile)
+- `.jobDetailMain`, `.jobDetailSidebar` — flex column containers
+- `.jobDetailCard` — card styling with dark border
+- `.jobDetailCardTitle` — section header styling
+- `.jobDetailInfoGrid` — 2-col grid for job info fields (responsive)
+- `.jobDetailLabel`, `.jobDetailValue`, `.jobDetailValue.mono` — field label/value styling
+- `.activityTimelineList`, `.activityTimelineItem`, `.activityTimelineMarker`, `.activityTimelineContent` — timeline visual elements
+- `.jobDetailActionsList` — flex column for action buttons
+- `.jobDetailSummaryList`, `.jobDetailSummaryRow` — summary info layout
+- `.jobDetailSection`, `.jobDetailSectionTitle` — section card styling
+- `.jobDetailNotesGrid`, `.jobDetailNoteField` — notes section grid layout
+- Dark theme with proper borders, separators, text contrast
+
+**`frontend/src/config/version.js`** — Bumped to `1.1.013`
+
+**`backend/package.json`** — Bumped to `1.1.013`
+
+**`docs/CLAUDE_UI_REDESIGN_NOTES.md`** — This file, appended with Phase 3 documentation
+
+### Live data preservation
+
+- Jobs page: All API calls, search/filter logic, create/open quote functionality preserved
+- JobDetail page: All job data loading, quote/invoice/parts/jobsheet fetching unchanged
+- Status chips, vehicle headers, customer names, booking dates — all real data, styled visually
+- No fake or placeholder data (except UI-only section labels)
+- Activity timeline: Fetches from `/api/activity` endpoint, displays real activity entries
+
+### QuoteDetail.jsx preservation
+
+- ✅ **NOT MODIFIED** — Zero changes to `frontend/src/pages/QuoteDetail.jsx`
+- All quote supplier comparison, sticky totals, print behaviour untouched
+- All quote CSS classes preserved in App.css
+
+### Backend unchanged
+
+- ✅ No changes to backend routes, models, or API logic
+- Jobs listing, job detail, quotes, invoices, parts orders, job sheet routes all unchanged
+- Activity logging untouched
+
+### What future phases should handle
+
+1. **Phase 4**: Other operational pages (Parts list, MOT, Settings) to match Figma visual style
+2. **Phase 5**: Detail pages (QuoteDetail, InvoiceDetail, JobSheetDetail) — cautiously, after reading CLAUDE_QUOTE_PAGE_NOTES.md
+3. **Phase 6**: Onboarding and Intake pages
+4. Light mode refinements — all new CSS uses semantic color tokens, so light mode should inherit automatically (test required)
+
+### Files untouched
+
+- ✅ `frontend/src/pages/QuoteDetail.jsx`
+- ✅ `frontend/src/pages/Dashboard.jsx`
+- ✅ `frontend/src/pages/Parts.jsx`
+- ✅ `frontend/src/pages/Settings.jsx`
+- ✅ `frontend/src/pages/MOT.jsx`
+- ✅ `frontend/src/pages/Onboarding.jsx`
+- ✅ `frontend/src/pages/Login.jsx`
+- ✅ Backend routes
 - ✅ All API calls and data loading — preserved

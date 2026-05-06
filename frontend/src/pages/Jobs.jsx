@@ -115,98 +115,79 @@ export default function Jobs({ locationPath, onOpenJob, onOpenQuote }) {
 
   return (
     <div className="jobsPage">
-      <header className="pageHeader">
+      <header className="jobsPageHeader">
         <div>
-          <h2 className="pageTitle">Jobs</h2>
-          <p className="pageSubtitle">
-            Vehicle/job-first board. REG is the primary identifier for each job.
-          </p>
+          <h1 className="jobsPageTitle">Jobs</h1>
+          <p className="jobsPageSubtitle">Manage all service jobs</p>
         </div>
-        <span className="setupPill" title="Database-backed">
-          Live
-        </span>
+        <button className="primaryButton" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          New Job
+        </button>
       </header>
 
-      <div className="cardBox">
-        <div className="cardTop">
-          <h3 className="cardTitle">Search</h3>
-          <div className="fieldHint">
-            {query.needsQuote ? 'Showing jobs needing a quote.' : 'Showing recent jobs.'}
-          </div>
-        </div>
-
-        <div className="fieldGrid" style={{ marginTop: 12 }}>
-          <div className="field" style={{ gridColumn: 'span 8' }}>
-            <div className="fieldLabel">Search</div>
+      <div className="jobsSearchCard">
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, color: 'var(--muted)' }}><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
             <input
-              className="input"
+              className="jobsSearchInput"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="e.g. AB12 CDE, Smith, 07123"
+              placeholder="Search by job ID, customer, vehicle..."
             />
           </div>
-          <div className="field" style={{ gridColumn: 'span 4' }}>
-            <div className="fieldLabel">Status</div>
-            <input
-              className="input"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              placeholder="e.g. booked_in"
-            />
-          </div>
-        </div>
-
-        <div className="pageHeaderActions" style={{ marginTop: 12 }}>
-          <button type="button" className="secondaryButton" onClick={load}>
-            {status === 'loading' ? 'Loading…' : 'Search'}
+          <button className="secondaryButton" style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            Filters
           </button>
-          {actionStatus === 'saving' ? <span className="fieldHint">Working…</span> : null}
         </div>
-
-        {error ? <div className="notice bad">{error}</div> : null}
-        {actionError ? <div className="notice bad">{actionError}</div> : null}
       </div>
 
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Results</h3>
-          <div className="fieldHint">{visibleJobs.length} job(s)</div>
+      <div className="jobsResultsCard">
+        <div style={{ borderBottom: '1px solid var(--separator)', paddingBottom: 12, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Results</h3>
+          <span style={{ fontSize: 13, color: 'var(--muted)' }}>{visibleJobs.length} job(s)</span>
         </div>
 
-        <div className="pageHeaderActions" style={{ marginTop: 10 }}>
-          <button type="button" className={`miniButton ${viewMode === 'all' ? 'primary' : ''}`} onClick={() => setViewMode('all')}>
+        <div className="jobsFilterTabs">
+          <button type="button" className={`jobsFilterTab ${viewMode === 'all' ? 'active' : ''}`} onClick={() => setViewMode('all')}>
             All ({grouped.all.length})
           </button>
-          <button type="button" className={`miniButton ${viewMode === 'today' ? 'primary' : ''}`} onClick={() => setViewMode('today')}>
+          <button type="button" className={`jobsFilterTab ${viewMode === 'today' ? 'active' : ''}`} onClick={() => setViewMode('today')}>
             Today ({grouped.today.length})
           </button>
-          <button type="button" className={`miniButton ${viewMode === 'needs_quote' ? 'primary' : ''}`} onClick={() => setViewMode('needs_quote')}>
+          <button type="button" className={`jobsFilterTab ${viewMode === 'needs_quote' ? 'active' : ''}`} onClick={() => setViewMode('needs_quote')}>
             Needs Quote ({grouped.needs_quote.length})
           </button>
-          <button type="button" className={`miniButton ${viewMode === 'waiting_parts' ? 'primary' : ''}`} onClick={() => setViewMode('waiting_parts')}>
+          <button type="button" className={`jobsFilterTab ${viewMode === 'waiting_parts' ? 'active' : ''}`} onClick={() => setViewMode('waiting_parts')}>
             Waiting Parts ({grouped.waiting_parts.length})
           </button>
-          <button type="button" className={`miniButton ${viewMode === 'in_progress' ? 'primary' : ''}`} onClick={() => setViewMode('in_progress')}>
+          <button type="button" className={`jobsFilterTab ${viewMode === 'in_progress' ? 'active' : ''}`} onClick={() => setViewMode('in_progress')}>
             In Progress ({grouped.in_progress.length})
           </button>
-          <button type="button" className={`miniButton ${viewMode === 'completed' ? 'primary' : ''}`} onClick={() => setViewMode('completed')}>
+          <button type="button" className={`jobsFilterTab ${viewMode === 'completed' ? 'active' : ''}`} onClick={() => setViewMode('completed')}>
             Completed ({grouped.completed.length})
           </button>
         </div>
+
+        {error ? <div className="notice bad" style={{ marginTop: 12 }}>{error}</div> : null}
+        {actionError ? <div className="notice bad" style={{ marginTop: 12 }}>{actionError}</div> : null}
 
         {status === 'loading' ? (
           <div className="emptyState" style={{ marginTop: 12 }}>
             Loading…
           </div>
-        ) : jobs.length ? (
-          <div className="quoteTableWrap" style={{ marginTop: 12 }}>
-            <table className="quoteTable" style={{ minWidth: 980 }}>
+        ) : visibleJobs.length ? (
+          <div className="jobsTableWrapper" style={{ marginTop: 12 }}>
+            <table className="jobsTable">
               <thead>
                 <tr>
-                  <th>Status</th>
-                  <th>REG / Vehicle</th>
+                  <th>Job ID</th>
                   <th>Customer</th>
-                  <th>Job</th>
+                  <th>Vehicle</th>
+                  <th>Service</th>
+                  <th>Status</th>
                   <th>Booked</th>
                   <th>Quote</th>
                   <th>Parts</th>
@@ -215,11 +196,19 @@ export default function Jobs({ locationPath, onOpenJob, onOpenQuote }) {
               </thead>
               <tbody>
                 {visibleJobs.map((j) => (
-                  <tr key={j.id}>
+                  <tr key={j.id} className="jobsTableRow">
                     <td>
-                      <StatusChip label={j.status} tone="chipGrey" />
+                      <div className="jobIdCell">
+                        <div className="jobIdBadge">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><path d="M6.5 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path><path d="M9 9h6"></path><path d="M9 13h6"></path></svg>
+                        </div>
+                        <span>{j.id}</span>
+                      </div>
                     </td>
-                    <td>
+                    <td className="jobCustomerCell">
+                      {j.customer_first_name} {j.customer_surname}
+                    </td>
+                    <td className="jobVehicleCell">
                       <VehicleHeader
                         small
                         reg={j.vehicle_registration}
@@ -227,21 +216,15 @@ export default function Jobs({ locationPath, onOpenJob, onOpenQuote }) {
                         model={j.vehicle_model}
                       />
                     </td>
-                    <td>
-                      {j.customer_first_name} {j.customer_surname}
+                    <td className="jobServiceCell">
+                      {j.title || j.service_template_name || `Job #${j.id}`}
                     </td>
                     <td>
-                      <div className="jobRowIdCell">
-                        <div className="jobRowBadge" aria-hidden="true">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14, display: 'block', strokeLinecap: 'round', strokeLinejoin: 'round' }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 700 }}>{j.title || `Job #${j.id}`}</div>
-                          <div className="fieldHint">{j.service_template_name}{j.service_template_name ? ' · ' : ''}#{j.id}</div>
-                        </div>
-                      </div>
+                      <StatusChip label={j.status} tone="chipGrey" />
                     </td>
-                    <td>{formatDateTime(j.booked_start)}</td>
+                    <td className="jobBookedCell">
+                      {formatDateTime(j.booked_start)}
+                    </td>
                     <td>
                       {j.quote_exists ? (
                         <StatusChip
@@ -255,26 +238,14 @@ export default function Jobs({ locationPath, onOpenJob, onOpenQuote }) {
                     <td>
                       <StatusChip label={j.parts_status || '—'} tone={jobPartsSummaryTone(j.parts_status)} />
                     </td>
-                    <td>
-                      <div className="rowActions">
-                        <button
-                          type="button"
-                          className="miniButton"
-                          onClick={() => onOpenJob(j.id)}
-                        >
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          className="miniButton primary"
-                          onClick={() => {
-                            if (j.latest_quote_id) onOpenQuote(j.latest_quote_id)
-                            else createOrOpenQuote(j)
-                          }}
-                        >
-                          {j.latest_quote_id ? 'Open quote' : 'Create quote'}
-                        </button>
-                      </div>
+                    <td className="jobActionsCell">
+                      <button
+                        type="button"
+                        className="primaryButton" style={{ fontSize: 12, padding: '6px 12px' }}
+                        onClick={() => onOpenJob(j.id)}
+                      >
+                        View Details
+                      </button>
                     </td>
                   </tr>
                 ))}

@@ -115,113 +115,141 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
 
   return (
     <div className="jobsPage">
-      <header className="pageHeader">
-        <div>
-          <VehicleHeader
-            reg={job.vehicle_registration}
-            make={job.vehicle_make}
-            model={job.vehicle_model}
-            subtitle={job.title}
-            reference={`JOB #${job.id}`}
-          />
+      <header className="jobDetailHeader">
+        <button type="button" className="headerBackBtn" onClick={onBackToJobs}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 20, height: 20 }}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div className="jobDetailHeaderContent">
+          <h1 className="jobDetailTitle">Job {job.id}</h1>
+          <p className="jobDetailSubtitle">{job.title || job.service_template_name}</p>
         </div>
-        <div className="pageHeaderActions">
-          <button type="button" className="secondaryButton" onClick={onBackToJobs}>
-            Back to Jobs
-          </button>
-          <button
-            type="button"
-            className="primaryButton"
-            onClick={createOrOpenQuote}
-            disabled={actionStatus === 'saving'}
-          >
-            {actionStatus === 'saving' ? 'Working…' : 'Create/Open quote'}
-          </button>
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={createOrOpenInvoice}
-            disabled={actionStatus === 'saving'}
-          >
-            {actionStatus === 'saving' ? 'Working…' : 'Create/Open invoice'}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="primaryButton"
+          onClick={createOrOpenQuote}
+          disabled={actionStatus === 'saving'}
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          {actionStatus === 'saving' ? 'Working…' : 'Create Quote'}
+        </button>
       </header>
 
-      <div className="cardBox">
-        <div className="cardTop">
-          <h3 className="cardTitle">Vehicle</h3>
-          <div className="fieldHint">
-            {job.vehicle_make || '—'} {job.vehicle_model || ''}
+      <div className="jobDetailGrid">
+        <div className="jobDetailMain">
+          <div className="jobDetailCard">
+            <h2 className="jobDetailCardTitle">Job Information</h2>
+            <div className="jobDetailInfoGrid">
+              <div className="jobDetailInfoField">
+                <div className="jobDetailLabel">Status</div>
+                <StatusChip label={job.status} tone="chipGrey" />
+              </div>
+              <div className="jobDetailInfoField">
+                <div className="jobDetailLabel">Priority</div>
+                <div className="jobDetailValue">{job.priority || '—'}</div>
+              </div>
+              <div className="jobDetailInfoField">
+                <div className="jobDetailLabel">Customer</div>
+                <div className="jobDetailValue">{job.customer_first_name} {job.customer_surname}</div>
+              </div>
+              <div className="jobDetailInfoField">
+                <div className="jobDetailLabel">Vehicle</div>
+                <div className="jobDetailValue">{job.vehicle_make} {job.vehicle_model}</div>
+              </div>
+              <div className="jobDetailInfoField">
+                <div className="jobDetailLabel">REG</div>
+                <div className="jobDetailValue mono">{job.vehicle_registration}</div>
+              </div>
+              <div className="jobDetailInfoField">
+                <div className="jobDetailLabel">Phone</div>
+                <div className="jobDetailValue mono">{job.customer_phone || '—'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="jobDetailCard" style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 20, height: 20, color: 'var(--accent)' }}><circle cx="12" cy="12" r="1"></circle><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path><path d="M5 12h14"></path></svg>
+              <h2 className="jobDetailCardTitle">Activity Timeline</h2>
+            </div>
+            <div className="activityTimelineList">
+              {activity.length ? activity.map((entry) => (
+                <div className="activityTimelineItem" key={entry.id}>
+                  <div className="activityTimelineMarker"></div>
+                  <div className="activityTimelineContent">
+                    <div className="activityTimelineText">{entry.summary}</div>
+                    <div className="activityTimelineMeta">{formatDateTime(entry.created_at)} · {entry.user_name || 'SYSTEM'}</div>
+                  </div>
+                </div>
+              )) : (
+                <div className="emptyState">No activity yet.</div>
+              )}
+            </div>
           </div>
         </div>
-        <div className="fieldGrid" style={{ marginTop: 12 }}>
-          <div className="field">
-            <div className="fieldLabel">REG</div>
-            <div className="mono">{job.vehicle_registration}</div>
+
+        <div className="jobDetailSidebar">
+          <div className="jobDetailCard">
+            <h3 className="jobDetailCardTitle">Quick Actions</h3>
+            <div className="jobDetailActionsList">
+              <button
+                type="button"
+                className="primaryButton" style={{ width: '100%' }}
+                onClick={createOrOpenQuote}
+                disabled={actionStatus === 'saving'}
+              >
+                {actionStatus === 'saving' ? 'Working…' : 'Create Quote'}
+              </button>
+              <button
+                type="button"
+                className="secondaryButton" style={{ width: '100%' }}
+                onClick={() => onOpenJobSheet && onOpenJobSheet(job.id)}
+              >
+                View Job Sheet
+              </button>
+              <button
+                type="button"
+                className="secondaryButton" style={{ width: '100%' }}
+                onClick={createOrOpenInvoice}
+                disabled={actionStatus === 'saving'}
+              >
+                {actionStatus === 'saving' ? 'Working…' : 'Create Invoice'}
+              </button>
+            </div>
           </div>
-          <div className="field">
-            <div className="fieldLabel">Service</div>
-            <div>{job.service_template_name}</div>
-          </div>
-          <div className="field">
-            <div className="fieldLabel">Status</div>
-            <div><StatusChip label={job.status} tone="chipGrey" /></div>
-          </div>
-          <div className="field">
-            <div className="fieldLabel">Priority</div>
-            <div>{job.priority}</div>
+
+          <div className="jobDetailCard" style={{ marginTop: 20 }}>
+            <h3 className="jobDetailCardTitle">Summary</h3>
+            <div className="jobDetailSummaryList">
+              <div className="jobDetailSummaryRow">
+                <span className="jobDetailSummaryLabel">Booked start</span>
+                <span className="jobDetailSummaryValue">{formatDateTime(job.booked_start)}</span>
+              </div>
+              <div className="jobDetailSummaryRow">
+                <span className="jobDetailSummaryLabel">Booked end</span>
+                <span className="jobDetailSummaryValue">{formatDateTime(job.booked_end)}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Customer</h3>
-          <div className="fieldHint">
-            {job.customer_first_name} {job.customer_surname}
-          </div>
-        </div>
-        <div className="fieldGrid" style={{ marginTop: 12 }}>
-          <div className="field">
-            <div className="fieldLabel">Phone</div>
-            <div className="mono">{job.customer_phone || '—'}</div>
-          </div>
-          <div className="field">
-            <div className="fieldLabel">Booked start</div>
-            <div>{formatDateTime(job.booked_start)}</div>
-          </div>
-          <div className="field">
-            <div className="fieldLabel">Booked end</div>
-            <div>{formatDateTime(job.booked_end)}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Notes</h3>
-          <div className="fieldHint">Saved from intake (if provided).</div>
-        </div>
-
-        <div className="fieldGrid" style={{ marginTop: 12 }}>
-          <div className="field" style={{ gridColumn: 'span 6' }}>
-            <div className="fieldLabel">What the customer said</div>
+      <div className="jobDetailSection" style={{ marginTop: 24 }}>
+        <h3 className="jobDetailSectionTitle">Notes</h3>
+        <div className="jobDetailNotesGrid">
+          <div className="jobDetailNoteField">
+            <div className="jobDetailLabel">Customer Notes</div>
             <textarea className="textarea" value={job.notes_customer_words || ''} readOnly />
           </div>
-          <div className="field" style={{ gridColumn: 'span 6' }}>
-            <div className="fieldLabel">Office notes</div>
+          <div className="jobDetailNoteField">
+            <div className="jobDetailLabel">Internal Notes</div>
             <textarea className="textarea" value={job.notes_internal || ''} readOnly />
           </div>
         </div>
       </div>
 
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Quotes</h3>
-          <div className="fieldHint">{quotes.length} linked quote(s)</div>
-        </div>
-
+      <div className="jobDetailSection" style={{ marginTop: 24 }}>
+        <h3 className="jobDetailSectionTitle">Quotes</h3>
         {quotes.length ? (
           <div className="quoteTableWrap" style={{ marginTop: 12 }}>
             <table className="quoteTable" style={{ minWidth: 680 }}>
@@ -260,16 +288,13 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
         )}
       </div>
 
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Job Sheet</h3>
-          <button type="button" className="secondaryButton noPrint" onClick={() => onOpenJobSheet && onOpenJobSheet(job.id)}>
-            View job sheet
-          </button>
-        </div>
-        <div className="pageHeaderActions" style={{ marginTop: 8 }}>
-          <button type="button" className="secondaryButton noPrint" onClick={() => onOpenJobSheet && onOpenJobSheet(job.id)}>View job sheet</button>
-          <button type="button" className="secondaryButton noPrint" onClick={() => window.print()}>Print job sheet</button>
+      <div className="jobDetailSection" style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h3 className="jobDetailSectionTitle">Job Sheet</h3>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="secondaryButton noPrint" onClick={() => onOpenJobSheet && onOpenJobSheet(job.id)}>View job sheet</button>
+            <button type="button" className="secondaryButton noPrint" onClick={() => window.print()}>Print</button>
+          </div>
         </div>
         <div className="fieldGrid" style={{ marginTop: 12 }}>
           <div className="field" style={{ gridColumn: 'span 3' }}>
@@ -307,13 +332,10 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
         </div>
       </div>
 
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Invoices</h3>
-          <div className="fieldHint">{invoices.length} invoice(s)</div>
-        </div>
+      <div className="jobDetailSection" style={{ marginTop: 24 }}>
+        <h3 className="jobDetailSectionTitle">Invoices</h3>
         {invoices.length ? (
-          <div className="quoteTableWrap" style={{ marginTop: 10 }}>
+          <div className="quoteTableWrap" style={{ marginTop: 12 }}>
             <table className="quoteTable">
               <thead><tr><th>Invoice</th><th>Status</th><th>Subtotal</th><th>Total</th></tr></thead>
               <tbody>
@@ -328,16 +350,12 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
               </tbody>
             </table>
           </div>
-        ) : <div className="emptyState" style={{ marginTop: 10 }}>No invoice yet.</div>}
+        ) : <div className="emptyState" style={{ marginTop: 12 }}>No invoice yet.</div>}
       </div>
 
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Parts orders</h3>
-          <div className="fieldHint">{partsOrders.length} part(s) tracked</div>
-        </div>
-
-        <div className="pageHeaderActions" style={{ marginTop: 12 }}>
+      <div className="jobDetailSection" style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h3 className="jobDetailSectionTitle">Parts orders</h3>
           <button
             type="button"
             className="secondaryButton"
@@ -345,7 +363,7 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
               if (typeof onViewPartsOrders === 'function') onViewPartsOrders(job.id)
             }}
           >
-            View parts orders
+            View parts
           </button>
         </div>
 
@@ -385,27 +403,6 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
         )}
       </div>
 
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Activity</h3>
-          <div className="fieldHint">{activity.length} entries</div>
-        </div>
-        {activity.length ? (
-          <div className="activityList">
-            {activity.map((entry) => (
-              <div className="activityItem" key={entry.id}>
-                <div className="tinyMeta">{formatDateTime(entry.created_at)}</div>
-                <div className="activityMain">{entry.summary}</div>
-                <div className="fieldHint">
-                  {(entry.user_name || 'SYSTEM')} · {entry.action}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="emptyState" style={{ marginTop: 12 }}>No activity yet.</div>
-        )}
-      </div>
     </div>
   )
 }
