@@ -281,3 +281,77 @@ The previous redesign attempts tried to change too many things at once (Dashboar
 3. **Phase 4:** Detail pages — QuoteDetail, JobDetail, JobSheetDetail visual refinements (cautiously, after reading CLAUDE_QUOTE_PAGE_NOTES.md)
 4. Always work in single-concern phases, test thoroughly before moving to the next phase
 5. Keep this documentation updated as you go
+
+---
+
+## Dashboard Figma port — v1.1.012
+
+**Date:** 2026-05-04
+**Version bumped to:** 1.1.012
+**Scope:** PHASE 2: Dashboard redesign only. QuoteDetail, quote logic, other pages untouched.
+**Reason:** The Phase 1 app shell is now solid. Phase 2 focuses solely on the Dashboard visual redesign to match Figma/reference UI while preserving all live data and API behaviour.
+
+### Reference files used
+
+- `docs/Redesign Automotive Management UI/src/app/pages/Dashboard.tsx` — dashboard page structure, tabs, KPI layout
+- `docs/Redesign Automotive Management UI/src/app/components/Dashboard.tsx` — panel components, service bay patterns
+- `docs/Redesign Automotive Management UI/UI_DESIGN_SYSTEM.md` — design tokens and component patterns
+
+### Dashboard changes
+
+**`frontend/src/pages/Dashboard.jsx`** — Refactored visual structure while preserving all live API calls and data.
+- Added `.dashOverview` wrapper for overview tab content (grid layout with sections)
+- Introduced `.dashSection` pattern with `.dashSectionLabel` for section headers (uppercase labels above each section)
+- **Overview KPI section**: All 8 KPI cards remain unchanged, same data loading and calculations
+- **Workshop Status section**: Service bays moved into a panel card with proper section label ("Workshop Status" with "Demo" tag)
+- **Activity section**: Recent Jobs + Alerts + Workshop stats reorganized into a 2-column layout on desktop
+  - Recent Jobs panel: full width on mobile, left 2/3 on desktop
+  - Right sidebar (1/3 on desktop): Alerts panel, Workshop stats panel, Quick Actions panel
+- All API calls preserved (`/api/dashboard/summary`, `/api/jobs?limit=5`)
+- All event handlers preserved (navigation clicks, filter triggers)
+- Calendar and Kanban tabs completely untouched
+
+**`frontend/src/App.css`** — Dashboard-specific CSS additions.
+- `.dashboard` — max-width 100% for contained layout
+- `.dashOverview` — grid layout with 24px gap between sections
+- `.dashSection` — flex column with 12px gap between section label and content
+- `.dashSectionLabel` — 12px uppercase muted text with proper letter spacing
+- `.dashContentGrid` — responsive grid: 1 column mobile, 2 columns (2fr 1fr) desktop
+- `.dashContentRight` — flex column for right sidebar (alerts, stats, actions)
+- `.recentJobsList` — flex column, no gap (rows stack directly)
+- `.alertsList` — flex column, alert items connected with shared borders
+- `.workshopStats` — flex column container for stat rows with dividers
+- `.quickActionsGrid` — grid layout for action buttons, full width
+- Service bay grid responsive: 2 cols (mobile) → 3 cols (tablet) → 6 cols (desktop)
+
+**`frontend/src/config/version.js`** — Bumped to `1.1.012`
+
+**`backend/package.json`** — Bumped to `1.1.012`
+
+### Live data preservation
+
+- KPI cards: All 8 cards with live `/api/dashboard/summary` data — no changes to calculations or labelling
+- Recent Jobs: Fetches from `/api/jobs?limit=5` — styling improved, data unchanged
+- Alerts: Generated from summary data — same logic as before, improved visual presentation
+- Workshop stats: Bay capacity calculation, parts counts, MOT counts — all logic preserved
+- All navigation handlers (job clicks, quick action buttons) preserved exactly
+
+### QuoteDetail.jsx preservation
+
+- ✅ **NOT MODIFIED** — No changes whatsoever
+- Quote supplier comparison logic untouched
+- Sticky totals layout preserved
+- Print behaviour intact
+- All quote CSS classes (`.partCard`, `.supplierCell`, `.supplierPriceGrid`, etc.) untouched
+
+### Service Bay Status note
+
+Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-only placeholder data (not backed by a backend bay model). If a future phase adds backend bay tracking, this section can be updated to show real bay data without breaking anything else.
+
+### Files unchanged
+
+- ✅ `frontend/src/pages/QuoteDetail.jsx` — no changes
+- ✅ `frontend/src/pages/Calendar.jsx` — imported as-is
+- ✅ `frontend/src/pages/Kanban.jsx` — imported as-is
+- ✅ Backend routes — no changes to backend logic
+- ✅ All API calls and data loading — preserved

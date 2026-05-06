@@ -134,186 +134,196 @@ export default function Dashboard({ onStartNewIntake, onViewJobsNeedingQuote }) 
       </div>
 
       {tab === 'overview' ? (
-        <div>
-          {/* KPI cards */}
-          <section className="cards">
-            <KpiCard
-              {...KPI_ICONS.jobs}
-              title="Jobs Today"
-              value={summary ? String(summary.jobs_booked_today || 0) : '—'}
-              hint="Booked or requested today"
-            />
-            <KpiCard
-              {...KPI_ICONS.quote}
-              title="Jobs Needing Quote"
-              value={summary ? String(summary.jobs_needing_quote || 0) : '—'}
-              hint="Open jobs with no quote yet"
-              onClick={onViewJobsNeedingQuote}
-            />
-            <KpiCard
-              {...KPI_ICONS.chase}
-              title="Quotes to Chase"
-              value={summary ? String((summary.quotes_by_status?.sent || 0) + (summary.quotes_by_status?.ready || 0)) : '—'}
-              hint="Ready / sent — follow up"
-            />
-            <KpiCard
-              {...KPI_ICONS.parts}
-              title="Parts to Order"
-              value={summary ? String(summary.parts_to_order || 0) : '—'}
-              hint="Accepted lines not yet ordered"
-            />
-            <KpiCard
-              {...KPI_ICONS.waiting}
-              title="Waiting for Parts"
-              value={summary ? String(summary.parts_ordered || 0) : '—'}
-              hint="Ordered — not yet received"
-            />
-            <KpiCard
-              {...KPI_ICONS.expected}
-              title="Parts Expected Today"
-              value={summary ? String(summary.parts_expected_today || 0) : '—'}
-              hint="ETA / expected today"
-            />
-            <KpiCard
-              {...KPI_ICONS.returns}
-              title="Returns Pending"
-              value={summary ? String(summary.returns_pending || 0) : '—'}
-              hint="Wrong parts / awaiting credit"
-            />
-            <KpiCard
-              {...KPI_ICONS.mot}
-              title="MOTs In Progress"
-              value={summary ? String(summary.mot_jobs_in_progress || 0) : '—'}
-              hint="MOT jobs not yet completed"
-            />
+        <div className="dashOverview">
+          {/* KPI Section */}
+          <section className="dashSection">
+            <h3 className="dashSectionLabel">Overview</h3>
+            <div className="cards">
+              <KpiCard
+                {...KPI_ICONS.jobs}
+                title="Jobs Today"
+                value={summary ? String(summary.jobs_booked_today || 0) : '—'}
+                hint="Booked or requested today"
+              />
+              <KpiCard
+                {...KPI_ICONS.quote}
+                title="Jobs Needing Quote"
+                value={summary ? String(summary.jobs_needing_quote || 0) : '—'}
+                hint="Open jobs with no quote yet"
+                onClick={onViewJobsNeedingQuote}
+              />
+              <KpiCard
+                {...KPI_ICONS.chase}
+                title="Quotes to Chase"
+                value={summary ? String((summary.quotes_by_status?.sent || 0) + (summary.quotes_by_status?.ready || 0)) : '—'}
+                hint="Ready / sent — follow up"
+              />
+              <KpiCard
+                {...KPI_ICONS.parts}
+                title="Parts to Order"
+                value={summary ? String(summary.parts_to_order || 0) : '—'}
+                hint="Accepted lines not yet ordered"
+              />
+              <KpiCard
+                {...KPI_ICONS.waiting}
+                title="Waiting for Parts"
+                value={summary ? String(summary.parts_ordered || 0) : '—'}
+                hint="Ordered — not yet received"
+              />
+              <KpiCard
+                {...KPI_ICONS.expected}
+                title="Parts Expected Today"
+                value={summary ? String(summary.parts_expected_today || 0) : '—'}
+                hint="ETA / expected today"
+              />
+              <KpiCard
+                {...KPI_ICONS.returns}
+                title="Returns Pending"
+                value={summary ? String(summary.returns_pending || 0) : '—'}
+                hint="Wrong parts / awaiting credit"
+              />
+              <KpiCard
+                {...KPI_ICONS.mot}
+                title="MOTs In Progress"
+                value={summary ? String(summary.mot_jobs_in_progress || 0) : '—'}
+                hint="MOT jobs not yet completed"
+              />
+            </div>
           </section>
 
-          {/* Service Bay Status */}
-          <div className="panelCard" style={{ marginTop: 16 }}>
-            <div className="panelCardHeader">
-              <h3 className="panelCardTitle">
-                Service Bay Status
-                <span className="demoLabel">Demo</span>
-              </h3>
-            </div>
-            <div className="serviceBayGrid">
-              {SERVICE_BAYS.map((bay) => (
-                <div key={bay.num} className={`bayCard ${bay.status}`}>
-                  <div className="bayNum">Bay {bay.num}</div>
-                  <div className="bayStatus">{bay.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent jobs + alerts/stats */}
-          <div className="dashContentGrid">
-            {/* Recent Jobs */}
+          {/* Service Bay Status Section */}
+          <section className="dashSection">
+            <h3 className="dashSectionLabel">
+              Workshop Status
+              <span className="demoLabel">Demo</span>
+            </h3>
             <div className="panelCard">
-              <div className="panelCardHeader">
-                <h3 className="panelCardTitle">Recent Jobs</h3>
-                <button
-                  type="button"
-                  className="panelLinkBtn"
-                  onClick={() => window.history.pushState({}, '', '/jobs') || window.dispatchEvent(new PopStateEvent('popstate'))}
-                >
-                  View all →
-                </button>
-              </div>
-              {recentJobs.length > 0 ? (
-                recentJobs.map((job) => (
-                  <button
-                    key={job.id}
-                    type="button"
-                    className="recentJobRow"
-                    onClick={() => {
-                      window.history.pushState({}, '', `/jobs/${job.id}`)
-                      window.dispatchEvent(new PopStateEvent('popstate'))
-                    }}
-                  >
-                    <div className="recentJobAvatar">
-                      {customerInitials(job.customer_name || job.customer || '')}
-                    </div>
-                    <div className="recentJobInfo">
-                      <div className="recentJobCustomer">
-                        {job.customer_name || job.customer || `Job #${job.id}`}
-                      </div>
-                      <div className="recentJobReg">
-                        {job.registration || job.reg || ''}
-                        {job.make ? ` · ${job.make}` : ''}
-                        {job.model ? ` ${job.model}` : ''}
-                      </div>
-                    </div>
-                    {job.status ? (
-                      <span className={`statusChip ${getStatusChipClass(job.status)}`}>
-                        {job.status}
-                      </span>
-                    ) : null}
-                  </button>
-                ))
-              ) : (
-                <div className="emptyState" style={{ marginTop: 0 }}>
-                  {summary === null ? 'Loading recent jobs…' : 'No recent jobs to display.'}
-                </div>
-              )}
-            </div>
-
-            {/* Alerts + Quick Stats */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className="panelCard">
-                <div className="panelCardHeader">
-                  <h3 className="panelCardTitle">Alerts</h3>
-                </div>
-                {alerts.map((a, i) => (
-                  <div key={i} className={`alertItem ${a.type}`}>
-                    <div className="alertDot" />
-                    <span className="alertText">{a.text}</span>
+              <div className="serviceBayGrid">
+                {SERVICE_BAYS.map((bay) => (
+                  <div key={bay.num} className={`bayCard ${bay.status}`}>
+                    <div className="bayNum">Bay {bay.num}</div>
+                    <div className="bayStatus">{bay.label}</div>
                   </div>
                 ))}
               </div>
+            </div>
+          </section>
 
+          {/* Recent Jobs + Alerts Section */}
+          <section className="dashSection">
+            <h3 className="dashSectionLabel">Activity</h3>
+            <div className="dashContentGrid">
+              {/* Recent Jobs */}
               <div className="panelCard">
                 <div className="panelCardHeader">
-                  <h3 className="panelCardTitle">Workshop</h3>
+                  <h3 className="panelCardTitle">Recent Jobs</h3>
+                  <button
+                    type="button"
+                    className="panelLinkBtn"
+                    onClick={() => window.history.pushState({}, '', '/jobs') || window.dispatchEvent(new PopStateEvent('popstate'))}
+                  >
+                    View all →
+                  </button>
                 </div>
-                <div>
-                  <div className="quickStatRow">
-                    <span className="quickStatLabel">Bay Capacity</span>
-                    <span className="quickStatValue">{capacityPct}%</span>
+                {recentJobs.length > 0 ? (
+                  <div className="recentJobsList">
+                    {recentJobs.map((job) => (
+                      <button
+                        key={job.id}
+                        type="button"
+                        className="recentJobRow"
+                        onClick={() => {
+                          window.history.pushState({}, '', `/jobs/${job.id}`)
+                          window.dispatchEvent(new PopStateEvent('popstate'))
+                        }}
+                      >
+                        <div className="recentJobAvatar">
+                          {customerInitials(job.customer_name || job.customer || '')}
+                        </div>
+                        <div className="recentJobInfo">
+                          <div className="recentJobCustomer">
+                            {job.customer_name || job.customer || `Job #${job.id}`}
+                          </div>
+                          <div className="recentJobReg">
+                            {job.registration || job.reg || ''}
+                            {job.make ? ` · ${job.make}` : ''}
+                            {job.model ? ` ${job.model}` : ''}
+                          </div>
+                        </div>
+                        {job.status ? (
+                          <span className={`statusChip ${getStatusChipClass(job.status)}`}>
+                            {job.status}
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
                   </div>
-                  <div className="progressBar">
-                    <div className="progressFill" style={{ width: `${capacityPct}%` }} />
+                ) : (
+                  <div className="emptyState" style={{ marginTop: 0 }}>
+                    {summary === null ? 'Loading recent jobs…' : 'No recent jobs to display.'}
                   </div>
-                  <div className="quickStatRow" style={{ marginTop: 10 }}>
-                    <span className="quickStatLabel">Parts Ordered</span>
-                    <span className="quickStatValue accent">{summary ? String(summary.parts_ordered || 0) : '—'}</span>
-                  </div>
-                  <div className="quickStatRow">
-                    <span className="quickStatLabel">Parts Expected Today</span>
-                    <span className="quickStatValue positive">{summary ? String(summary.parts_expected_today || 0) : '—'}</span>
-                  </div>
-                  <div className="quickStatRow">
-                    <span className="quickStatLabel">MOTs In Progress</span>
-                    <span className="quickStatValue">{summary ? String(summary.mot_jobs_in_progress || 0) : '—'}</span>
-                  </div>
-                </div>
+                )}
               </div>
 
-              <div className="panelCard">
-                <div className="panelCardHeader">
-                  <h3 className="panelCardTitle">Quick Actions</h3>
+              {/* Alerts + Workshop Stats */}
+              <div className="dashContentRight">
+                <div className="panelCard">
+                  <div className="panelCardHeader">
+                    <h3 className="panelCardTitle">Alerts</h3>
+                  </div>
+                  <div className="alertsList">
+                    {alerts.map((a, i) => (
+                      <div key={i} className={`alertItem ${a.type}`}>
+                        <div className="alertDot" />
+                        <span className="alertText">{a.text}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: 'grid', gap: 8 }}>
-                  <button type="button" className="primaryButton" style={{ width: '100%', height: 38 }} onClick={onStartNewIntake}>
-                    + New Onboarding
-                  </button>
-                  <button type="button" className="secondaryButton" style={{ width: '100%', height: 38 }} onClick={onViewJobsNeedingQuote}>
-                    Jobs Needing Quote
-                  </button>
+
+                <div className="panelCard">
+                  <div className="panelCardHeader">
+                    <h3 className="panelCardTitle">Workshop</h3>
+                  </div>
+                  <div className="workshopStats">
+                    <div className="quickStatRow">
+                      <span className="quickStatLabel">Bay Capacity</span>
+                      <span className="quickStatValue">{capacityPct}%</span>
+                    </div>
+                    <div className="progressBar">
+                      <div className="progressFill" style={{ width: `${capacityPct}%` }} />
+                    </div>
+                    <div className="quickStatRow" style={{ marginTop: 10 }}>
+                      <span className="quickStatLabel">Parts Ordered</span>
+                      <span className="quickStatValue accent">{summary ? String(summary.parts_ordered || 0) : '—'}</span>
+                    </div>
+                    <div className="quickStatRow">
+                      <span className="quickStatLabel">Parts Expected</span>
+                      <span className="quickStatValue positive">{summary ? String(summary.parts_expected_today || 0) : '—'}</span>
+                    </div>
+                    <div className="quickStatRow">
+                      <span className="quickStatLabel">MOTs In Progress</span>
+                      <span className="quickStatValue">{summary ? String(summary.mot_jobs_in_progress || 0) : '—'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="panelCard">
+                  <div className="panelCardHeader">
+                    <h3 className="panelCardTitle">Quick Actions</h3>
+                  </div>
+                  <div className="quickActionsGrid">
+                    <button type="button" className="primaryButton" onClick={onStartNewIntake}>
+                      + New Onboarding
+                    </button>
+                    <button type="button" className="secondaryButton" onClick={onViewJobsNeedingQuote}>
+                      Jobs Needing Quote
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
           {error ? <div className="notice bad" style={{ marginTop: 12 }}>{error}</div> : null}
         </div>

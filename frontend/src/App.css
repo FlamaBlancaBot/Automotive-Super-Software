@@ -2934,18 +2934,35 @@
   color: #93c5fd;
 }
 
-/* Dashboard 2-col content grid */
+/* Dashboard content grid */
 .dashContentGrid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-  margin-top: 16px;
+}
+
+.dashContentRight {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 @media (min-width: 1024px) {
   .dashContentGrid {
     grid-template-columns: 2fr 1fr;
   }
+
+  .dashContentRight {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+/* Recent jobs list */
+.recentJobsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 /* Service bay grid */
@@ -2953,11 +2970,18 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+  padding: 0;
 }
 
 @media (min-width: 700px) {
   .serviceBayGrid {
     grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .serviceBayGrid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -3059,6 +3083,13 @@
   text-overflow: ellipsis;
 }
 
+/* Alerts list */
+.alertsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 /* Alert items */
 .alertItem {
   display: flex;
@@ -3066,8 +3097,27 @@
   align-items: flex-start;
   padding: 10px 12px;
   border-radius: 10px;
-  margin-bottom: 8px;
   border: 1px solid;
+}
+
+.alertItem:not(:last-child) {
+  border-bottom: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.alertItem:not(:first-child) {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.alertItem:first-child {
+  border-bottom: none;
+}
+
+.alertItem:last-child {
+  border-top: none;
 }
 
 .alertItem.alertWarn {
@@ -3103,6 +3153,13 @@
   line-height: 1.5;
 }
 
+/* Workshop stats container */
+.workshopStats {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 /* Quick stats */
 .quickStatRow {
   display: flex;
@@ -3115,6 +3172,18 @@
 
 .quickStatRow:last-child {
   border-bottom: none;
+}
+
+/* Quick actions grid */
+.quickActionsGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.quickActionsGrid .primaryButton,
+.quickActionsGrid .secondaryButton {
+  width: 100%;
+  height: 38px;
 }
 
 .quickStatLabel {
@@ -3156,12 +3225,21 @@
   margin-left: 8px;
 }
 
-/* Dashboard header */
+/* Dashboard page */
+.dashboard {
+  max-width: 100%;
+}
+
+.dashOverview {
+  display: grid;
+  gap: 24px;
+}
+
 .dashHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 4px;
 }
 
 .dashHeaderTitle {
@@ -3176,6 +3254,26 @@
   margin: 4px 0 0;
   font-size: 13px;
   color: var(--muted);
+}
+
+/* Dashboard section */
+.dashSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dashSectionLabel {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Light theme panel adjustments */
