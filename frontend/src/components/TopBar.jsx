@@ -26,7 +26,7 @@ function BellIcon() {
 export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
   return (
     <header className="topBar">
-      {/* Left: page title */}
+      {/* Left: page title + version */}
       <div className="topBarLeft">
         <button
           type="button"
@@ -37,7 +37,10 @@ export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
           <span className="menuIcon" aria-hidden="true">☰</span>
         </button>
         {pageTitle && (
-          <h1 className="topBarTitle">{pageTitle}</h1>
+          <div className="topBarTitleGroup">
+            <h1 className="topBarTitle">{pageTitle}</h1>
+            <span className="topBarVersion">v{APP_VERSION}</span>
+          </div>
         )}
       </div>
 

@@ -37,6 +37,13 @@
   min-width: 0;
 }
 
+.topBarTitleGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
 .topBarTitle {
   margin: 0;
   font-size: 18px;
@@ -47,6 +54,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 30vw;
+}
+
+.topBarVersion {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0.75;
+  flex-shrink: 0;
 }
 
 .topBarRight {
