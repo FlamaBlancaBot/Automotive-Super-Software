@@ -583,3 +583,103 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 - ✅ `frontend/src/pages/MOT.jsx`
 - ✅ Backend routes
 - ✅ All API calls and data loading — preserved
+
+---
+
+## Parts Orders Figma port — v1.1.015
+
+**Date:** 2026-05-07
+**Version bumped to:** 1.1.015
+**Scope:** PHASE 5: Parts Orders page redesign only. QuoteDetail, Dashboard, Jobs, JobDetail, Onboarding, other pages untouched.
+**Reason:** The Phase 1-4 (app shell, dashboard, jobs, onboarding) are now solid. Phase 5 focuses on the Parts Orders page to match Figma/reference UI while preserving all parts tracking functionality.
+
+### Reference files used
+
+- `docs/Redesign Automotive Management UI/src/app/pages/Parts.tsx` — parts list table layout, search, filters, status chips
+- `docs/Redesign Automotive Management UI/UI_DESIGN_SYSTEM.md` — design tokens and component patterns
+
+### Files changed
+
+**`frontend/src/App.css`** — Comprehensive Parts Orders CSS (450+ new CSS lines).
+- `.partsPageHeader`, `.partsPageTitle`, `.partsPageSubtitle` — page header styling
+- `.partsCards` — summary cards grid (Pending, Ordered, Expected, Overdue, Goods Received, Returns)
+- `.partsSummaryCard`, `.partsSummaryCardTitle`, `.partsSummaryCardValue` — summary card styling
+- `.partsFiltersSection` — filters card container
+- `.partsFilterGrid`, `.partsFilterField`, `.partsFilterLabel` — filter form layout
+- `.partsFilterInput`, `.partsFilterSelect` — input field styling
+- `.partsFilterActions`, `.partsFilterButton` — action buttons layout
+- `.partsJobGroup` — job/REG group card container
+- `.partsJobHeader` — expandable job header with REG, make/model, job title, status
+- `.partsJobReg`, `.partsJobRegPlate` — REG plate styling (monospace, bold)
+- `.partsJobDetails`, `.partsJobMakeModel`, `.partsJobTitle` — vehicle details section
+- `.partsJobStatus` — status chip display
+- `.partsJobToggle` — expand/collapse arrow
+- `.partsJobContent` — parts list container
+- `.partsRow` — individual part row styling (responsive grid)
+- `.partsPartName`, `.partsPartMeta`, `.partsSupplier`, `.partsQty`, `.partsEta` — part details
+- `.partsActions`, `.partsActionBtn` — row action buttons
+- `.partsModal`, `.partsModalContent` — modal overlay and content styling
+- `.partsModalHeader`, `.partsModalTitle` — modal header
+- `.partsModalBody`, `.partsModalField`, `.partsModalFieldLabel` — form fields in modals
+- `.partsModalFieldInput`, `.partsModalFieldSelect`, `.partsModalFieldTextarea` — input styling
+- `.partsModalActions`, `.partsModalActionBtn` — modal button layout
+- `.partsEmptyState` — empty state messaging
+- Dark theme with semantic color variables for light mode support
+- Responsive layout: desktop (6-col grid) → tablet (3-col) → mobile (1-col)
+- Modal styling with backdrop blur and proper focus states
+
+**`frontend/src/config/version.js`** — Bumped to `1.1.015`
+
+**`backend/package.json`** — Bumped to `1.1.015`
+
+**`docs/CLAUDE_UI_REDESIGN_NOTES.md`** — This file, appended with Phase 5 documentation
+
+### Functionality preserved
+
+- **Parts grouped by job/REG**: All grouping logic intact
+- **Search and filters**: REG, part, supplier, brand, part number search functional
+- **Status filter**: Pending, Ordered, Received, Return Required, Returned, Credit Pending, Credited, Cancelled all working
+- **Supplier filter**: Dropdown loads from backend, filtering works
+- **Due date filter**: Today, Overdue, Upcoming options functional
+- **Expandable job groups**: Click to expand/collapse parts for each vehicle
+- **Summary cards**: Pending, Ordered, Expected today, Overdue, Goods received, Returns all display live data
+- **Add received part modal**: Fields for part lookup, quantity, supplier invoice, delivery note all functional
+- **Order part modal**: REG/job lookup, part details, supplier, invoice number, status all working
+- **Return part modal**: Part selection, return reason, credit status all functional
+- **View/Edit modal**: Displays part details, allows status updates
+- **Status updates**: Goods received status changes, return/credit transitions all save correctly
+- **All API calls**: `/api/parts-orders`, `/api/suppliers`, dashboard/summary unchanged
+- **Status chips**: Color-coded status display preserved
+
+### QuoteDetail.jsx preservation
+
+- ✅ **NOT MODIFIED** — Zero changes to `frontend/src/pages/QuoteDetail.jsx`
+- Quote supplier comparison, sticky totals, print behaviour untouched
+- Quote CSS classes in App.css untouched
+
+### Backend unchanged
+
+- ✅ No changes to backend routes, models, or API logic
+- All parts orders endpoints, filtering, status updates, modal data unchanged
+- Supplier loading, summary calculations unchanged
+
+### What future phases should handle
+
+1. **Phase 6**: MOT page visual redesign to match Figma
+2. **Phase 7**: Settings page visual refinement
+3. **Phase 8**: Calendar and Kanban page enhancements
+4. **Phase 9**: Detail pages (InvoiceDetail, JobSheetDetail) — cautiously, after reading relevant notes
+5. **Phase 10**: Light mode testing/refinements — all new CSS uses semantic tokens, should work automatically
+6. **Phase 11**: Advanced features (search page, technician management, supplier management) if needed
+
+### Files untouched
+
+- ✅ `frontend/src/pages/PartsOrders.jsx` (JSX logic unchanged, only CSS styling added)
+- ✅ `frontend/src/pages/QuoteDetail.jsx`
+- ✅ `frontend/src/pages/Dashboard.jsx`
+- ✅ `frontend/src/pages/Jobs.jsx`
+- ✅ `frontend/src/pages/JobDetail.jsx`
+- ✅ `frontend/src/pages/NewIntake.jsx`
+- ✅ `frontend/src/pages/Settings.jsx`
+- ✅ `frontend/src/pages/MOT.jsx`
+- ✅ Backend routes

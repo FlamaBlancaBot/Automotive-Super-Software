@@ -4132,3 +4132,502 @@
   }
 }
 
+/* ── Parts Orders Page ── */
+.partsPage {
+  display: flex;
+  flex-direction: column;
+}
+
+.partsPageHeader {
+  padding: 24px 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.partsPageTitle {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.partsPageSubtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Summary cards grid */
+.partsCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.partsSummaryCard {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.partsSummaryCardTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.partsSummaryCardValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+/* Filters section */
+.partsFiltersSection {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.partsFilterHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.partsFilterTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.partsFilterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.partsFilterField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.partsFilterLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.partsFilterInput,
+.partsFilterSelect {
+  padding: 8px 12px;
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  transition: border-color 0.15s;
+}
+
+.partsFilterInput:focus,
+.partsFilterSelect:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.partsFilterActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.partsFilterButton {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.partsFilterButton:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.partsFilterButton.primary {
+  background: var(--gradient-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* Job group cards */
+.partsJobGroup {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.partsJobHeader {
+  padding: 16px;
+  border-bottom: 1px solid var(--separator);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.partsJobHeader:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.partsJobInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.partsJobReg {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.partsJobRegPlate {
+  min-width: 120px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--text-strong);
+  letter-spacing: 1px;
+}
+
+.partsJobDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.partsJobMakeModel {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.partsJobTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.partsJobStatus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.partsJobToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+
+.partsJobToggle.expanded {
+  transform: rotate(180deg);
+}
+
+/* Parts list */
+.partsJobContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.partsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 200px 200px 140px auto;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--separator);
+  align-items: center;
+  transition: background 0.15s;
+}
+
+.partsRow:hover {
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.partsRow:last-child {
+  border-bottom: none;
+}
+
+@media (max-width: 1200px) {
+  .partsRow {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .partsRow {
+    grid-template-columns: 1fr;
+    padding: 12px 8px;
+  }
+}
+
+.partsPartName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.partsPartMeta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.partsSupplier {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.partsQty {
+  font-size: 13px;
+  color: var(--text);
+  text-align: center;
+}
+
+.partsEta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.partsActions {
+  display: flex;
+  gap: 6px;
+  justify-self: end;
+}
+
+.partsActionBtn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.partsActionBtn:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Modals */
+.partsModal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.partsModalContent {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.partsModalHeader {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.partsModalTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.partsModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.partsModalField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.partsModalFieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.partsModalFieldInput,
+.partsModalFieldSelect,
+.partsModalFieldTextarea {
+  padding: 10px 12px;
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  transition: border-color 0.15s;
+}
+
+.partsModalFieldInput:focus,
+.partsModalFieldSelect:focus,
+.partsModalFieldTextarea:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.partsModalFieldTextarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.partsModalActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--separator);
+}
+
+.partsModalActionBtn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.partsModalActionBtn:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.partsModalActionBtn.primary {
+  background: var(--gradient-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.partsModalActionBtn.primary:hover {
+  filter: brightness(1.1);
+}
+
+.partsModalActionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Empty state */
+.partsEmptyState {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.partsEmptyStateTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.partsEmptyStateText {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .partsCards {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .partsCards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .partsFilterGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .partsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .partsJobHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .partsJobStatus {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .partsModalContent {
+    width: 95%;
+  }
+}
+
