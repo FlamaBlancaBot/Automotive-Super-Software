@@ -741,6 +741,131 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 - **Phase 8**: Calendar and Kanban pages
 - **Phase 9+**: Additional pages as needed
 
+---
+
+## Phase 4B: Onboarding Structural Refactor to Figma Wizard (v1.1.017)
+
+**Date:** 2026-05-07
+**Pages refactored:** Onboarding/Intake (NewIntake.jsx) — full JSX layout restructure
+
+### Prior issue and fix
+
+- **Phase 4** (v1.1.014) was CSS-only and kept the old full-page sequential step layout
+- Resulted in a vertical scrolling list of all 6 steps, not the Figma wizard design
+- **Phase 4B** restructures the JSX completely to match Figma's two-column wizard UI
+
+### Reference design used
+
+- Figma reference: `docs/Redesign Automotive Management UI/src/app/components/OnboardingFlow.tsx`
+- Figma reference: `docs/Redesign Automotive Management UI/src/app/pages/Intake.tsx`
+- Design system: `docs/Redesign Automotive Management UI/UI_DESIGN_SYSTEM.md`
+
+### Files modified
+
+- `frontend/src/pages/NewIntake.jsx` — **Completely refactored**: Two-column wizard layout with step indicators, active/completed/inactive states, progress bar, navigation buttons. All business logic preserved.
+- `frontend/src/App.css` — Added 350+ lines for wizard layout: sidebar styling, step buttons, progress bar, content panel, responsive breakpoints
+- `frontend/src/config/version.js` — Bumped from `1.1.016` to `1.1.017`
+- `backend/package.json` — Bumped from `1.1.016` to `1.1.017`
+- `package.json` (root) — Bumped from `1.1.008` to `1.1.017`
+
+### JSX refactoring details
+
+**Structure changed:**
+- Old: `<ol className="steps">` with `<Step>` components, full-page vertical layout
+- New: Two-column grid layout with `currentStep` state (1-5)
+- Left: Sticky sidebar with 5 step buttons showing icon, title, subtitle, progress number
+- Right: Card-based content panel showing only active step, with Previous/Continue buttons
+
+**Step mapping (6 steps → 5 Figma steps):**
+1. **Figma Step 1: Vehicle Registration** — Combined old steps 1 & 2 (lookup + summary)
+2. **Figma Step 2: Customer Details** — Old step 3 (unchanged logic)
+3. **Figma Step 3: Job Service** — Old step 4 (unchanged logic)
+4. **Figma Step 4: Booking Details** — Old step 5 (unchanged logic)
+5. **Figma Step 5: Notes & Summary** — Old step 6 (unchanged logic)
+
+**Visual styling:**
+- Active step button: blue-purple gradient background, white text
+- Completed step button: green with check mark icon
+- Inactive step button: dark grey, transparent background
+- Progress bar: gradient fill from 0% to 100% as user progresses
+- Step icons: emoji-based (🚗, 👤, 🔧, 📅, 📝) for quick visual recognition
+- Responsive: sidebar stacks above content on tablet (1024px), single-column on mobile (768px)
+
+### Functionality preserved
+
+✅ All state variables and handlers unchanged:
+- REG lookup, vehicle refresh, manual vehicle entry
+- Customer matching, existing customer selection, new customer creation
+- Service template selection, "Other" service custom title
+- Duration days/hours override
+- Booking date/time/priority/status selection
+- MOT supplier info, external MOT reminders
+- Customer notes, internal notes
+- Save intake, customer detail request, post-save quote/job/restart actions
+- Error handling, availability check
+
+✅ All API calls unchanged:
+- `/api/vehicles/{reg}/matches` — REG lookup
+- `/api/vehicles/{reg}/refresh` — Refresh vehicle data
+- `/api/service-templates` — Load services on page load
+- `/api/customers/search?q=` — Customer matching
+- `/api/availability/suggest` — Check booking availability
+- `/api/intake` — Save intake (create job)
+- `/api/customer-detail-requests` — SMS detail request
+- `/api/jobs/{id}/quotes` — Create quote after job saves
+
+### Component refactoring
+
+- Extracted 5 step components: `StepVehicle`, `StepCustomer`, `StepService`, `StepBooking`, `StepNotes`
+- All components receive state and setters as props — enables isolated development/testing
+- Utility functions unchanged: `sanitiseRegInput`, `normaliseReg`, `sanitisePhoneInput`, `isLikelyPhoneNumber`, `motWindowMessage`
+- Removed old `Step` component wrapper (no longer needed with new layout)
+
+### CSS changes
+
+**New wizard layout classes:**
+- `.intakeWizard` — Main container
+- `.intakeWizardContainer` — Two-column grid (280px sidebar + 1fr content)
+- `.intakeWizardSidebar` — Left sidebar, sticky positioning
+- `.intakeStepsList` — Flex column of step buttons
+- `.intakeStepButton` — Individual step selector with states (active/completed/inactive)
+- `.intakeProgress` — Progress bar section with label and percentage
+- `.intakeWizardContent` — Right content panel, card styling
+- `.intakeStepHeader` — Step title header with icon badge
+- `.intakeNavigation` — Previous/Continue button row
+
+**Responsive design:**
+- Desktop (≥1024px): Two-column layout, sidebar sticky top: 24px
+- Tablet (1024px): Sidebar becomes 2-column grid above content
+- Mobile (≤768px): Single column, sidebar flows like regular content, stacked buttons
+
+### Backend unchanged
+
+- ✅ Zero changes to backend routes, endpoints, or data models
+- All intake data persistence unchanged
+- Customer, vehicle, job, booking creation logic intact
+
+### QuoteDetail.jsx NOT touched
+
+- ✅ Quote page remains completely untouched
+- All quote supplier comparison, sticky totals, print CSS preserved
+- New wizard CSS integrates cleanly without affecting quote page
+
+### Warning for future edits
+
+**NewIntake.jsx is now ~1200 lines due to extracted step components.** Future changes should:
+1. Run `npm run build` before committing
+2. Test all 5 steps in the UI (REG lookup, customer matching, service selection, booking, save)
+3. Test post-save actions (Create Quote, View Job, Start Another)
+4. Run on Hostinger to verify responsive layout on mobile/tablet
+5. Avoid changing the 5-step boundary structure without re-planning the layout
+
+### What's next
+
+- **Phase 7**: MOT page visual redesign
+- **Phase 8**: Calendar and Kanban pages
+- **Phase 9+**: Additional pages as needed
+
 ### Files untouched
 
 - ✅ `frontend/src/pages/PartsOrders.jsx` (JSX logic unchanged, only CSS styling added)
@@ -748,7 +873,6 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 - ✅ `frontend/src/pages/Dashboard.jsx`
 - ✅ `frontend/src/pages/Jobs.jsx`
 - ✅ `frontend/src/pages/JobDetail.jsx`
-- ✅ `frontend/src/pages/NewIntake.jsx`
 - ✅ `frontend/src/pages/Settings.jsx`
 - ✅ `frontend/src/pages/MOT.jsx`
 - ✅ Backend routes

@@ -4,8 +4,6 @@ import EmptyState from '../components/EmptyState'
 import VehicleHeader from '../components/VehicleHeader'
 
 function sanitiseRegInput(raw) {
-  // Allow only letters, numbers and spaces.
-  // Limit to 9 characters INCLUDING spaces.
   return String(raw || '')
     .toUpperCase()
     .replace(/[^A-Z0-9 ]/g, '')
@@ -29,7 +27,6 @@ function normaliseReg(input) {
 }
 
 function sanitisePhoneInput(raw) {
-  // Simple friendly input filter for call handling.
   return String(raw || '').replace(/[^\d +]/g, '').slice(0, 20)
 }
 
@@ -57,16 +54,25 @@ function motWindowMessage(motExpiryRaw, selectedDateRaw) {
 
 const DEFAULT_REMINDER_OFFSETS = [-30, -15, -5]
 
+const STEPS = [
+  { id: 1, title: 'Vehicle Registration', subtitle: 'Enter the vehicle information below' },
+  { id: 2, title: 'Customer Details', subtitle: 'Provide customer contact information' },
+  { id: 3, title: 'Job Service', subtitle: 'Choose the service type and details' },
+  { id: 4, title: 'Booking Details', subtitle: 'Schedule the appointment' },
+  { id: 5, title: 'Notes & Summary', subtitle: 'Review and add final notes' },
+]
+
 export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStartAnother }) {
+  const [currentStep, setCurrentStep] = useState(1)
 
   // Step 1 — vehicle lookup
   const [regInput, setRegInput] = useState('')
   const regNormalised = useMemo(() => normaliseReg(regInput), [regInput])
-  const [vehicleLookupStatus, setVehicleLookupStatus] = useState('idle') // idle|loading|found|not_found|error
+  const [vehicleLookupStatus, setVehicleLookupStatus] = useState('idle')
   const [vehicleMessage, setVehicleMessage] = useState('')
   const [vehicle, setVehicle] = useState(null)
   const [vehicleCustomers, setVehicleCustomers] = useState([])
-  const [vehicleSource, setVehicleSource] = useState('database') // database|n8n
+  const [vehicleSource, setVehicleSource] = useState('database')
   const [vehicleLastChecked, setVehicleLastChecked] = useState('')
   const [vehicleMot, setVehicleMot] = useState(null)
   const [manualVehicle, setManualVehicle] = useState({
@@ -78,7 +84,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
     colour: '',
   })
 
-  // Step 3 — customer details and customer match
+  // Step 2 — customer details and customer match
   const [firstName, setFirstName] = useState('')
   const [surname, setSurname] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -87,13 +93,13 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
   const [address, setAddress] = useState('')
   const [sendDetailsBySms, setSendDetailsBySms] = useState(false)
   const [customerDetailsLink, setCustomerDetailsLink] = useState('')
-  const [customerCheckStatus, setCustomerCheckStatus] = useState('idle') // idle|loading|done|error
+  const [customerCheckStatus, setCustomerCheckStatus] = useState('idle')
   const [customerMatches, setCustomerMatches] = useState([])
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [customerMessage, setCustomerMessage] = useState('')
 
-  // Step 4 — service selection (loaded from backend)
-  const [servicesStatus, setServicesStatus] = useState('loading') // loading|ready|error
+  // Step 3 — service selection (loaded from backend)
+  const [servicesStatus, setServicesStatus] = useState('loading')
   const [servicesError, setServicesError] = useState('')
   const [serviceTemplates, setServiceTemplates] = useState([])
   const [serviceTemplateId, setServiceTemplateId] = useState('')
@@ -108,13 +114,13 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
   const [estimatedHours, setEstimatedHours] = useState(1)
   const [durationOverridden, setDurationOverridden] = useState(false)
 
-  // Step 5 — booking details
+  // Step 4 — booking details
   const [requestedDate, setRequestedDate] = useState('')
   const [arrivalTime, setArrivalTime] = useState('')
   const [priority, setPriority] = useState('normal')
   const [initialStatus, setInitialStatus] = useState('new')
 
-  const [availabilityStatus, setAvailabilityStatus] = useState('idle') // idle|loading|done|error
+  const [availabilityStatus, setAvailabilityStatus] = useState('idle')
   const [availabilityResult, setAvailabilityResult] = useState(null)
   const [availabilityError, setAvailabilityError] = useState('')
 
@@ -130,10 +136,10 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
     return state
   })
 
-  // Step 6 — notes and save
+  // Step 5 — notes and save
   const [notesCustomerWords, setNotesCustomerWords] = useState('')
   const [notesInternal, setNotesInternal] = useState('')
-  const [saveStatus, setSaveStatus] = useState('idle') // idle|saving|saved|error
+  const [saveStatus, setSaveStatus] = useState('idle')
   const [saveError, setSaveError] = useState('')
   const [saveResult, setSaveResult] = useState(null)
 
@@ -318,7 +324,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
 
     if (!q) {
       setCustomerCheckStatus('done')
-      setCustomerMessage('Enter customer details, then click “Check customer”.')
+      setCustomerMessage('Enter customer details, then click "Check customer".')
       return
     }
 
@@ -531,6 +537,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
   }
 
   function resetForAnother() {
+    setCurrentStep(1)
     setRegInput('')
     setVehicleLookupStatus('idle')
     setVehicleMessage('')
@@ -582,8 +589,11 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
     if (onStartAnother) onStartAnother()
   }
 
+  const canGoNext = currentStep < STEPS.length
+  const canGoPrev = currentStep > 1
+
   return (
-    <div className="intake">
+    <div className="intakeWizard">
       <header className="pageHeader">
         <div>
           <h2 className="pageTitle">Onboarding</h2>
@@ -596,753 +606,924 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
         </span>
       </header>
 
-      <ol className="steps">
-        <Step title="Step 1: Vehicle registration lookup">
-          <div className="intakeRow">
-            <div className="plateWrap">
-              <label className="fieldLabel" htmlFor="reg">
-                Registration (REG)
-              </label>
-              <div className="plate">
-                <span className="plateUk" aria-hidden="true">
-                  UK
-                </span>
-                <input
-                  id="reg"
-                  className="plateInput"
-                  value={regInput}
-                  onChange={(e) => setRegInput(sanitiseRegInput(e.target.value))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') onLookupVehicle()
-                  }}
-                  placeholder="AB12 CDE"
-                  autoComplete="off"
-                  inputMode="text"
-                  maxLength={9}
-                />
-              </div>
-              <div className="fieldHint">
-                Registration matching ignores spaces and case.
-              </div>
-            </div>
-
-            <div className="intakeActions">
-              <button
-                type="button"
-                className="primaryButton"
-                onClick={() => onLookupVehicle()}
-                disabled={!regNormalised || vehicleLookupStatus === 'loading'}
-              >
-                {vehicleLookupStatus === 'loading' ? 'Looking up…' : 'Lookup vehicle'}
-              </button>
-              <div className="fieldHint">
-                If not found: DVLA/DVSA lookup will run through the configured vehicle lookup webhook.
-              </div>
-              <button
-                type="button"
-                className="secondaryButton"
-                onClick={onRefreshVehicleData}
-                disabled={!vehicle || vehicleLookupStatus === 'loading'}
-              >
-                Refresh vehicle data
-              </button>
-            </div>
-
-            <div className="cardBox">
-              <div className="cardTop">
-                <h3 className="cardTitle">Vehicle summary</h3>
-                <div className="fieldHint">
-                  Source: {vehicleSource || 'database'}{vehicleLastChecked ? ` · Last checked ${new Date(vehicleLastChecked).toLocaleString('en-GB')}` : ''}
-                </div>
-              </div>
-              {!vehicle ? (
-                <div className="emptyState" style={{ marginTop: 10 }}>Look up a registration to load vehicle details.</div>
-              ) : (
-                <div className="summaryGrid" style={{ marginTop: 10 }}>
-                  <SummaryItem label="Make" value={vehicle.make} />
-                  <SummaryItem label="Model" value={vehicle.model} />
-                  <SummaryItem label="MOT status" value={vehicle.mot_status} />
-                  <SummaryItem label="MOT expiry" value={vehicle.mot_expiry} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {vehicleMessage ? <Notice tone={vehicleLookupStatus === 'error' ? 'bad' : 'info'}>{vehicleMessage}</Notice> : null}
-          {(vehicleLookupStatus === 'not_found' || vehicleLookupStatus === 'error') ? (
-            <div className="cardBox" style={{ marginTop: 12 }}>
-              <div className="cardTop">
-                <h3 className="cardTitle">Add vehicle manually</h3>
-                <div className="fieldHint">Use this for imports/overseas/lookup failures.</div>
-              </div>
-              <div className="fieldGrid" style={{ marginTop: 10 }}>
-                <Field label="Make"><input className="input" value={manualVehicle.make} onChange={(e) => setManualVehicle((v) => ({ ...v, make: e.target.value.toUpperCase() }))} placeholder="BMW" /></Field>
-                <Field label="Model"><input className="input" value={manualVehicle.model} onChange={(e) => setManualVehicle((v) => ({ ...v, model: e.target.value.toUpperCase() }))} placeholder="320D" /></Field>
-                <Field label="Year"><input className="input" value={manualVehicle.year} onChange={(e) => setManualVehicle((v) => ({ ...v, year: e.target.value }))} placeholder="2016" /></Field>
-                <Field label="Fuel type"><input className="input" value={manualVehicle.fuel_type} onChange={(e) => setManualVehicle((v) => ({ ...v, fuel_type: e.target.value.toUpperCase() }))} placeholder="DIESEL" /></Field>
-                <Field label="Engine size"><input className="input" value={manualVehicle.engine_size} onChange={(e) => setManualVehicle((v) => ({ ...v, engine_size: e.target.value.toUpperCase() }))} placeholder="2.0L" /></Field>
-                <Field label="Colour"><input className="input" value={manualVehicle.colour} onChange={(e) => setManualVehicle((v) => ({ ...v, colour: e.target.value.toUpperCase() }))} placeholder="BLACK" /></Field>
-              </div>
-            </div>
-          ) : null}
-        </Step>
-
-        <Step title="Step 2: Vehicle summary">
-          {!vehicle ? (
-            <EmptyState message="Look up a registration to show the vehicle summary." />
-          ) : (
-            <div className="summaryGrid">
-              <div className="summaryHeader">
-                <VehicleHeader
-                  small
-                  reg={vehicle.registration}
-                  make={vehicle.make}
-                  model={vehicle.model}
-                />
-                <span className="demoTag">
-                  {vehicleSource === 'webhook' || vehicleSource === 'n8n'
-                    ? 'Webhook'
-                    : vehicleSource === 'database_stale'
-                      ? 'Database stale'
-                      : 'Database'}
-                </span>
-              </div>
-
-              <SummaryItem label="Make" value={vehicle.make} />
-              <SummaryItem label="Model" value={vehicle.model} />
-              <SummaryItem label="Year" value={vehicle.year} />
-              <SummaryItem label="Fuel type" value={vehicle.fuel_type} />
-              <SummaryItem label="Engine size" value={vehicle.engine_size} />
-              <SummaryItem label="Colour" value={vehicle.colour} />
-              <SummaryItem label="MOT status" value={vehicle.mot_status} />
-              <SummaryItem label="MOT expiry" value={vehicle.mot_expiry} />
-              <SummaryItem label="Last MOT date" value={vehicle.last_mot_date} />
-              <SummaryItem label="Last recorded mileage" value={vehicle.last_recorded_mileage} />
-
-              <div className="summaryWide">
-                <div className="summaryLabel">Recent advisories/failures</div>
-                <div className="summaryValue muted">
-                  {vehicleMot
-                    ? `MOT data returned: ${Array.isArray(vehicleMot.advisories) ? vehicleMot.advisories.length : 0} advisories, ${Array.isArray(vehicleMot.failures) ? vehicleMot.failures.length : 0} failures.`
-                    : 'MOT advisories/failures will be added later (DVSA via webhook).'}
-                </div>
-              </div>
-              <div className="summaryWide">
-                <div className="summaryLabel">Lookup diagnostics</div>
-                <div className="summaryValue muted">
-                  Source: {vehicleSource || 'database'}
-                  {vehicleLastChecked ? ` · Last checked ${new Date(vehicleLastChecked).toLocaleString('en-GB')}` : ''}
-                </div>
-              </div>
-            </div>
-          )}
-        </Step>
-
-        <Step title="Step 3: Customer details and customer match">
-          <div className="customerPanel">
-            <div className="customerHeader">
-              <div>
-                <div className="customerTitle">Customer details</div>
-                <div className="customerSubtitle">
-                  Required for saving later. Email, postcode and address can be collected later via SMS link (future feature).
-                </div>
-              </div>
-              <span className="demoTag">Database</span>
-            </div>
-
-            <div className="fieldGrid">
-              <div className="field">
-                <label className="fieldLabel" htmlFor="firstName">
-                  First name <span className="req">*</span>
-                </label>
-                <input
-                  id="firstName"
-                  className="input"
-                  value={firstName}
-                  onChange={(e) => onChangeFirstName(e.target.value)}
-                  placeholder="e.g. John"
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="field">
-                <label className="fieldLabel" htmlFor="surname">
-                  Surname <span className="req">*</span>
-                </label>
-                <input
-                  id="surname"
-                  className="input"
-                  value={surname}
-                  onChange={(e) => onChangeSurname(e.target.value)}
-                  placeholder="e.g. Smith"
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="field">
-                <label className="fieldLabel" htmlFor="phoneNumber">
-                  Phone number <span className="req">*</span>
-                </label>
-                <input
-                  id="phoneNumber"
-                  className={`input ${phoneNumber && !isLikelyPhoneNumber(phoneNumber) ? 'invalid' : ''}`}
-                  value={phoneNumber}
-                  onChange={(e) => onChangePhone(sanitisePhoneInput(e.target.value))}
-                  placeholder="e.g. 07123 456789"
-                  inputMode="tel"
-                  autoComplete="off"
-                />
-                <div className="fieldHint">
-                  No SMS is sent yet. Email/address collection will be added later via a secure link.
-                </div>
-              </div>
-
-              <div className="field">
-                <label className="fieldLabel" htmlFor="email">Email (optional)</label>
-                <input
-                  id="email"
-                  className="input"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="field">
-                <label className="fieldLabel" htmlFor="postcode">Postcode (optional)</label>
-                <input
-                  id="postcode"
-                  className="input"
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-                  placeholder="AB12 3CD"
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label className="fieldLabel" htmlFor="address">Address (optional)</label>
-                <textarea
-                  id="address"
-                  className="textarea"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="House number, street, town"
-                />
-              </div>
-
-              <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label className="inlineCheck">
-                  <input
-                    type="checkbox"
-                    checked={sendDetailsBySms}
-                    onChange={(e) => setSendDetailsBySms(e.target.checked)}
-                  />
-                  <span>Send customer details request by SMS</span>
-                </label>
-                <div className="fieldHint">
-                  If unticked, email/postcode/address can be requested later when a quote is accepted.
-                </div>
-              </div>
-
-              <div className="field">
-                <div className="fieldLabel">Customer match</div>
+      <div className="intakeWizardContainer">
+        {/* Left sidebar: Step indicators */}
+        <aside className="intakeWizardSidebar">
+          <h3 className="intakeSidebarTitle">Onboarding Steps</h3>
+          <div className="intakeStepsList">
+            {STEPS.map((step) => {
+              const isCompleted = currentStep > step.id
+              const isActive = currentStep === step.id
+              return (
                 <button
+                  key={step.id}
                   type="button"
-                  className="secondaryButton"
-                  onClick={onCheckCustomer}
-                  disabled={customerCheckStatus === 'loading'}
+                  className={`intakeStepButton ${isActive ? 'active' : isCompleted ? 'completed' : 'inactive'}`}
+                  onClick={() => setCurrentStep(step.id)}
                 >
-                  {customerCheckStatus === 'loading' ? 'Checking…' : 'Check customer'}
-                </button>
-                <div className="fieldHint">
-                  Searches by first name, surname, or phone (database-backed).
-                </div>
-              </div>
-            </div>
-
-            {customerMessage ? <Notice tone={customerCheckStatus === 'error' ? 'bad' : 'info'}>{customerMessage}</Notice> : null}
-
-            {vehicleCustomers.length ? (
-              <div className="matches" style={{ marginTop: 12 }}>
-                <div className="matchesTitle">Linked to this vehicle</div>
-                <div className="fieldHint" style={{ marginTop: 6 }}>
-                  These are customers already linked to the vehicle in the database.
-                </div>
-                <div className="matchList" style={{ marginTop: 10 }}>
-                  {vehicleCustomers.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className="matchRow"
-                      onClick={() => onSelectExistingCustomer(c)}
-                    >
-                      <div className="matchName">
-                        {c.first_name} {c.surname}{' '}
-                        {c.is_current_owner ? (
-                          <span className="fieldHint">· current keeper</span>
-                        ) : null}
-                      </div>
-                      <div className="matchPhone">{c.phone}</div>
-                      <div className="matchAction">Use</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {selectedCustomer ? (
-              <div className="selectedCustomer">
-                <div className="selectedTitle">Selected existing customer</div>
-                <div className="selectedText">
-                  {selectedCustomer.first_name} {selectedCustomer.surname} · {selectedCustomer.phone}
-                </div>
-              </div>
-            ) : null}
-
-            {customerMatches.length ? (
-              <div className="matches">
-                <div className="matchesTitle">Matches</div>
-                <div className="matchList">
-                  {customerMatches.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className="matchRow"
-                      onClick={() => onSelectExistingCustomer(c)}
-                    >
-                      <div className="matchName">
-                        {c.first_name} {c.surname}
-                      </div>
-                      <div className="matchPhone">{c.phone}</div>
-                      <div className="matchAction">Select</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {association ? (
-              <div className="association">
-                <div className="associationTitle">{association.title}</div>
-                <div className="associationText">{association.text}</div>
-              </div>
-            ) : null}
-          </div>
-        </Step>
-
-        <Step title="Step 4: Job/service selection">
-          {servicesStatus === 'error' ? (
-            <Notice tone="bad">{servicesError}</Notice>
-          ) : (
-            <div className="fieldGrid">
-              <div className="field">
-                <label className="fieldLabel" htmlFor="serviceTemplateId">
-                  Service <span className="req">*</span>
-                </label>
-                <select
-                  id="serviceTemplateId"
-                  className="select"
-                  value={serviceTemplateId}
-                  onChange={(e) => {
-                    setServiceTemplateId(e.target.value)
-                    setDurationOverridden(false)
-                  }}
-                  disabled={servicesStatus !== 'ready'}
-                >
-                  <option value="">Select a service…</option>
-                  {serviceTemplates.map((s) => (
-                    <option key={s.id} value={String(s.id)}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-                {selectedService && selectedService.requires_quote_first ? (
-                  <div className="fieldHint">
-                    Duration may need confirming after quote/inspection.
+                  <div className="intakeStepIcon">
+                    {isCompleted ? '✓' : step.id}
                   </div>
-                ) : null}
-              </div>
-
-              <div className="field">
-                <label className="fieldLabel">Estimated duration</label>
-                <div className="pageHeaderActions" style={{ justifyContent: 'flex-start' }}>
-                  <input
-                    className="input"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={estimatedDays}
-                    onChange={(e) => {
-                      setEstimatedDays(Number(e.target.value || 0))
-                      setDurationOverridden(true)
-                    }}
-                    placeholder="Days"
-                    style={{ width: 100 }}
-                  />
-                  <input
-                    className="input"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={estimatedHours}
-                    onChange={(e) => {
-                      setEstimatedHours(Number(e.target.value || 0))
-                      setDurationOverridden(true)
-                    }}
-                    placeholder="Hours"
-                    style={{ width: 100 }}
-                  />
-                </div>
-                <div className="fieldHint">
-                  Enter estimated days and hours. This drives booking capacity and calendar planning.
-                </div>
-              </div>
-
-              {selectedService && String(selectedService.name || '').trim().toLowerCase() === 'other' ? (
-                <div className="field">
-                  <label className="fieldLabel" htmlFor="customServiceTitle">Custom job title (for Other service)</label>
-                  <input
-                    id="customServiceTitle"
-                    className="input"
-                    value={customServiceTitle}
-                    onChange={(e) => setCustomServiceTitle(e.target.value)}
-                    placeholder="e.g. INVESTIGATE INTERMITTENT MISFIRE"
-                  />
-                </div>
-              ) : null}
-
-              <div className="field">
-                <div className="fieldLabel">Quick notes</div>
-                <div className="pillRow">
-                  <span className="pill">MySQL/MariaDB</span>
-                  <span className="pill">DVLA/DVSA via webhook</span>
-                  <span className="pill">No SMS yet</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </Step>
-
-        <Step title="Step 5: Booking details">
-          <div className="fieldGrid">
-            <Field label="Preferred date">
-              <input
-                className="input"
-                type="date"
-                value={requestedDate}
-                onChange={(e) => setRequestedDate(e.target.value)}
-              />
-            </Field>
-
-            <Field label="Arrival time">
-              <input
-                className="input"
-                type="time"
-                value={arrivalTime}
-                onChange={(e) => setArrivalTime(e.target.value)}
-              />
-            </Field>
-
-            <Field label="Priority">
-              <select
-                className="select"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-              >
-                <option value="normal">Normal</option>
-                <option value="urgent">Urgent</option>
-                <option value="high_value">High value</option>
-                <option value="waiting_customer">Waiting customer</option>
-              </select>
-            </Field>
-
-            <Field label="Initial status">
-              <select
-                className="select"
-                value={initialStatus}
-                onChange={(e) => setInitialStatus(e.target.value)}
-              >
-                <option value="new">New</option>
-                <option value="booked">Booked</option>
-                <option value="in_progress">In progress</option>
-                <option value="waiting_parts">Waiting parts</option>
-                <option value="waiting_approval">Waiting approval</option>
-                <option value="draft">Draft</option>
-              </select>
-              <div className="fieldHint">
-                Draft jobs may appear faded/inactive on calendar unless inactive jobs are shown.
-              </div>
-            </Field>
+                  <div className="intakeStepContent">
+                    <div className="intakeStepTitle">{step.title}</div>
+                    <div className="intakeStepSubtitle">{step.subtitle}</div>
+                  </div>
+                  <div className="intakeStepNumber">{step.id}/5</div>
+                </button>
+              )
+            })}
           </div>
 
-          <div className="availabilityRow">
+          <div className="intakeProgress">
+            <div className="intakeProgressLabel">Progress</div>
+            <div className="intakeProgressBar">
+              <div
+                className="intakeProgressFill"
+                style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+              />
+            </div>
+            <div className="intakeProgressText">Step {currentStep} of {STEPS.length} completed</div>
+          </div>
+        </aside>
+
+        {/* Right panel: Active step content */}
+        <main className="intakeWizardContent">
+          {currentStep === 1 && (
+            <StepVehicle
+              regInput={regInput}
+              setRegInput={setRegInput}
+              regNormalised={regNormalised}
+              vehicleLookupStatus={vehicleLookupStatus}
+              vehicleMessage={vehicleMessage}
+              onLookupVehicle={onLookupVehicle}
+              onRefreshVehicleData={onRefreshVehicleData}
+              vehicle={vehicle}
+              vehicleSource={vehicleSource}
+              vehicleLastChecked={vehicleLastChecked}
+              vehicleMot={vehicleMot}
+              manualVehicle={manualVehicle}
+              setManualVehicle={setManualVehicle}
+            />
+          )}
+
+          {currentStep === 2 && (
+            <StepCustomer
+              firstName={firstName}
+              surname={surname}
+              phoneNumber={phoneNumber}
+              email={email}
+              postcode={postcode}
+              address={address}
+              sendDetailsBySms={sendDetailsBySms}
+              setSendDetailsBySms={setSendDetailsBySms}
+              onChangeFirstName={onChangeFirstName}
+              onChangeSurname={onChangeSurname}
+              onChangePhone={onChangePhone}
+              setEmail={setEmail}
+              setPostcode={setPostcode}
+              setAddress={setAddress}
+              onCheckCustomer={onCheckCustomer}
+              customerCheckStatus={customerCheckStatus}
+              customerMessage={customerMessage}
+              vehicleCustomers={vehicleCustomers}
+              onSelectExistingCustomer={onSelectExistingCustomer}
+              selectedCustomer={selectedCustomer}
+              customerMatches={customerMatches}
+              association={association}
+            />
+          )}
+
+          {currentStep === 3 && (
+            <StepService
+              servicesStatus={servicesStatus}
+              servicesError={servicesError}
+              serviceTemplateId={serviceTemplateId}
+              setServiceTemplateId={setServiceTemplateId}
+              setDurationOverridden={setDurationOverridden}
+              serviceTemplates={serviceTemplates}
+              selectedService={selectedService}
+              estimatedDays={estimatedDays}
+              setEstimatedDays={setEstimatedDays}
+              estimatedHours={estimatedHours}
+              setEstimatedHours={setEstimatedHours}
+              setDurationOverridden={setDurationOverridden}
+              customServiceTitle={customServiceTitle}
+              setCustomServiceTitle={setCustomServiceTitle}
+            />
+          )}
+
+          {currentStep === 4 && (
+            <StepBooking
+              requestedDate={requestedDate}
+              setRequestedDate={setRequestedDate}
+              arrivalTime={arrivalTime}
+              setArrivalTime={setArrivalTime}
+              priority={priority}
+              setPriority={setPriority}
+              initialStatus={initialStatus}
+              setInitialStatus={setInitialStatus}
+              onCheckAvailability={onCheckAvailability}
+              availabilityStatus={availabilityStatus}
+              availabilityError={availabilityError}
+              availabilityResult={availabilityResult}
+              motSelected={motSelected}
+              motRenewalMessage={motRenewalMessage}
+              motTime={motTime}
+              setMotTime={setMotTime}
+              motSupplierName={motSupplierName}
+              setMotSupplierName={setMotSupplierName}
+              motSupplierContact={motSupplierContact}
+              setMotSupplierContact={setMotSupplierContact}
+              motIsExternal={motIsExternal}
+              setMotIsExternal={setMotIsExternal}
+              reminderOffsetsEnabled={reminderOffsetsEnabled}
+              setReminderOffsetsEnabled={setReminderOffsetsEnabled}
+            />
+          )}
+
+          {currentStep === 5 && (
+            <StepNotes
+              notesCustomerWords={notesCustomerWords}
+              setNotesCustomerWords={setNotesCustomerWords}
+              notesInternal={notesInternal}
+              setNotesInternal={setNotesInternal}
+              regNormalised={regNormalised}
+              firstName={firstName}
+              surname={surname}
+              phoneNumber={phoneNumber}
+              selectedCustomer={selectedCustomer}
+              selectedService={selectedService}
+              requestedDate={requestedDate}
+              arrivalTime={arrivalTime}
+              requiredMissing={requiredMissing}
+              canSave={canSave}
+              saveStatus={saveStatus}
+              onSaveIntake={onSaveIntake}
+              saveError={saveError}
+              saveResult={saveResult}
+              customerDetailsLink={customerDetailsLink}
+              onCreateQuoteNow={onCreateQuoteNow}
+              resetForAnother={resetForAnother}
+              onViewJob={onViewJob}
+            />
+          )}
+
+          {/* Navigation buttons */}
+          <div className="intakeNavigation">
             <button
               type="button"
               className="secondaryButton"
-              onClick={onCheckAvailability}
-              disabled={availabilityStatus === 'loading'}
+              onClick={() => setCurrentStep(currentStep - 1)}
+              disabled={!canGoPrev}
             >
-              {availabilityStatus === 'loading' ? 'Checking…' : 'Check availability'}
+              ← Previous
             </button>
-            <div className="fieldHint">
-              Basic database-backed check against seeded jobs. Urgent/high-value fit-in logic will be improved later.
-            </div>
-          </div>
-
-          {availabilityError ? <Notice tone="bad">{availabilityError}</Notice> : null}
-          {availabilityResult ? (
-            <Notice tone={availabilityResult.busy ? 'warn' : 'good'}>
-              {availabilityResult.message}{' '}
-              {availabilityResult.suggestion ? (
-                <span>
-                  Suggested: {availabilityResult.suggestion.requested_date}{' '}
-                  {availabilityResult.suggestion.arrival_time}
-                </span>
-              ) : null}
-            </Notice>
-          ) : null}
-
-          {motSelected ? (
-            <div className="motPanel">
-              <div className="motHeader">
-                <div>
-                  <div className="motTitle">MOT panel</div>
-                  <div className="motSubtitle">
-                    External MOT reminder templates are defaults for now (admin-configurable later).
-                  </div>
-                  {motRenewalMessage ? (
-                    <div className="fieldHint" style={{ marginTop: 8 }}>
-                      {motRenewalMessage}
-                    </div>
-                  ) : null}
-                </div>
-                <span className="demoTag">Database</span>
-              </div>
-
-              <div className="fieldGrid">
-                <Field label="MOT time">
-                  <input
-                    className="input"
-                    type="time"
-                    value={motTime}
-                    onChange={(e) => setMotTime(e.target.value)}
-                  />
-                </Field>
-
-                <Field label="MOT supplier/station">
-                  <input
-                    className="input"
-                    value={motSupplierName}
-                    onChange={(e) => setMotSupplierName(e.target.value)}
-                    placeholder="e.g. Local MOT Centre"
-                  />
-                </Field>
-
-                <Field label="Supplier contact name">
-                  <input
-                    className="input"
-                    value={motSupplierContact}
-                    onChange={(e) => setMotSupplierContact(e.target.value)}
-                    placeholder="e.g. Sam"
-                  />
-                </Field>
-
-                <Field label="Onsite or offsite MOT">
-                  <div className="toggleRow">
-                    <button
-                      type="button"
-                      className={`toggle ${!motIsExternal ? 'active' : ''}`}
-                      onClick={() => setMotIsExternal(false)}
-                    >
-                      Onsite
-                    </button>
-                    <button
-                      type="button"
-                      className={`toggle ${motIsExternal ? 'active' : ''}`}
-                      onClick={() => setMotIsExternal(true)}
-                    >
-                      Offsite
-                    </button>
-                  </div>
-                </Field>
-              </div>
-
-              {motIsExternal ? (
-                <div className="remindersBox">
-                  <div className="remindersTitle">Default reminders (external MOT)</div>
-                  <div className="remindersHint">
-                    TODO: Admin-configurable reminder templates will be added later. For now you can untick reminders for this onboarding.
-                  </div>
-                  <div className="remindersGrid">
-                    {DEFAULT_REMINDER_OFFSETS.map((off) => (
-                      <label key={off} className="checkRow">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(reminderOffsetsEnabled[off])}
-                          onChange={(e) =>
-                            setReminderOffsetsEnabled((s) => ({
-                              ...s,
-                              [off]: e.target.checked,
-                            }))
-                          }
-                        />
-                        <span>{Math.abs(off)} minutes before</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </Step>
-
-        <Step title="Step 6: Notes and save action">
-          <div className="fieldGrid">
-            <Field label="What the customer said">
-              <textarea
-                className="textarea"
-                value={notesCustomerWords}
-                onChange={(e) => setNotesCustomerWords(e.target.value)}
-                rows={5}
-                placeholder="Capture the customer's words and symptoms..."
-              />
-            </Field>
-
-            <Field label="Office notes">
-              <textarea
-                className="textarea"
-                value={notesInternal}
-                onChange={(e) => setNotesInternal(e.target.value)}
-                rows={5}
-                placeholder="Internal notes for the team..."
-              />
-            </Field>
-          </div>
-
-          <div className="saveRow">
-            <div className="cardBox" style={{ width: '100%', marginBottom: 10 }}>
-              <div className="cardTop">
-                <h3 className="cardTitle">Call summary</h3>
-                <div className="fieldHint">
-                  {requiredMissing.length ? `${requiredMissing.length} required missing` : 'Ready to save'}
-                </div>
-              </div>
-              <div className="fieldGrid" style={{ marginTop: 12 }}>
-                <div className="field">
-                  <div className="fieldLabel">REG</div>
-                  <div className="mono">{regNormalised || '—'}</div>
-                </div>
-                <div className="field">
-                  <div className="fieldLabel">Customer</div>
-                  <div className="fieldHint" style={{ marginTop: 8 }}>
-                    {String(firstName).trim() || String(surname).trim()
-                      ? `${firstName} ${surname}`.trim()
-                      : '—'}
-                    {phoneNumber ? ` · ${phoneNumber}` : ''}
-                    {selectedCustomer ? ' · existing' : ' · new'}
-                  </div>
-                </div>
-                <div className="field">
-                  <div className="fieldLabel">Service</div>
-                  <div className="fieldHint" style={{ marginTop: 8 }}>
-                    {selectedService ? selectedService.name : '—'}
-                  </div>
-                </div>
-                <div className="field">
-                  <div className="fieldLabel">Booking</div>
-                  <div className="fieldHint" style={{ marginTop: 8 }}>
-                    {requestedDate || '—'} {arrivalTime || ''}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="primaryButton"
-              disabled={!canSave}
-              onClick={onSaveIntake}
-            >
-              {saveStatus === 'saving' ? 'Saving…' : 'Save onboarding'}
-            </button>
-
-            <div className="requiredBox" role="status" aria-live="polite">
-              <div className="requiredTitle">Required before saving</div>
-              {requiredMissing.length ? (
-                <div className="requiredList">
-                  Missing: {requiredMissing.join(', ')}
-                </div>
-              ) : (
-                <div className="requiredList ok">Ready to save.</div>
-              )}
-            </div>
-
-            {saveError ? <Notice tone="bad">{saveError}</Notice> : null}
-            {saveResult ? (
-              <Notice tone="good">
-                Saved. Job created: #{saveResult.id} —{' '}
-                <span className="mono">{saveResult.registration || 'REG'}</span> —{' '}
-                {saveResult.title} ({saveResult.status})
-              </Notice>
+            {currentStep < STEPS.length ? (
+              <button
+                type="button"
+                className="primaryButton"
+                onClick={() => setCurrentStep(currentStep + 1)}
+              >
+                Continue →
+              </button>
             ) : null}
-            {customerDetailsLink ? (
-              <Notice tone="info">
-                Customer details request link generated (SMS provider integration TODO):{' '}
-                <a href={customerDetailsLink} target="_blank" rel="noreferrer">
-                  {customerDetailsLink}
-                </a>
-              </Notice>
-            ) : null}
-
-            {saveResult ? (
-              <div className="notice info" style={{ marginTop: 10 }}>
-                <div style={{ fontWeight: 950 }}>Next actions</div>
-                <div className="pageHeaderActions" style={{ marginTop: 10 }}>
-                  <button
-                    type="button"
-                    className="primaryButton"
-                    onClick={onCreateQuoteNow}
-                  >
-                    Create quote now
-                  </button>
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    onClick={() => onViewJob && onViewJob(saveResult.id)}
-                  >
-                    View job
-                  </button>
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    onClick={resetForAnother}
-                  >
-                    Start another onboarding
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="fieldHint">
-              This saves via the backend API to the configured MySQL/MariaDB
-              database. If you see an error, database setup may be required
-              (open Set-up).
-            </div>
           </div>
-        </Step>
-      </ol>
+        </main>
+      </div>
     </div>
   )
 }
 
-function Step({ title, children }) {
+function StepVehicle({ regInput, setRegInput, regNormalised, vehicleLookupStatus, vehicleMessage, onLookupVehicle, onRefreshVehicleData, vehicle, vehicleSource, vehicleLastChecked, vehicleMot, manualVehicle, setManualVehicle }) {
   return (
-    <li className="step">
-      <div className="stepTitle">{title}</div>
-      <div className="stepBody">{children}</div>
-    </li>
+    <div className="intakeStepContent">
+      <div className="intakeStepHeader">
+        <div className="intakeStepIcon">🚗</div>
+        <div>
+          <h2 className="intakeStepTitle">Vehicle Registration</h2>
+          <p className="intakeStepSubtitle">Enter the vehicle information below</p>
+        </div>
+      </div>
+
+      <div className="intakeRow">
+        <div className="plateWrap">
+          <label className="fieldLabel" htmlFor="reg">
+            Registration (REG)
+          </label>
+          <div className="plate">
+            <span className="plateUk" aria-hidden="true">
+              UK
+            </span>
+            <input
+              id="reg"
+              className="plateInput"
+              value={regInput}
+              onChange={(e) => setRegInput(sanitiseRegInput(e.target.value))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onLookupVehicle()
+              }}
+              placeholder="AB12 CDE"
+              autoComplete="off"
+              inputMode="text"
+              maxLength={9}
+            />
+          </div>
+          <div className="fieldHint">
+            Registration matching ignores spaces and case.
+          </div>
+        </div>
+
+        <div className="intakeActions">
+          <button
+            type="button"
+            className="primaryButton"
+            onClick={() => onLookupVehicle()}
+            disabled={!regNormalised || vehicleLookupStatus === 'loading'}
+          >
+            {vehicleLookupStatus === 'loading' ? 'Looking up…' : 'Lookup vehicle'}
+          </button>
+          <div className="fieldHint">
+            If not found: DVLA/DVSA lookup will run through the configured vehicle lookup webhook.
+          </div>
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={onRefreshVehicleData}
+            disabled={!vehicle || vehicleLookupStatus === 'loading'}
+          >
+            Refresh vehicle data
+          </button>
+        </div>
+
+        <div className="cardBox">
+          <div className="cardTop">
+            <h3 className="cardTitle">Vehicle summary</h3>
+            <div className="fieldHint">
+              Source: {vehicleSource || 'database'}{vehicleLastChecked ? ` · Last checked ${new Date(vehicleLastChecked).toLocaleString('en-GB')}` : ''}
+            </div>
+          </div>
+          {!vehicle ? (
+            <div className="emptyState" style={{ marginTop: 10 }}>Look up a registration to load vehicle details.</div>
+          ) : (
+            <div className="summaryGrid" style={{ marginTop: 10 }}>
+              <SummaryItem label="Make" value={vehicle.make} />
+              <SummaryItem label="Model" value={vehicle.model} />
+              <SummaryItem label="MOT status" value={vehicle.mot_status} />
+              <SummaryItem label="MOT expiry" value={vehicle.mot_expiry} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {vehicleMessage ? <Notice tone={vehicleLookupStatus === 'error' ? 'bad' : 'info'}>{vehicleMessage}</Notice> : null}
+      {(vehicleLookupStatus === 'not_found' || vehicleLookupStatus === 'error') ? (
+        <div className="cardBox" style={{ marginTop: 12 }}>
+          <div className="cardTop">
+            <h3 className="cardTitle">Add vehicle manually</h3>
+            <div className="fieldHint">Use this for imports/overseas/lookup failures.</div>
+          </div>
+          <div className="fieldGrid" style={{ marginTop: 10 }}>
+            <Field label="Make"><input className="input" value={manualVehicle.make} onChange={(e) => setManualVehicle((v) => ({ ...v, make: e.target.value.toUpperCase() }))} placeholder="BMW" /></Field>
+            <Field label="Model"><input className="input" value={manualVehicle.model} onChange={(e) => setManualVehicle((v) => ({ ...v, model: e.target.value.toUpperCase() }))} placeholder="320D" /></Field>
+            <Field label="Year"><input className="input" value={manualVehicle.year} onChange={(e) => setManualVehicle((v) => ({ ...v, year: e.target.value }))} placeholder="2016" /></Field>
+            <Field label="Fuel type"><input className="input" value={manualVehicle.fuel_type} onChange={(e) => setManualVehicle((v) => ({ ...v, fuel_type: e.target.value.toUpperCase() }))} placeholder="DIESEL" /></Field>
+            <Field label="Engine size"><input className="input" value={manualVehicle.engine_size} onChange={(e) => setManualVehicle((v) => ({ ...v, engine_size: e.target.value.toUpperCase() }))} placeholder="2.0L" /></Field>
+            <Field label="Colour"><input className="input" value={manualVehicle.colour} onChange={(e) => setManualVehicle((v) => ({ ...v, colour: e.target.value.toUpperCase() }))} placeholder="BLACK" /></Field>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function StepCustomer({ firstName, surname, phoneNumber, email, postcode, address, sendDetailsBySms, setSendDetailsBySms, onChangeFirstName, onChangeSurname, onChangePhone, setEmail, setPostcode, setAddress, onCheckCustomer, customerCheckStatus, customerMessage, vehicleCustomers, onSelectExistingCustomer, selectedCustomer, customerMatches, association }) {
+  return (
+    <div className="intakeStepContent">
+      <div className="intakeStepHeader">
+        <div className="intakeStepIcon">👤</div>
+        <div>
+          <h2 className="intakeStepTitle">Customer Details</h2>
+          <p className="intakeStepSubtitle">Provide customer contact information</p>
+        </div>
+      </div>
+
+      <div className="fieldGrid">
+        <div className="field">
+          <label className="fieldLabel" htmlFor="firstName">
+            First name <span className="req">*</span>
+          </label>
+          <input
+            id="firstName"
+            className="input"
+            value={firstName}
+            onChange={(e) => onChangeFirstName(e.target.value)}
+            placeholder="e.g. John"
+            autoComplete="off"
+          />
+        </div>
+
+        <div className="field">
+          <label className="fieldLabel" htmlFor="surname">
+            Surname <span className="req">*</span>
+          </label>
+          <input
+            id="surname"
+            className="input"
+            value={surname}
+            onChange={(e) => onChangeSurname(e.target.value)}
+            placeholder="e.g. Smith"
+            autoComplete="off"
+          />
+        </div>
+
+        <div className="field">
+          <label className="fieldLabel" htmlFor="phoneNumber">
+            Phone number <span className="req">*</span>
+          </label>
+          <input
+            id="phoneNumber"
+            className={`input ${phoneNumber && !isLikelyPhoneNumber(phoneNumber) ? 'invalid' : ''}`}
+            value={phoneNumber}
+            onChange={(e) => onChangePhone(sanitisePhoneInput(e.target.value))}
+            placeholder="e.g. 07123 456789"
+            inputMode="tel"
+            autoComplete="off"
+          />
+          <div className="fieldHint">
+            No SMS is sent yet. Email/address collection will be added later via a secure link.
+          </div>
+        </div>
+
+        <div className="field">
+          <label className="fieldLabel" htmlFor="email">Email (optional)</label>
+          <input
+            id="email"
+            className="input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@example.com"
+            autoComplete="off"
+          />
+        </div>
+
+        <div className="field">
+          <label className="fieldLabel" htmlFor="postcode">Postcode (optional)</label>
+          <input
+            id="postcode"
+            className="input"
+            value={postcode}
+            onChange={(e) => setPostcode(e.target.value.toUpperCase())}
+            placeholder="AB12 3CD"
+            autoComplete="off"
+          />
+        </div>
+
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label className="fieldLabel" htmlFor="address">Address (optional)</label>
+          <textarea
+            id="address"
+            className="textarea"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="House number, street, town"
+          />
+        </div>
+
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label className="inlineCheck">
+            <input
+              type="checkbox"
+              checked={sendDetailsBySms}
+              onChange={(e) => setSendDetailsBySms(e.target.checked)}
+            />
+            <span>Send customer details request by SMS</span>
+          </label>
+          <div className="fieldHint">
+            If unticked, email/postcode/address can be requested later when a quote is accepted.
+          </div>
+        </div>
+
+        <div className="field">
+          <div className="fieldLabel">Customer match</div>
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={onCheckCustomer}
+            disabled={customerCheckStatus === 'loading'}
+          >
+            {customerCheckStatus === 'loading' ? 'Checking…' : 'Check customer'}
+          </button>
+          <div className="fieldHint">
+            Searches by first name, surname, or phone (database-backed).
+          </div>
+        </div>
+      </div>
+
+      {customerMessage ? <Notice tone={customerCheckStatus === 'error' ? 'bad' : 'info'}>{customerMessage}</Notice> : null}
+
+      {vehicleCustomers.length ? (
+        <div className="matches" style={{ marginTop: 12 }}>
+          <div className="matchesTitle">Linked to this vehicle</div>
+          <div className="fieldHint" style={{ marginTop: 6 }}>
+            These are customers already linked to the vehicle in the database.
+          </div>
+          <div className="matchList" style={{ marginTop: 10 }}>
+            {vehicleCustomers.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className="matchRow"
+                onClick={() => onSelectExistingCustomer(c)}
+              >
+                <div className="matchName">
+                  {c.first_name} {c.surname}{' '}
+                  {c.is_current_owner ? (
+                    <span className="fieldHint">· current keeper</span>
+                  ) : null}
+                </div>
+                <div className="matchPhone">{c.phone}</div>
+                <div className="matchAction">Use</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {selectedCustomer ? (
+        <div className="selectedCustomer">
+          <div className="selectedTitle">Selected existing customer</div>
+          <div className="selectedText">
+            {selectedCustomer.first_name} {selectedCustomer.surname} · {selectedCustomer.phone}
+          </div>
+        </div>
+      ) : null}
+
+      {customerMatches.length ? (
+        <div className="matches">
+          <div className="matchesTitle">Matches</div>
+          <div className="matchList">
+            {customerMatches.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className="matchRow"
+                onClick={() => onSelectExistingCustomer(c)}
+              >
+                <div className="matchName">
+                  {c.first_name} {c.surname}
+                </div>
+                <div className="matchPhone">{c.phone}</div>
+                <div className="matchAction">Select</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {association ? (
+        <div className="association">
+          <div className="associationTitle">{association.title}</div>
+          <div className="associationText">{association.text}</div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function StepService({ servicesStatus, servicesError, serviceTemplateId, setServiceTemplateId, setDurationOverridden, serviceTemplates, selectedService, estimatedDays, setEstimatedDays, estimatedHours, setEstimatedHours, customServiceTitle, setCustomServiceTitle }) {
+  return (
+    <div className="intakeStepContent">
+      <div className="intakeStepHeader">
+        <div className="intakeStepIcon">🔧</div>
+        <div>
+          <h2 className="intakeStepTitle">Job Service</h2>
+          <p className="intakeStepSubtitle">Choose the service type and details</p>
+        </div>
+      </div>
+
+      {servicesStatus === 'error' ? (
+        <Notice tone="bad">{servicesError}</Notice>
+      ) : (
+        <div className="fieldGrid">
+          <div className="field">
+            <label className="fieldLabel" htmlFor="serviceTemplateId">
+              Service <span className="req">*</span>
+            </label>
+            <select
+              id="serviceTemplateId"
+              className="select"
+              value={serviceTemplateId}
+              onChange={(e) => {
+                setServiceTemplateId(e.target.value)
+                setDurationOverridden(false)
+              }}
+              disabled={servicesStatus !== 'ready'}
+            >
+              <option value="">Select a service…</option>
+              {serviceTemplates.map((s) => (
+                <option key={s.id} value={String(s.id)}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            {selectedService && selectedService.requires_quote_first ? (
+              <div className="fieldHint">
+                Duration may need confirming after quote/inspection.
+              </div>
+            ) : null}
+          </div>
+
+          <div className="field">
+            <label className="fieldLabel">Estimated duration</label>
+            <div className="pageHeaderActions" style={{ justifyContent: 'flex-start' }}>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                step="1"
+                value={estimatedDays}
+                onChange={(e) => {
+                  setEstimatedDays(Number(e.target.value || 0))
+                  setDurationOverridden(true)
+                }}
+                placeholder="Days"
+                style={{ width: 100 }}
+              />
+              <input
+                className="input"
+                type="number"
+                min="0"
+                step="1"
+                value={estimatedHours}
+                onChange={(e) => {
+                  setEstimatedHours(Number(e.target.value || 0))
+                  setDurationOverridden(true)
+                }}
+                placeholder="Hours"
+                style={{ width: 100 }}
+              />
+            </div>
+            <div className="fieldHint">
+              Enter estimated days and hours. This drives booking capacity and calendar planning.
+            </div>
+          </div>
+
+          {selectedService && String(selectedService.name || '').trim().toLowerCase() === 'other' ? (
+            <div className="field">
+              <label className="fieldLabel" htmlFor="customServiceTitle">Custom job title (for Other service)</label>
+              <input
+                id="customServiceTitle"
+                className="input"
+                value={customServiceTitle}
+                onChange={(e) => setCustomServiceTitle(e.target.value)}
+                placeholder="e.g. INVESTIGATE INTERMITTENT MISFIRE"
+              />
+            </div>
+          ) : null}
+
+          <div className="field">
+            <div className="fieldLabel">Quick notes</div>
+            <div className="pillRow">
+              <span className="pill">MySQL/MariaDB</span>
+              <span className="pill">DVLA/DVSA via webhook</span>
+              <span className="pill">No SMS yet</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StepBooking({ requestedDate, setRequestedDate, arrivalTime, setArrivalTime, priority, setPriority, initialStatus, setInitialStatus, onCheckAvailability, availabilityStatus, availabilityError, availabilityResult, motSelected, motRenewalMessage, motTime, setMotTime, motSupplierName, setMotSupplierName, motSupplierContact, setMotSupplierContact, motIsExternal, setMotIsExternal, reminderOffsetsEnabled, setReminderOffsetsEnabled }) {
+  return (
+    <div className="intakeStepContent">
+      <div className="intakeStepHeader">
+        <div className="intakeStepIcon">📅</div>
+        <div>
+          <h2 className="intakeStepTitle">Booking Details</h2>
+          <p className="intakeStepSubtitle">Schedule the appointment</p>
+        </div>
+      </div>
+
+      <div className="fieldGrid">
+        <Field label="Preferred date">
+          <input
+            className="input"
+            type="date"
+            value={requestedDate}
+            onChange={(e) => setRequestedDate(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Arrival time">
+          <input
+            className="input"
+            type="time"
+            value={arrivalTime}
+            onChange={(e) => setArrivalTime(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Priority">
+          <select
+            className="select"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+          >
+            <option value="normal">Normal</option>
+            <option value="urgent">Urgent</option>
+            <option value="high_value">High value</option>
+            <option value="waiting_customer">Waiting customer</option>
+          </select>
+        </Field>
+
+        <Field label="Initial status">
+          <select
+            className="select"
+            value={initialStatus}
+            onChange={(e) => setInitialStatus(e.target.value)}
+          >
+            <option value="new">New</option>
+            <option value="booked">Booked</option>
+            <option value="in_progress">In progress</option>
+            <option value="waiting_parts">Waiting parts</option>
+            <option value="waiting_approval">Waiting approval</option>
+            <option value="draft">Draft</option>
+          </select>
+          <div className="fieldHint">
+            Draft jobs may appear faded/inactive on calendar unless inactive jobs are shown.
+          </div>
+        </Field>
+      </div>
+
+      <div className="availabilityRow">
+        <button
+          type="button"
+          className="secondaryButton"
+          onClick={onCheckAvailability}
+          disabled={availabilityStatus === 'loading'}
+        >
+          {availabilityStatus === 'loading' ? 'Checking…' : 'Check availability'}
+        </button>
+        <div className="fieldHint">
+          Basic database-backed check against seeded jobs. Urgent/high-value fit-in logic will be improved later.
+        </div>
+      </div>
+
+      {availabilityError ? <Notice tone="bad">{availabilityError}</Notice> : null}
+      {availabilityResult ? (
+        <Notice tone={availabilityResult.busy ? 'warn' : 'good'}>
+          {availabilityResult.message}{' '}
+          {availabilityResult.suggestion ? (
+            <span>
+              Suggested: {availabilityResult.suggestion.requested_date}{' '}
+              {availabilityResult.suggestion.arrival_time}
+            </span>
+          ) : null}
+        </Notice>
+      ) : null}
+
+      {motSelected ? (
+        <div className="motPanel">
+          <div className="motHeader">
+            <div>
+              <div className="motTitle">MOT panel</div>
+              <div className="motSubtitle">
+                External MOT reminder templates are defaults for now (admin-configurable later).
+              </div>
+              {motRenewalMessage ? (
+                <div className="fieldHint" style={{ marginTop: 8 }}>
+                  {motRenewalMessage}
+                </div>
+              ) : null}
+            </div>
+            <span className="demoTag">Database</span>
+          </div>
+
+          <div className="fieldGrid">
+            <Field label="MOT time">
+              <input
+                className="input"
+                type="time"
+                value={motTime}
+                onChange={(e) => setMotTime(e.target.value)}
+              />
+            </Field>
+
+            <Field label="MOT supplier/station">
+              <input
+                className="input"
+                value={motSupplierName}
+                onChange={(e) => setMotSupplierName(e.target.value)}
+                placeholder="e.g. Local MOT Centre"
+              />
+            </Field>
+
+            <Field label="Supplier contact name">
+              <input
+                className="input"
+                value={motSupplierContact}
+                onChange={(e) => setMotSupplierContact(e.target.value)}
+                placeholder="e.g. Sam"
+              />
+            </Field>
+
+            <Field label="Onsite or offsite MOT">
+              <div className="toggleRow">
+                <button
+                  type="button"
+                  className={`toggle ${!motIsExternal ? 'active' : ''}`}
+                  onClick={() => setMotIsExternal(false)}
+                >
+                  Onsite
+                </button>
+                <button
+                  type="button"
+                  className={`toggle ${motIsExternal ? 'active' : ''}`}
+                  onClick={() => setMotIsExternal(true)}
+                >
+                  Offsite
+                </button>
+              </div>
+            </Field>
+          </div>
+
+          {motIsExternal ? (
+            <div className="remindersBox">
+              <div className="remindersTitle">Default reminders (external MOT)</div>
+              <div className="remindersHint">
+                TODO: Admin-configurable reminder templates will be added later. For now you can untick reminders for this onboarding.
+              </div>
+              <div className="remindersGrid">
+                {DEFAULT_REMINDER_OFFSETS.map((off) => (
+                  <label key={off} className="checkRow">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(reminderOffsetsEnabled[off])}
+                      onChange={(e) =>
+                        setReminderOffsetsEnabled((s) => ({
+                          ...s,
+                          [off]: e.target.checked,
+                        }))
+                      }
+                    />
+                    <span>{Math.abs(off)} minutes before</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function StepNotes({ notesCustomerWords, setNotesCustomerWords, notesInternal, setNotesInternal, regNormalised, firstName, surname, phoneNumber, selectedCustomer, selectedService, requestedDate, arrivalTime, requiredMissing, canSave, saveStatus, onSaveIntake, saveError, saveResult, customerDetailsLink, onCreateQuoteNow, resetForAnother, onViewJob }) {
+  return (
+    <div className="intakeStepContent">
+      <div className="intakeStepHeader">
+        <div className="intakeStepIcon">📝</div>
+        <div>
+          <h2 className="intakeStepTitle">Notes & Summary</h2>
+          <p className="intakeStepSubtitle">Review and add final notes</p>
+        </div>
+      </div>
+
+      <div className="fieldGrid">
+        <Field label="What the customer said">
+          <textarea
+            className="textarea"
+            value={notesCustomerWords}
+            onChange={(e) => setNotesCustomerWords(e.target.value)}
+            rows={5}
+            placeholder="Capture the customer's words and symptoms..."
+          />
+        </Field>
+
+        <Field label="Office notes">
+          <textarea
+            className="textarea"
+            value={notesInternal}
+            onChange={(e) => setNotesInternal(e.target.value)}
+            rows={5}
+            placeholder="Internal notes for the team..."
+          />
+        </Field>
+      </div>
+
+      <div className="saveRow">
+        <div className="cardBox" style={{ width: '100%', marginBottom: 10 }}>
+          <div className="cardTop">
+            <h3 className="cardTitle">Call summary</h3>
+            <div className="fieldHint">
+              {requiredMissing.length ? `${requiredMissing.length} required missing` : 'Ready to save'}
+            </div>
+          </div>
+          <div className="fieldGrid" style={{ marginTop: 12 }}>
+            <div className="field">
+              <div className="fieldLabel">REG</div>
+              <div className="mono">{regNormalised || '—'}</div>
+            </div>
+            <div className="field">
+              <div className="fieldLabel">Customer</div>
+              <div className="fieldHint" style={{ marginTop: 8 }}>
+                {String(firstName).trim() || String(surname).trim()
+                  ? `${firstName} ${surname}`.trim()
+                  : '—'}
+                {phoneNumber ? ` · ${phoneNumber}` : ''}
+                {selectedCustomer ? ' · existing' : ' · new'}
+              </div>
+            </div>
+            <div className="field">
+              <div className="fieldLabel">Service</div>
+              <div className="fieldHint" style={{ marginTop: 8 }}>
+                {selectedService ? selectedService.name : '—'}
+              </div>
+            </div>
+            <div className="field">
+              <div className="fieldLabel">Booking</div>
+              <div className="fieldHint" style={{ marginTop: 8 }}>
+                {requestedDate || '—'} {arrivalTime || ''}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="primaryButton"
+          disabled={!canSave}
+          onClick={onSaveIntake}
+        >
+          {saveStatus === 'saving' ? 'Saving…' : 'Save onboarding'}
+        </button>
+
+        <div className="requiredBox" role="status" aria-live="polite">
+          <div className="requiredTitle">Required before saving</div>
+          {requiredMissing.length ? (
+            <div className="requiredList">
+              Missing: {requiredMissing.join(', ')}
+            </div>
+          ) : (
+            <div className="requiredList ok">Ready to save.</div>
+          )}
+        </div>
+
+        {saveError ? <Notice tone="bad">{saveError}</Notice> : null}
+        {saveResult ? (
+          <Notice tone="good">
+            Saved. Job created: #{saveResult.id} —{' '}
+            <span className="mono">{saveResult.registration || 'REG'}</span> —{' '}
+            {saveResult.title} ({saveResult.status})
+          </Notice>
+        ) : null}
+        {customerDetailsLink ? (
+          <Notice tone="info">
+            Customer details request link generated (SMS provider integration TODO):{' '}
+            <a href={customerDetailsLink} target="_blank" rel="noreferrer">
+              {customerDetailsLink}
+            </a>
+          </Notice>
+        ) : null}
+
+        {saveResult ? (
+          <div className="notice info" style={{ marginTop: 10 }}>
+            <div style={{ fontWeight: 950 }}>Next actions</div>
+            <div className="pageHeaderActions" style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className="primaryButton"
+                onClick={onCreateQuoteNow}
+              >
+                Create quote now
+              </button>
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={() => onViewJob && onViewJob(saveResult.id)}
+              >
+                View job
+              </button>
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={resetForAnother}
+              >
+                Start another onboarding
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="fieldHint">
+          This saves via the backend API to the configured MySQL/MariaDB
+          database. If you see an error, database setup may be required
+          (open Set-up).
+        </div>
+      </div>
+    </div>
   )
 }
 

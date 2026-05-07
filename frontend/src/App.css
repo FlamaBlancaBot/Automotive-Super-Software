@@ -5207,3 +5207,353 @@
   }
 }
 
+/* ── Onboarding Wizard Layout (Phase 4B) ── */
+.intakeWizard {
+  display: flex;
+  flex-direction: column;
+}
+
+.intakeWizardContainer {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  flex: 1;
+}
+
+/* Left Sidebar: Step Indicators */
+.intakeWizardSidebar {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+  position: sticky;
+  top: 24px;
+}
+
+.intakeSidebarTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: var(--text-strong);
+}
+
+.intakeStepsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.intakeStepButton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+  text-align: left;
+}
+
+.intakeStepButton:hover:not(:disabled) {
+  transform: translateX(2px);
+}
+
+/* Inactive step */
+.intakeStepButton.inactive {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.intakeStepButton.inactive:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Active step */
+.intakeStepButton.active {
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Completed step */
+.intakeStepButton.completed {
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.intakeStepButton.completed:hover {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.intakeStepIcon {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.intakeStepButton.active .intakeStepIcon {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.intakeStepButton.completed .intakeStepIcon {
+  background: #22c55e;
+  color: #fff;
+}
+
+.intakeStepContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.intakeStepTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.intakeStepSubtitle {
+  font-size: 12px;
+  margin: 2px 0 0 0;
+  opacity: 0.7;
+  line-height: 1.2;
+}
+
+.intakeStepButton.active .intakeStepSubtitle {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.intakeStepNumber {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.intakeStepButton.active .intakeStepNumber {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Progress Bar */
+.intakeProgress {
+  padding-top: 16px;
+  border-top: 1px solid var(--separator);
+}
+
+.intakeProgressLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.intakeProgressBar {
+  width: 100%;
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.intakeProgressFill {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+  transition: width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.intakeProgressText {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Right Panel: Content */
+.intakeWizardContent {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+.intakeStepContent {
+  padding-bottom: 24px;
+}
+
+.intakeStepHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.intakeStepHeader .intakeStepIcon {
+  width: 48px;
+  height: 48px;
+  font-size: 24px;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+
+.intakeStepHeader h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+
+.intakeStepHeader p {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Navigation */
+.intakeNavigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--separator);
+}
+
+.intakeNavigation button {
+  flex: 1;
+  max-width: 200px;
+}
+
+.intakeNavigation .secondaryButton:first-child {
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+/* Responsive: Stack on tablet */
+@media (max-width: 1024px) {
+  .intakeWizardContainer {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .intakeWizardSidebar {
+    position: static;
+    top: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    max-height: none;
+  }
+
+  .intakeStepsList {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .intakeStepButton {
+    flex: 0 1 calc(50% - 4px);
+    padding: 12px;
+  }
+
+  .intakeProgress {
+    grid-column: 1 / -1;
+  }
+
+  .intakeWizardContent {
+    padding: 24px;
+  }
+}
+
+/* Responsive: Stack on mobile */
+@media (max-width: 768px) {
+  .intakeWizardContainer {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .intakeWizardSidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .intakeStepsList {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .intakeStepButton {
+    flex: none;
+    padding: 10px;
+  }
+
+  .intakeStepIcon {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .intakeStepTitle {
+    font-size: 13px;
+  }
+
+  .intakeStepSubtitle {
+    font-size: 11px;
+  }
+
+  .intakeStepHeader {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .intakeStepHeader .intakeStepIcon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .intakeWizardContent {
+    padding: 16px;
+  }
+
+  .intakeStepContent {
+    padding-bottom: 16px;
+  }
+
+  .intakeNavigation {
+    flex-direction: column;
+  }
+
+  .intakeNavigation button {
+    max-width: none;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .intakeRow {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
