@@ -665,12 +665,81 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 
 ### What future phases should handle
 
-1. **Phase 6**: MOT page visual redesign to match Figma
-2. **Phase 7**: Settings page visual refinement
-3. **Phase 8**: Calendar and Kanban page enhancements
-4. **Phase 9**: Detail pages (InvoiceDetail, JobSheetDetail) — cautiously, after reading relevant notes
-5. **Phase 10**: Light mode testing/refinements — all new CSS uses semantic tokens, should work automatically
-6. **Phase 11**: Advanced features (search page, technician management, supplier management) if needed
+1. **Phase 7**: MOT page visual redesign to match Figma
+2. **Phase 8**: Calendar and Kanban page enhancements
+3. **Phase 9**: Detail pages (InvoiceDetail, JobSheetDetail) — cautiously, after reading relevant notes
+4. **Phase 10**: Light mode testing/refinements — all new CSS uses semantic tokens, should work automatically
+5. **Phase 11**: Advanced features (search page, technician management, supplier management) if needed
+
+---
+
+## Phase 6: Settings + Templates Redesign (v1.1.016)
+
+**Date:** 2026-05-06
+**Pages redesigned:** Settings/Admin area (all tabs and modals)
+
+### Reference design used
+
+- Figma reference: `docs/Redesign Automotive Management UI/02 - SETTINGS & TEMPLATES.pdf`
+
+### Files modified
+
+- `frontend/src/App.css` — Added 500+ lines of CSS for Settings page layout and styling
+- `frontend/src/config/version.js` — Bumped from `1.1.015` to `1.1.016`
+- `backend/package.json` — Bumped from `1.1.015` to `1.1.016`
+
+### CSS changes summary
+
+**Settings container layout:**
+- `.settingsPage` — Full-height page wrapper
+- `.settingsHeader` — Page title and subtitle section
+- `.settingsContainer` — CSS grid with sidebar (280px) + content area (1fr)
+- `.settingsSidebar` — Vertical tab navigation with hover effects
+- `.settingsTab` — Individual tab buttons with active state highlighting
+- `.settingsContent` — Main content area with form sections
+
+**Form and list styling:**
+- `.settingsForm`, `.settingsFormGroup`, `.settingsFormField` — Consistent form layout
+- `.settingsInput`, `.settingsSelect`, `.settingsTextarea` — Form field styling with focus states
+- `.settingsList`, `.settingsListItem` — List styling for technicians, suppliers, templates
+- `.settingsListItemContent`, `.settingsListItemActions` — Content and action button layout
+
+**Template editor:**
+- `.templatesList` — Grid of template cards
+- `.templateItem` — Individual template card styling
+- `.templateModal` — Modal wrapper with backdrop blur
+- `.templateModalContent` — Modal content with scrollable area
+- `.templateEditorTextarea` — Large textarea for template content
+- `.templateShortcodes`, `.templateShortcodeList` — Shortcode reference display
+
+**Theme toggle:**
+- `.themeToggle` — Toggle switch wrapper
+- `.themeToggleSwitch` — Visual switch element with animation
+- `.themeToggleOption` — Option labels (Light/Dark)
+
+**Responsive design:**
+- Tablet breakpoint (1024px): Adjusted grid layout, sidebar narrowing
+- Mobile breakpoint (768px): Single-column layout, stacked sidebar
+
+### JSX preserved
+
+- ✅ **NOT MODIFIED** — Zero changes to `frontend/src/pages/Settings.jsx`
+- All form handling, API calls, modal state management unchanged
+- Template CRUD operations preserved
+- Theme toggle functionality preserved
+- Technician, supplier, and template management workflows intact
+
+### Backend unchanged
+
+- ✅ No changes to backend routes, admin APIs, or data models
+- All `/api/admin/*` endpoints function unchanged
+- Template storage and retrieval logic preserved
+
+### What's next
+
+- **Phase 7**: MOT page visual redesign
+- **Phase 8**: Calendar and Kanban pages
+- **Phase 9+**: Additional pages as needed
 
 ### Files untouched
 

@@ -4631,3 +4631,579 @@
   }
 }
 
+/* ── Settings/Admin Page ── */
+.settingsPage {
+  display: flex;
+  flex-direction: column;
+}
+
+.settingsHeader {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.settingsTitle {
+  margin: 0 0 4px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.settingsSubtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Settings grid layout: left sidebar + main content */
+.settingsContainer {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .settingsContainer {
+    grid-template-columns: 240px 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .settingsContainer {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Settings sidebar with tabs */
+.settingsSidebar {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 12px;
+  height: fit-content;
+  position: sticky;
+  top: 80px;
+}
+
+.settingsSidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settingsTab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settingsTab:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.settingsTab.active {
+  background: var(--gradient-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.settingsTabIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+/* Settings main content area */
+.settingsContent {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.settingsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settingsSectionTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.settingsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settingsFormGroup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.settingsFormField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settingsLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.settingsInput,
+.settingsSelect,
+.settingsTextarea {
+  padding: 10px 12px;
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.settingsInput:focus,
+.settingsSelect:focus,
+.settingsTextarea:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.settingsTextarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.settingsFormActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.settingsBtn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.settingsBtn:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.settingsBtn.primary {
+  background: var(--gradient-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.settingsBtn.primary:hover {
+  filter: brightness(1.1);
+}
+
+.settingsBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Settings list items */
+.settingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.settingsListItem {
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.settingsListItemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settingsListItemTitle {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.settingsListItemMeta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.settingsListItemActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.settingsListActionBtn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.settingsListActionBtn:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Settings toggles */
+.settingsToggleGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.settingsCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.settingsCheckbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+/* Template editor styles */
+.templatesList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.templateItem {
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.templateItemTitle {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.templateItemType {
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.templateModal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.templateModalContent {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 900px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.templateModalHeader {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.templateModalTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.templateModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.templateEditorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.templateEditorLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.templateEditorTextarea {
+  padding: 12px;
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 300px;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+
+.templateEditorTextarea:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.templateShortcodes {
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+}
+
+.templateShortcodeTitle {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-strong);
+}
+
+.templateShortcodeList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.templateShortcodeItem {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-family: 'Courier New', monospace;
+  color: var(--text);
+}
+
+.templateModalActions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--separator);
+}
+
+.templateModalActionBtn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.templateModalActionBtn:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.templateModalActionBtn.primary {
+  background: var(--gradient-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.templateModalActionBtn.primary:hover {
+  filter: brightness(1.1);
+}
+
+/* Settings messages */
+.settingsMessage {
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--separator);
+  font-size: 13px;
+}
+
+.settingsMessage.success {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.settingsMessage.error {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+/* Theme toggle */
+.themeToggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+}
+
+.themeToggleLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.themeToggleSwitch {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-1);
+  border-radius: 6px;
+  padding: 2px;
+  border: 1px solid var(--separator);
+}
+
+.themeToggleOption {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.themeToggleOption.active {
+  background: var(--gradient-primary);
+  color: #fff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .settingsContainer {
+    grid-template-columns: 1fr;
+  }
+
+  .settingsSidebar {
+    position: static;
+    top: auto;
+  }
+
+  .settingsSidebarNav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .settingsTab {
+    flex: 0 1 auto;
+  }
+
+  .templateModalContent {
+    width: 95%;
+    max-height: 95vh;
+  }
+}
+
+@media (max-width: 768px) {
+  .settingsFormGroup {
+    grid-template-columns: 1fr;
+  }
+
+  .settingsContent {
+    padding: 16px;
+  }
+
+  .templateEditorTextarea {
+    min-height: 200px;
+  }
+
+  .templateShortcodeList {
+    grid-template-columns: 1fr;
+  }
+}
+
