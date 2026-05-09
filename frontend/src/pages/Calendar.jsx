@@ -35,6 +35,30 @@ function minutesFromMidnight(dateTimeStr) {
   return d.getHours() * 60 + d.getMinutes()
 }
 
+function parseDate(dateStr) {
+  if (!dateStr) return null
+  const d = new Date(String(dateStr).replace(' ', 'T'))
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function getDaysBetween(startStr, endStr) {
+  const start = parseDate(startStr)
+  const end = parseDate(endStr)
+  if (!start || !end) return [startStr ? toDateInput(start) : null].filter(Boolean)
+
+  const days = []
+  const current = new Date(start)
+  current.setHours(0, 0, 0, 0)
+  const endDate = new Date(end)
+  endDate.setHours(0, 0, 0, 0)
+
+  while (current <= endDate) {
+    days.push(toDateInput(current))
+    current.setDate(current.getDate() + 1)
+  }
+  return days
+}
+
 function statusTone(colour, faded) {
   if (faded) return 'chipGrey'
   if (colour === 'green') return 'chipGreen'
@@ -44,9 +68,20 @@ function statusTone(colour, faded) {
   return 'chipGrey'
 }
 
+const STATUS_FILTERS = {
+  in_progress: 'In Progress',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  waiting_parts: 'Waiting Parts',
+  mot: 'MOT',
+  needs_quote: 'Needs Quote',
+  ready_to_collect: 'Ready to Collect'
+}
+
 export default function Calendar({ embedded = false }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [includeInactive, setIncludeInactive] = useState(false)
+  const [statusFilters, setStatusFilters] = useState(Object.keys(STATUS_FILTERS).reduce((acc, k) => ({ ...acc, [k]: true }), {}))
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [jobs, setJobs] = useState([])
@@ -80,9 +115,16 @@ export default function Calendar({ embedded = false }) {
   const jobsByDate = useMemo(() => {
     const map = new Map(days.map((d) => [toDateInput(d), []]))
     for (const j of jobs || []) {
-      const k = String(j.date_key || '')
-      if (!map.has(k)) continue
-      map.get(k).push(j)
+      const statusKey = (j.status?.toLowerCase().replace(/\s+/g, '_') || 'in_progress')
+      const isFiltered = statusKey in statusFilters
+      if (isFiltered && !statusFilters[statusKey]) continue
+
+      const spanDays = getDaysBetween(j.booked_start, j.booked_end)
+      for (const dayKey of spanDays) {
+        if (map.has(dayKey)) {
+          map.get(dayKey).push(j)
+        }
+      }
     }
     for (const list of map.values()) {
       list.sort((a, b) => {
@@ -92,7 +134,7 @@ export default function Calendar({ embedded = false }) {
       })
     }
     return map
-  }, [jobs, days])
+  }, [jobs, days, statusFilters])
 
   function openJob(jobId) {
     window.history.pushState({}, '', `/jobs/${jobId}`)
@@ -121,6 +163,19 @@ export default function Calendar({ embedded = false }) {
             <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} />
             <span>Show inactive / unbooked jobs</span>
           </label>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--separator)' }}>
+          {Object.entries(STATUS_FILTERS).map(([key, label]) => (
+            <label key={key} className="inlineCheck">
+              <input
+                type="checkbox"
+                checked={statusFilters[key]}
+                onChange={(e) => setStatusFilters(prev => ({ ...prev, [key]: e.target.checked }))}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
         </div>
 
         {error ? <div className="notice bad" style={{ marginTop: 10 }}>{error}</div> : null}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../api/http'
 import EmptyState from '../components/EmptyState'
 import VehicleHeader from '../components/VehicleHeader'
+import Calendar from './Calendar'
 
 function sanitiseRegInput(raw) {
   return String(raw || '')
@@ -123,6 +124,8 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
   const [availabilityStatus, setAvailabilityStatus] = useState('idle')
   const [availabilityResult, setAvailabilityResult] = useState(null)
   const [availabilityError, setAvailabilityError] = useState('')
+
+  const [showingCalendarModal, setShowingCalendarModal] = useState(false)
 
   // MOT booking extras (only when is_mot)
   const motSelected = Boolean(selectedService && selectedService.is_mot)
@@ -443,6 +446,10 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
     }
   }
 
+  function onOpenCalendar() {
+    setShowingCalendarModal(true)
+  }
+
   async function onSaveIntake() {
     setSaveStatus('saving')
     setSaveError('')
@@ -726,6 +733,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
               availabilityStatus={availabilityStatus}
               availabilityError={availabilityError}
               availabilityResult={availabilityResult}
+              onOpenCalendar={onOpenCalendar}
               motSelected={motSelected}
               motRenewalMessage={motRenewalMessage}
               motTime={motTime}
@@ -1195,7 +1203,7 @@ function StepService({ servicesStatus, servicesError, serviceTemplateId, setServ
   )
 }
 
-function StepBooking({ requestedDate, setRequestedDate, arrivalTime, setArrivalTime, priority, setPriority, initialStatus, setInitialStatus, onCheckAvailability, availabilityStatus, availabilityError, availabilityResult, motSelected, motRenewalMessage, motTime, setMotTime, motSupplierName, setMotSupplierName, motSupplierContact, setMotSupplierContact, motIsExternal, setMotIsExternal, reminderOffsetsEnabled, setReminderOffsetsEnabled }) {
+function StepBooking({ requestedDate, setRequestedDate, arrivalTime, setArrivalTime, priority, setPriority, initialStatus, setInitialStatus, onCheckAvailability, availabilityStatus, availabilityError, availabilityResult, motSelected, motRenewalMessage, motTime, setMotTime, motSupplierName, setMotSupplierName, motSupplierContact, setMotSupplierContact, motIsExternal, setMotIsExternal, reminderOffsetsEnabled, setReminderOffsetsEnabled, onOpenCalendar }) {
   return (
     <div className="intakeStepContent">
       <div className="intakeStepHeader">
@@ -1265,6 +1273,14 @@ function StepBooking({ requestedDate, setRequestedDate, arrivalTime, setArrivalT
           disabled={availabilityStatus === 'loading'}
         >
           {availabilityStatus === 'loading' ? 'Checking…' : 'Check availability'}
+        </button>
+        <button
+          type="button"
+          className="secondaryButton"
+          onClick={onOpenCalendar}
+          style={{ marginLeft: 8 }}
+        >
+          View Workshop Calendar
         </button>
         <div className="fieldHint">
           Basic database-backed check against seeded jobs. Urgent/high-value fit-in logic will be improved later.
@@ -1523,6 +1539,28 @@ function StepNotes({ notesCustomerWords, setNotesCustomerWords, notesInternal, s
           (open Set-up).
         </div>
       </div>
+
+      {showingCalendarModal && (
+        <div className="modalOverlay" onClick={() => setShowingCalendarModal(false)}>
+          <div className="modal" style={{ width: '90vw', maxWidth: '90vw', maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modalTop">
+              <h2 style={{ margin: 0 }}>Workshop Calendar</h2>
+              <button
+                type="button"
+                className="closeButton"
+                onClick={() => setShowingCalendarModal(false)}
+                title="Close calendar"
+                style={{ marginTop: -6 }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <Calendar embedded={true} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
