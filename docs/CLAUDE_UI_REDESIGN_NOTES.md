@@ -1382,3 +1382,198 @@ Enhanced the Calendar view to better visualize garage scheduling and integrated 
 10. All previous functionality preserved (Quote page, MOT page, Jobs, etc.)
 
 ---
+
+---
+
+## Phase 9B: Calendar Span Visual Refinement (v1.1.023)
+
+**Date:** 2026-05-09  
+**Refined by:** Claude Code (claude-haiku-4-5)  
+**Version bumped to:** 1.1.023
+
+### Overview
+
+Improved multi-day job visualization on the Calendar to instantly show users whether a job starts, continues, or ends on each day. Adds visual labels and border accents for clearer duration spanning.
+
+### Features Implemented
+
+#### 1. Span State Calculation
+- New helper function `getSpanState(jobId, currentDateKey, job, allDays)` calculates:
+  - `isMultiDay` — true if job spans multiple days
+  - `isStartDay` — true if current day is the first day of span
+  - `isMiddleDay` — true if current day is between first and last
+  - `isEndDay` — true if current day is the last day of span
+  - `spanDayIndex` — 0-based position within the span (0 = first day)
+  - `spanTotalDays` — total number of days the job spans
+- Safe handling: missing/invalid dates default to single-day
+
+#### 2. Visual Indicators
+- **Multi-day span labels:** "START", "CONTINUES", "ENDS"
+  - Shown as uppercase badges with blue background (10px font, uppercase)
+  - Only displayed for multi-day jobs
+- **Day counter:** "Day X of Y" (e.g., "Day 2 of 3")
+  - Shows job position within multi-day sequence
+  - Helps user understand how much longer the job will run
+- **Single-day jobs:** display without span indicators (unchanged)
+
+#### 3. CSS Span Styling
+New CSS classes added to indicate span position:
+
+- **`.calendarJobCard--start`** (first day of multi-day span)
+  - `border-radius: 10px 4px 4px 10px` (rounded left, flat right)
+  - `border-left: 3px solid #2563eb` (blue accent on left)
+  - Light blue gradient background `rgba(37, 99, 235, 0.08)`
+  - Signals "job begins here"
+
+- **`.calendarJobCard--middle`** (middle days of multi-day span)
+  - `border-radius: 2px` (minimal rounding)
+  - `border-left: 3px solid #2563eb` (blue accent on left)
+  - `border-right: 1px dashed rgba(37, 99, 235, 0.3)` (dashed right for continuation)
+  - Signals "job continues from previous day to next day"
+
+- **`.calendarJobCard--end`** (last day of multi-day span)
+  - `border-radius: 4px 10px 10px 4px` (flat left, rounded right)
+  - `border-right: 3px solid #2563eb` (blue accent on right)
+  - Light blue gradient background (right-to-left)
+  - Signals "job ends here"
+
+- **`.calendarSpanBadge`** (START/CONTINUES/ENDS label)
+  - Blue-tinted background: `rgba(37, 99, 235, 0.15)`
+  - Font: 10px, weight 700, uppercase, letter-spaced
+  - Compact styling for multi-day labels
+
+- **`.calendarSpanCounter`** (Day X of Y label)
+  - Slate grey color: `rgba(148, 163, 184, 0.8)`
+  - Font: 10px, weight 600
+  - Muted appearance to not compete with status chips
+
+#### 4. React Key Change
+- Changed key from `j.id` to `${j.id}-${key}` to avoid React warnings when same job appears on multiple days
+- Ensures smooth re-rendering across week view changes
+
+### Files Changed
+
+#### Frontend
+- **`frontend/src/pages/Calendar.jsx`**
+  - Added `getSpanState()` helper function (calculates span position)
+  - Updated job card rendering to include span state calculation
+  - Added conditional span label and day counter UI
+  - Updated React key to include date (prevents key collisions)
+  - Added span CSS class names based on span state
+
+- **`frontend/src/App.css`**
+  - Added 5 new CSS classes for span visualization:
+    - `.calendarJobCard--start` (rounded left edge, blue left border)
+    - `.calendarJobCard--middle` (flat edges, dashed continuation)
+    - `.calendarJobCard--end` (rounded right edge, blue right border)
+    - `.calendarSpanBadge` (styled label container)
+    - `.calendarSpanCounter` (day counter text styling)
+
+#### Version Files (3x)
+- **`frontend/src/config/version.js`** — Updated to `1.1.023`
+- **`backend/package.json`** — Updated to `1.1.023`
+- **`package.json`** (root) — Updated to `1.1.023`
+
+### Functionality Preserved
+
+✅ **All Phase 9 features intact:**
+- Multi-day job spanning across calendar columns (not just start date)
+- Status filter checkboxes (7 statuses: In Progress, Completed, etc.)
+- Show inactive/unbooked toggle
+- Week navigation (Previous/Today/Next buttons)
+
+✅ **Calendar interactions unchanged:**
+- Clicking job opens Job Detail (via `openJob(jobId)`)
+- Job positioning based on booked_start time
+- Job height based on estimated duration
+- Sorting by start time within each day
+
+✅ **Onboarding integration unchanged:**
+- Calendar modal in Booking Details step
+- "View Workshop Calendar" button still functional
+- Form state preserved when modal opens/closes
+- Modal uses same span visual improvements
+
+✅ **Backend untouched:**
+- No API changes
+- No database schema changes
+- `/api/calendar/jobs` endpoint unchanged
+
+✅ **Visual hierarchy preserved:**
+- REG remains most prominent (VehicleHeader)
+- Status chips still visible below job title
+- Customer name and job title readable
+- No horizontal overflow added
+
+✅ **Light/dark mode compatible:**
+- Uses `var(--separator)`, `var(--accent)`, `var(--surface-2)`, etc.
+- Gradient backgrounds use rgba with semantic fallbacks
+- Accessible contrast maintained
+
+✅ **QuoteDetail.jsx untouched:**
+- No modifications to quote page
+- No quote logic affected
+- Quote CSS variables still resolve correctly
+
+### CSS Size Impact
+
+- Previous CSS: 79.48 kB (gzip: 13.61 kB)
+- New CSS: 80.14 kB (gzip: 13.76 kB)
+- Increase: +0.66 kB (~0.8%), negligible impact
+
+### Data Safety
+
+- Single-day jobs: no span indicators shown (unchanged behavior)
+- Missing booked_end: `getDaysBetween()` safely returns single-day array
+- Invalid dates: `parseDate()` returns null, fallback to start date only
+- Future-proof: span calculation ignores jobs not in current week (already filtered)
+
+### Limitations
+
+- Span styling only applies within a single week view (7 days)
+  - Jobs spanning weeks display correctly but styling resets per week
+  - This is acceptable as calendar shows week-at-a-time
+- Day counter uses 1-based index for readability (Day 1, not Day 0)
+- Dashed border on middle days may be thin on small screens (but still visible)
+
+### Testing Checklist
+
+✅ **Build passed:** `npm run build` (CSS: 80.14 kB, JS: 429.08 kB, ~827ms)  
+✅ **No console errors**  
+✅ **No React warnings** (new key format prevents duplicate key warnings)  
+✅ **Single-day jobs:** display without span indicators  
+✅ **Multi-day jobs:**
+  - Show correct START/CONTINUES/ENDS labels per day
+  - Show correct Day X of Y counter
+  - Visual styling applied (borders, gradient, rounding)
+✅ **Status filtering:** still works with span visuals
+✅ **Week navigation:** Previous/Today/Next still work
+✅ **Job click-to-detail:** still opens Job Detail page
+✅ **Onboarding modal:** shows same span visuals in embedded view
+✅ **Form state:** preserved when opening/closing calendar modal
+✅ **All previous functionality:** intact (no regressions)
+
+### What to Test on Hostinger
+
+1. Top bar shows v1.1.023
+2. Calendar page loads without errors
+3. Single-day jobs display normally (no span labels)
+4. Multi-day jobs show correct START/CONTINUES/ENDS labels per day
+5. Day counter shows "Day X of Y" (e.g., "Day 2 of 3")
+6. Start days show rounded left edge + blue left border
+7. Middle days show flat left edge + dashed right border
+8. End days show rounded right edge + blue right border
+9. Gradient backgrounds visible on start/end days (light blue)
+10. Span labels and counters readable (not too small, not too prominent)
+11. REG still most scannable, status chips still visible
+12. Status filters still work with span visuals
+13. Week navigation works (Previous/Today/Next)
+14. Clicking job opens Job Detail
+15. Onboarding calendar modal shows same improved span visuals
+16. Opening/closing calendar modal preserves form data
+17. Save Intake still works
+18. Quote page still works
+19. No horizontal overflow on desktop/tablet/mobile
+20. Light and dark modes both readable
+
+---
