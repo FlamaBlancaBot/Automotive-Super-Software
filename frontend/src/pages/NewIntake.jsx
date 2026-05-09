@@ -1496,12 +1496,41 @@ function StepNotes({ notesCustomerWords, setNotesCustomerWords, notesInternal, s
           </Notice>
         ) : null}
         {customerDetailsLink ? (
-          <Notice tone="info">
-            Customer details request link generated (SMS provider integration TODO):{' '}
-            <a href={customerDetailsLink} target="_blank" rel="noreferrer">
+          <div className="customerDetailsRequestCard">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <div>
+                <h3 className="cardTitle" style={{ margin: '0 0 4px 0' }}>Customer Details Request</h3>
+                <div className="fieldHint">Share this link with the customer to collect missing contact details</div>
+              </div>
+            </div>
+            <div style={{ background: 'rgba(148, 163, 184, 0.06)', padding: 10, borderRadius: 8, marginBottom: 12, fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all', color: 'var(--muted)', border: '1px solid var(--separator)' }}>
               {customerDetailsLink}
-            </a>
-          </Notice>
+            </div>
+            <div className="pageHeaderActions" style={{ gap: 8, marginBottom: 12 }}>
+              <button
+                type="button"
+                className="primaryButton"
+                onClick={() => {
+                  navigator.clipboard.writeText(customerDetailsLink)
+                  alert('Link copied to clipboard')
+                }}
+                title="Copy link to clipboard"
+              >
+                📋 Copy link
+              </button>
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={() => window.open(customerDetailsLink, '_blank')}
+                title="Open link in new tab"
+              >
+                🔗 Open link
+              </button>
+            </div>
+            <div className="fieldHint" style={{ fontSize: 12 }}>
+              ⓘ SMS sending is not connected yet. Copy this link and send it to the customer manually via SMS, email, or WhatsApp.
+            </div>
+          </div>
         ) : null}
 
         {saveResult ? (

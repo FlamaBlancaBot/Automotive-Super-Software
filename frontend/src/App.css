@@ -2309,6 +2309,14 @@
   font-weight: 600;
 }
 
+.customerDetailsRequestCard {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 12px;
+}
+
 .publicOnly {
   width: 100%;
 }

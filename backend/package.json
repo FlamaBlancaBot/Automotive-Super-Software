@@ -1,6 +1,6 @@
 {
   "name": "automotive-super-software-backend",
-  "version": "1.1.023",
+  "version": "1.1.024",
   "private": true,
   "description": "Backend API for Automotive Super Software (internal garage management).",
   "main": "server.js",
