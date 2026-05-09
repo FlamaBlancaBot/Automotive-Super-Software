@@ -59,6 +59,30 @@ function getDaysBetween(startStr, endStr) {
   return days
 }
 
+function getSpanState(jobId, currentDateKey, job, allDays) {
+  const spanDays = getDaysBetween(job.booked_start, job.booked_end)
+  const totalDays = spanDays.length
+  const dayIndex = spanDays.indexOf(currentDateKey)
+
+  if (dayIndex === -1 || totalDays <= 0) {
+    return { isMultiDay: false, isStartDay: true, isMiddleDay: false, isEndDay: true, spanDayIndex: 0, spanTotalDays: 1 }
+  }
+
+  const isMultiDay = totalDays > 1
+  const isStartDay = dayIndex === 0
+  const isEndDay = dayIndex === totalDays - 1
+  const isMiddleDay = isMultiDay && !isStartDay && !isEndDay
+
+  return {
+    isMultiDay,
+    isStartDay,
+    isMiddleDay,
+    isEndDay,
+    spanDayIndex: dayIndex,
+    spanTotalDays: totalDays
+  }
+}
+
 function statusTone(colour, faded) {
   if (faded) return 'chipGrey'
   if (colour === 'green') return 'chipGreen'
@@ -195,11 +219,20 @@ export default function Calendar({ embedded = false }) {
                       const duration = Math.max(30, (endMin != null && startMin != null) ? (endMin - startMin) : Number(j.estimated_duration_minutes || 60))
                       const top = startMin != null ? Math.max(0, (startMin - 8 * 60) * 0.8) : 0
                       const height = Math.max(32, duration * 0.8)
+                      const span = getSpanState(j.id, key, j, days)
+                      const spanClass = span.isMultiDay ? (span.isStartDay ? 'calendarJobCard--start' : span.isEndDay ? 'calendarJobCard--end' : 'calendarJobCard--middle') : ''
+                      const spanLabel = span.isMultiDay ? (span.isStartDay ? 'START' : span.isEndDay ? 'ENDS' : 'CONTINUES') : null
                       return (
-                        <button key={j.id} type="button" className={`calendarJobCard ${j.faded ? 'faded' : ''}`} style={{ top: `${top}px`, height: `${height}px` }} onClick={() => openJob(j.id)}>
+                        <button key={`${j.id}-${key}`} type="button" className={`calendarJobCard ${spanClass} ${j.faded ? 'faded' : ''}`} style={{ top: `${top}px`, height: `${height}px` }} onClick={() => openJob(j.id)}>
                           <VehicleHeader small reg={j.registration} make={j.vehicle_make} model={j.vehicle_model} />
                           <div className="fieldHint" style={{ marginTop: 4 }}>{j.customer_name}</div>
                           <div style={{ fontWeight: 800, marginTop: 2, fontSize: 12 }}>{j.title}</div>
+                          {span.isMultiDay ? (
+                            <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <span className="calendarSpanBadge">{spanLabel}</span>
+                              <span className="calendarSpanCounter">Day {span.spanDayIndex + 1} of {span.spanTotalDays}</span>
+                            </div>
+                          ) : null}
                           <div className="pageHeaderActions" style={{ marginTop: 4, justifyContent: 'flex-start', gap: 6 }}>
                             <StatusChip label={j.status_label || j.status} tone={statusTone(j.status_colour, j.faded)} />
                             {j.quote_status ? <span className="fieldHint">Quote {j.quote_status}</span> : null}

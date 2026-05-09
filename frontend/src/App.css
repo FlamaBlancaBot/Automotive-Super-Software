@@ -2274,6 +2274,41 @@
   opacity: 0.55;
 }
 
+.calendarJobCard--start {
+  border-radius: 10px 4px 4px 10px;
+  border-left: 3px solid var(--accent, #2563eb);
+  background: linear-gradient(to right, rgba(37, 99, 235, 0.08), transparent);
+}
+
+.calendarJobCard--middle {
+  border-radius: 2px;
+  border-left: 3px solid var(--accent, #2563eb);
+  border-right: 1px dashed rgba(37, 99, 235, 0.3);
+}
+
+.calendarJobCard--end {
+  border-radius: 4px 10px 10px 4px;
+  border-right: 3px solid var(--accent, #2563eb);
+  background: linear-gradient(to left, rgba(37, 99, 235, 0.08), transparent);
+}
+
+.calendarSpanBadge {
+  background: rgba(37, 99, 235, 0.15);
+  color: rgba(37, 99, 235, 0.95);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.calendarSpanCounter {
+  color: rgba(148, 163, 184, 0.8);
+  font-size: 10px;
+  font-weight: 600;
+}
+
 .publicOnly {
   width: 100%;
 }
