@@ -5557,3 +5557,310 @@
   }
 }
 
+/* ── MOT Page (Phase 7) ── */
+.motPage {
+  display: flex;
+  flex-direction: column;
+}
+
+.motSearchSection {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.motSearchBox {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  padding: 0 12px;
+  height: 44px;
+  overflow: hidden;
+}
+
+.motSearchIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-right: 8px;
+  opacity: 0.6;
+}
+
+.motSearchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  padding: 0;
+  outline: none;
+}
+
+.motSearchInput::placeholder {
+  color: var(--muted);
+}
+
+.motFilterButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.motFilterButton:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--text);
+}
+
+/* MOT Table */
+.motTableWrap {
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.motTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.motTable thead {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--separator);
+}
+
+.motTable th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.motTable tbody tr {
+  border-bottom: 1px solid var(--separator);
+  transition: background 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.motTable tbody tr:last-child {
+  border-bottom: none;
+}
+
+.motTable tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.motTableRow td {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--text);
+  vertical-align: middle;
+}
+
+/* Status Cell */
+.motStatusCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.motStatusBadge {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.motStatusBadge.passed {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.motStatusBadge.failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.motStatusBadge.in_progress {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.motStatusBadge.booked {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+.motStatusBadge.checking_result {
+  background: rgba(168, 85, 247, 0.15);
+  color: #d8b4fe;
+}
+
+.motStatusBadge.retest_required {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+}
+
+.motStatusBadge.completed {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.motStatusBadge.cancelled {
+  background: rgba(107, 114, 128, 0.15);
+  color: #9ca3af;
+}
+
+.motStatusBadge.neutral {
+  background: rgba(75, 85, 99, 0.15);
+  color: #9ca3af;
+}
+
+.motStatusText {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* REG Cell */
+.motRegCell {
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  color: var(--text-strong);
+  min-width: 100px;
+}
+
+.motRegCell .strong {
+  color: var(--text-strong);
+}
+
+/* Vehicle Cell */
+.motVehicleCell {
+  color: var(--text);
+}
+
+/* Time Cell */
+.motTimeCell {
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 180px;
+}
+
+/* Supplier Cell */
+.motSupplierCell {
+  color: var(--text);
+  min-width: 140px;
+}
+
+/* Check Cell */
+.motCheckCell {
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 180px;
+}
+
+/* Actions Cell */
+.motActionsCell {
+  text-align: right;
+}
+
+.motActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.motActions .miniButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .motSearchSection {
+    flex-direction: column;
+  }
+
+  .motFilterButton {
+    width: 100%;
+  }
+
+  .motTable th,
+  .motTableRow td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .motStatusBadge {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .motTableWrap {
+    overflow-x: auto;
+  }
+
+  .motTable {
+    min-width: 800px;
+  }
+
+  .motTable th,
+  .motTableRow td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .motStatusBadge {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .motStatusText {
+    font-size: 12px;
+  }
+
+  .motActions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .motActions .miniButton {
+    width: 100%;
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}
+

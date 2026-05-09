@@ -862,7 +862,126 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 
 ### What's next
 
-- **Phase 7**: MOT page visual redesign
+- **Phase 8**: Calendar and Kanban pages
+- **Phase 9+**: Additional pages as needed
+
+---
+
+## Phase 7: MOT Page Figma Port (v1.1.018)
+
+**Date:** 2026-05-08
+**Pages redesigned:** MOT Events page (MotEvents.jsx)
+
+### Reference design used
+
+- Figma reference: `docs/Redesign Automotive Management UI/src/app/pages/MOT.tsx`
+- Design system: `docs/Redesign Automotive Management UI/UI_DESIGN_SYSTEM.md`
+
+### Files modified
+
+- `frontend/src/pages/MotEvents.jsx` — Enhanced UI with search box, status badges with icons, improved layout. All API calls preserved.
+- `frontend/src/App.css` — Added 300+ lines for MOT page styling (search, filters, status badges, responsive table)
+- `frontend/src/config/version.js` — Bumped from `1.1.017` to `1.1.018`
+- `backend/package.json` — Bumped from `1.1.017` to `1.1.018`
+- `package.json` (root) — Bumped from `1.1.017` to `1.1.018`
+
+### Visual changes
+
+**Header:**
+- Prominent "Check MOT Result" button (primary gradient)
+- Clearer subtitle text
+
+**Search & Filter:**
+- Added search box with icon for REG, vehicle, supplier name search
+- Styled Filters button alongside search
+- Client-side search that filters rows in real-time
+
+**Status Badges:**
+- Visual icon + text for each MOT status
+- Color-coded backgrounds:
+  - ✓ Passed: green (#4ade80)
+  - ✕ Failed: red (#f87171)
+  - ⏳ In Progress: blue (#60a5fa)
+  - 📅 Booked: indigo (#818cf8)
+  - 🔍 Checking Result: purple (#d8b4fe)
+  - ↻ Retest Required: orange (#fb923c)
+  - ⊘ Cancelled: grey (#9ca3af)
+
+**Table Layout:**
+- REG column now bold/prominent for quick scanning
+- Status column with icon badge + colored text
+- Hover effects on rows
+- Improved column alignment
+- Cleaner spacing and typography
+
+**Actions:**
+- "Check result" button (shortened from "Check result now")
+- "Create quote" button for failed MOT events
+- Responsive action buttons on tablet/mobile
+
+**Empty States:**
+- Clearer empty state messages
+- Handles no results from search
+
+### Functionality preserved
+
+✅ **All state & handlers unchanged:**
+- MOT events list loading
+- Status filtering
+- Check result polling
+- Repair quote creation
+- Error handling
+
+✅ **All API calls unchanged:**
+- `/api/mot-events` — Load MOT events with optional status filter
+- `/api/mot-events/{id}/check-result` — Check MOT result status
+- `/api/mot-events/{id}/create-repair-quote` — Create repair quote for failed MOT
+
+✅ **New features (non-breaking):**
+- Client-side search by REG, make, model, supplier
+- Status icon display with semantic colors
+- Better visual hierarchy
+
+### Backend unchanged
+
+- ✅ Zero changes to backend routes or data models
+- `/api/mot-events` endpoint unchanged
+- All MOT event data and status management preserved
+
+### QuoteDetail.jsx NOT touched
+
+- ✅ Quote page remains completely untouched
+- All quote logic and styling unaffected
+
+### CSS classes added
+
+- `.motPage` — Main container
+- `.motSearchSection` — Search + filter wrapper
+- `.motSearchBox` — Search input container with icon
+- `.motSearchInput` — Search input field
+- `.motFilterButton` — Filter button
+- `.motTableWrap` — Table wrapper card
+- `.motTable` — Table styling
+- `.motTableRow` — Table row hover effects
+- `.motStatusCell` — Status cell with badge + icon
+- `.motStatusBadge` — Icon badge with color variants (passed, failed, in_progress, etc.)
+- `.motStatusText` — Status text display
+- `.motRegCell` — REG column (bold/prominent)
+- `.motVehicleCell` — Vehicle make/model column
+- `.motTimeCell` — MOT time column
+- `.motSupplierCell` — Supplier name column
+- `.motCheckCell` — Next check column
+- `.motActionsCell` — Actions column
+- `.motActions` — Action buttons wrapper
+
+### Responsive design
+
+- **Desktop (≥1024px)**: Full search + filter side by side, table with all columns visible
+- **Tablet (1024px)**: Search and filter stack vertically
+- **Mobile (≤768px)**: Table becomes horizontally scrollable, buttons stack, reduced padding
+
+### What's next
+
 - **Phase 8**: Calendar and Kanban pages
 - **Phase 9+**: Additional pages as needed
 
@@ -873,6 +992,6 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 - ✅ `frontend/src/pages/Dashboard.jsx`
 - ✅ `frontend/src/pages/Jobs.jsx`
 - ✅ `frontend/src/pages/JobDetail.jsx`
+- ✅ `frontend/src/pages/NewIntake.jsx`
 - ✅ `frontend/src/pages/Settings.jsx`
-- ✅ `frontend/src/pages/MOT.jsx`
 - ✅ Backend routes
