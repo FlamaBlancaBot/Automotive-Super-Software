@@ -32,26 +32,49 @@ export default function JobSheetDetail({ jobId, onBack }) {
     load()
   }, [jobId])
 
-  if (status === 'loading') return <div className="emptyState">Loading…</div>
-  if (status === 'error') return <div className="notice bad">{error}</div>
-  if (!job) return <div className="emptyState">Job not found.</div>
+  if (status === 'loading') return <div className="documentPage"><div className="emptyState">Loading job sheet…</div></div>
+  if (status === 'error') return <div className="documentPage"><div className="notice bad">{error}</div></div>
+  if (!job) return <div className="documentPage"><div className="emptyState">Job not found.</div></div>
 
   return (
-    <div className="jobSheet a4JobSheet">
-      <header className="pageHeader noPrint">
-        <div>
-          <h2 className="pageTitle">Job Sheet</h2>
-          <p className="pageSubtitle">Technician layout (A4 print-friendly).</p>
+    <div className="documentPage">
+      <header className="documentHeader noPrint">
+        <div className="documentHeaderLeft">
+          {onBack && (
+            <button type="button" className="documentBackButton" onClick={onBack} title="Back to Job" aria-label="Back to Job">
+              ←
+            </button>
+          )}
+          <div>
+            <h1 className="documentTitle">Job Sheet</h1>
+            <p className="documentSubtitle">Technician layout (A4 print-friendly)</p>
+          </div>
         </div>
-        <div className="pageHeaderActions">
-          <button type="button" className="secondaryButton" onClick={onBack}>Back</button>
-          <button type="button" className="primaryButton" onClick={() => window.print()}>Print job sheet</button>
+        <div className="documentHeaderActions">
+          <button
+            type="button"
+            className="primaryButton"
+            onClick={() => window.print()}
+          >
+            🖨 Print Job Sheet
+          </button>
         </div>
       </header>
 
-      <div className="cardBox printCard">
-        <div className="cardTop"><h3 className="cardTitle">Generated job sheet</h3><div className="fieldHint">Use browser Print → Save as PDF</div></div>
-        <div className="printDocument" style={{ marginTop: 10 }} dangerouslySetInnerHTML={{ __html: renderedHtml || '<p>No template preview available.</p>' }} />
+      <div className="documentCardContainer">
+        <div className="documentCard">
+          <div className="documentCardContent">
+            {renderedHtml ? (
+              <div className="jobSheetContent" dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+            ) : (
+              <div className="emptyState">No job sheet template available. Set one up in Settings → Templates.</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="documentHint noPrint">
+        <p>💡 Use browser <strong>Print → Save as PDF</strong> to generate a job sheet document.</p>
       </div>
     </div>
   )

@@ -998,6 +998,170 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 
 ---
 
+## Phase 8: Invoice and Job Sheet Document UI Port (v1.1.021)
+
+**Date:** 2026-05-09
+**Pages redesigned:** Invoice Detail and Job Sheet Detail (document pages)
+
+### Reference design used
+
+- Figma reference: `docs/Redesign Automotive Management UI/src/app/pages/InvoiceDetail.tsx`
+- Figma reference: `docs/Redesign Automotive Management UI/src/app/pages/JobSheetDetail.tsx`
+- Design system: `docs/Redesign Automotive Management UI/UI_DESIGN_SYSTEM.md`
+
+### Files modified
+
+- `frontend/src/pages/InvoiceDetail.jsx` — Refactored header, status control, document card layout with professional invoice styling
+- `frontend/src/pages/JobSheetDetail.jsx` — Refactored header, simplified document wrapper with print-friendly layout
+- `frontend/src/App.css` — Added 600+ lines for document page styling (headers, cards, invoice layout, print rules)
+- `frontend/src/config/version.js` — Bumped from `1.1.020` to `1.1.021`
+- `backend/package.json` — Bumped from `1.1.020` to `1.1.021`
+- `package.json` (root) — Bumped from `1.1.020` to `1.1.021`
+
+### Invoice Detail Page Visual Changes
+
+**Header:**
+- Back button (small icon) + title + "Print Invoice" button
+- Sticky header with dark background (noPrint)
+
+**Status Control:**
+- Status dropdown selector (Draft/Sent/Paid/Void)
+- Separated control area (noPrint)
+
+**Document Card:**
+- White/light background card with professional invoice layout
+- Max-width: 900px, centered on page
+- Professional typography and spacing
+
+**Invoice Content:**
+- **Invoice Header:** Blue "INVOICE" title with number and company info
+- **Customer & Vehicle Info:** Three-column grid (Bill To, Vehicle, Date)
+- **Line Items Table:** Description, Type, Qty, Unit Price, Total (ex/inc VAT)
+- **Totals Section:** Subtotal ex VAT, VAT, Total inc VAT (highlighted)
+- **Notes Section:** Optional customer-facing notes (no internal costs/markup)
+- **Footer:** Professional thank you message
+
+**Print Output:**
+- No sidebar, topbar, or app shell
+- White background, black text (A4-optimized)
+- Clean borders and spacing
+- No internal pricing data exposed
+
+### Job Sheet Detail Page Visual Changes
+
+**Header:**
+- Back button + "Job Sheet" title + "Print Job Sheet" button
+- Sticky header with dark background (noPrint)
+
+**Document Card:**
+- White/light background with rendered HTML from template
+- Professional layout for workshop technicians
+
+**Content:**
+- Template-rendered job sheet content (vehicle info, customer statement, internal notes, task checklist, parts list)
+- No pricing or internal cost data
+
+**Print Output:**
+- No sidebar, topbar, or app shell
+- A4-optimized layout
+- Professional technical document
+
+**Hint:**
+- Footer text with instruction to use "Print → Save as PDF"
+
+### Functionality Preserved
+
+✅ **Invoice functionality:**
+- Invoice loading from `/api/invoices/{id}`
+- Line items loading and display
+- Status update via `/api/invoices/{id}` PATCH
+- Print template rendering via `/api/templates/invoice/render`
+- Back navigation to job
+- No internal cost/markup/margin exposed (customer-facing only)
+
+✅ **Job Sheet functionality:**
+- Job data loading from `/api/jobs/{id}`
+- Parts orders loading
+- Job sheet template rendering via `/api/templates/job_sheet/render`
+- Back navigation
+- Print via browser window.print()
+- No pricing displayed (workshop internal document)
+
+✅ **Print behavior:**
+- Iframe-based printing for invoices (preserves app shell isolation)
+- No sidebar/topbar/app shell in printed output
+- Browser print dialog (Ctrl+P/Cmd+P) for job sheets
+- PDF save workflow preserved
+- A4 page breaks handled correctly
+
+✅ **Zero backend changes** — All endpoints and data models unchanged
+✅ **QuoteDetail.jsx untouched** — No impact to quote page
+
+### CSS Classes Added
+
+**Document page structure:**
+- `.documentPage` — Main container, dark background
+- `.documentHeader` — Sticky header with back button and actions (noPrint)
+- `.documentBackButton` — Back button styling
+- `.documentTitle` / `.documentSubtitle` — Header typography
+- `.documentHeaderActions` — Action buttons wrapper
+- `.documentControlsSection` — Status/control area (noPrint)
+- `.documentCardContainer` — Centered container for document card
+- `.documentCard` — White document card with shadow
+- `.documentCardContent` — Content wrapper with padding
+
+**Invoice-specific:**
+- `.invoiceHeader` — Invoice title and company info
+- `.invoiceTitle` — Large blue "INVOICE" text
+- `.invoiceNumber` — Invoice ID display
+- `.invoiceCompanyInfo` — Company name and address
+- `.invoiceInfoGrid` — Customer/vehicle/date three-column grid
+- `.invoiceLineItems` — Table container
+- `.invoiceTable` — Professional table styling
+- `.invoiceTotals` — Totals section with grid layout
+- `.invoiceTotalRow` / `.invoiceTotalRowFinal` — Total rows
+- `.invoiceNotes` — Notes section with blue border
+- `.invoiceFooter` — Thank you message
+
+**Job Sheet-specific:**
+- `.jobSheetContent` — Template content wrapper
+- `.documentHint` — Print hint text (noPrint)
+
+**Print styles:**
+- `.noPrint` — Elements hidden in print mode
+- `@media print` — Print-specific layout (no margins, full width, no shadows)
+
+### Responsive Design
+
+- **Desktop (≥1024px):** Full-width card with max-width 900px, centered
+- **Tablet (1024px):** Card padding reduced, adjusted table columns
+- **Mobile (≤768px):** Full-width document, single-column layout, smaller fonts, button stacking
+
+### Print Rules Preserved
+
+✅ **No app shell in print:**
+- `.noPrint` class hides topbar, sidebar, header controls
+- Document card uses full width in print
+- White background, black text for A4 printing
+
+✅ **No internal data exposed:**
+- Customer-facing invoice: no supplier comparison, no cost breakdowns, no markup
+- Job sheet: no line-item pricing, no part costs, technical notes only
+
+✅ **Clean PDF output:**
+- Page breaks handled correctly
+- No unnecessary margins or shadows
+- Professional A4 layout
+- Template-rendered content integrity preserved
+
+### What's next
+
+- **Phase 9**: Calendar and Kanban pages
+- **Phase 10**: Search page and advanced features
+- **Phase 11+**: Additional detail pages (InvoiceList, JobSheetList) if needed
+
+---
+
 ## Phase 7B: MOT Control Fix (v1.1.019)
 
 **Date:** 2026-05-08

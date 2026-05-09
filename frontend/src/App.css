@@ -5868,3 +5868,512 @@
   }
 }
 
+/* ── Document Pages (Invoice & Job Sheet) — Phase 8 ── */
+.documentPage {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-0, #080c14);
+  min-height: 100vh;
+}
+
+.documentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--separator);
+  background: var(--surface-1);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.documentHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.documentBackButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.documentBackButton:hover {
+  background: var(--surface-3, rgba(255, 255, 255, 0.05));
+  border-color: var(--text-strong);
+}
+
+.documentTitle {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: var(--text-strong);
+}
+
+.documentSubtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.documentHeaderActions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.documentHeaderActions .primaryButton {
+  white-space: nowrap;
+}
+
+.documentControlsSection {
+  padding: 16px 24px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--separator);
+}
+
+.documentStatusControl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.documentStatusControl .fieldLabel {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.documentStatusControl .compactInput {
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.documentStatusControl .compactInput:focus {
+  outline: none;
+  border-color: var(--text-strong);
+}
+
+.documentCardContainer {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 32px 24px;
+  overflow: auto;
+}
+
+.documentCard {
+  width: 100%;
+  max-width: 900px;
+  background: #ffffff;
+  color: #000000;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.documentCardContent {
+  padding: 48px;
+  line-height: 1.6;
+}
+
+/* Invoice Styling */
+.invoiceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 3px solid #333;
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+}
+
+.invoiceTitle {
+  font-size: 36px;
+  font-weight: 900;
+  margin: 0 0 8px 0;
+  color: #1e40af;
+  letter-spacing: 1px;
+}
+
+.invoiceNumber {
+  font-size: 18px;
+  margin: 0;
+  color: #333;
+}
+
+.invoiceCompanyInfo {
+  text-align: right;
+}
+
+.invoiceCompanyName {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  color: #333;
+}
+
+.invoiceCompanyDetails {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+}
+
+.invoiceInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.invoiceInfoSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.invoiceInfoLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  margin: 0 0 4px 0;
+  letter-spacing: 0.5px;
+}
+
+.invoiceInfoValue {
+  font-size: 14px;
+  color: #333;
+  margin: 0;
+  font-weight: 500;
+}
+
+.invoiceLineItems {
+  margin-bottom: 32px;
+}
+
+.invoiceTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+}
+
+.invoiceTable thead {
+  background: #f3f4f6;
+  border-bottom: 2px solid #d1d5db;
+}
+
+.invoiceTable th {
+  padding: 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.invoiceTable td {
+  padding: 12px;
+  font-size: 13px;
+  color: #333;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.invoiceTable th:last-child,
+.invoiceTable td:last-child {
+  text-align: right;
+}
+
+.invoiceTotals {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 32px;
+  padding: 24px 0;
+  border-top: 2px solid #d1d5db;
+}
+
+.invoiceTotalRow {
+  display: grid;
+  grid-template-columns: 200px 100px;
+  gap: 16px;
+  font-size: 14px;
+  color: #333;
+}
+
+.invoiceTotalRow span:first-child {
+  text-align: right;
+  font-weight: 500;
+}
+
+.invoiceTotalRow span:last-child {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.invoiceTotalRowFinal {
+  display: grid;
+  grid-template-columns: 200px 100px;
+  gap: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+  border-top: 1px solid #d1d5db;
+  padding-top: 8px;
+}
+
+.invoiceTotalRowFinal span:first-child {
+  text-align: right;
+}
+
+.invoiceTotalRowFinal span:last-child {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.invoiceNotes {
+  margin-bottom: 24px;
+  padding: 12px;
+  background: #f9fafb;
+  border-left: 3px solid #3b82f6;
+}
+
+.invoiceNotesLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  margin: 0 0 4px 0;
+  letter-spacing: 0.5px;
+}
+
+.invoiceNotesValue {
+  font-size: 13px;
+  color: #333;
+  margin: 0;
+}
+
+.invoiceFooter {
+  text-align: center;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 13px;
+  color: #666;
+  font-style: italic;
+}
+
+.invoiceFooter p {
+  margin: 0;
+}
+
+/* Job Sheet Styling */
+.jobSheetContent {
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.jobSheetContent h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 24px 0 12px 0;
+  color: #000;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+
+.jobSheetContent h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 16px 0 8px 0;
+  color: #333;
+}
+
+.jobSheetContent p {
+  margin: 0 0 8px 0;
+  color: #333;
+}
+
+.jobSheetContent table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 12px;
+}
+
+.jobSheetContent table th {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  padding: 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+
+.jobSheetContent table td {
+  border: 1px solid #d1d5db;
+  padding: 8px;
+  color: #333;
+}
+
+.documentHint {
+  padding: 16px 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.documentHint p {
+  margin: 0;
+}
+
+.documentHint strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Print Styles */
+@media print {
+  .noPrint {
+    display: none !important;
+  }
+
+  .documentPage {
+    background: #fff;
+  }
+
+  .documentCardContainer {
+    padding: 0;
+    background: #fff;
+  }
+
+  .documentCard {
+    max-width: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .documentCardContent {
+    padding: 40px;
+  }
+
+  .invoiceHeader {
+    page-break-after: avoid;
+  }
+
+  .invoiceLineItems {
+    page-break-inside: avoid;
+  }
+
+  .invoiceTotals {
+    page-break-before: avoid;
+  }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .documentCardContainer {
+    padding: 24px 12px;
+  }
+
+  .documentCard {
+    max-width: 100%;
+  }
+
+  .documentCardContent {
+    padding: 32px;
+  }
+
+  .invoiceInfoGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .invoiceHeader {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .invoiceCompanyInfo {
+    text-align: left;
+  }
+}
+
+@media (max-width: 768px) {
+  .documentHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .documentHeaderLeft {
+    width: 100%;
+  }
+
+  .documentTitle {
+    font-size: 18px;
+  }
+
+  .documentHeaderActions {
+    width: 100%;
+  }
+
+  .documentHeaderActions button {
+    flex: 1;
+  }
+
+  .documentCardContainer {
+    padding: 16px 8px;
+  }
+
+  .documentCardContent {
+    padding: 24px;
+  }
+
+  .invoiceTitle {
+    font-size: 28px;
+  }
+
+  .invoiceTable th,
+  .invoiceTable td {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+
+  .invoiceTable th {
+    font-size: 10px;
+  }
+
+  .invoiceInfoLabel {
+    font-size: 11px;
+  }
+
+  .invoiceInfoValue {
+    font-size: 13px;
+  }
+
+  .invoiceNotes {
+    padding: 8px;
+  }
+}
+

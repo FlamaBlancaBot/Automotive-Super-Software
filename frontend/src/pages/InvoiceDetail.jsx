@@ -91,13 +91,13 @@ export default function InvoiceDetail({ invoiceId, onBack }) {
   }
 
   if (status === 'loading') {
-    return <div className="jobsPage"><div className="emptyState">Loading invoice…</div></div>
+    return <div className="documentPage"><div className="emptyState">Loading invoice…</div></div>
   }
   if (status === 'error') {
-    return <div className="jobsPage"><div className="emptyState">{error}</div></div>
+    return <div className="documentPage"><div className="emptyState">{error}</div></div>
   }
   if (!invoice) {
-    return <div className="jobsPage"><div className="emptyState">Invoice not found.</div></div>
+    return <div className="documentPage"><div className="emptyState">Invoice not found.</div></div>
   }
 
   const subtotal = Number(invoice.subtotal_ex_vat || 0)
@@ -108,138 +108,147 @@ export default function InvoiceDetail({ invoiceId, onBack }) {
     : '—'
 
   return (
-    <div className="jobsPage">
-      <header className="pageHeader">
-        <div>
-          <VehicleHeader
-            reg={job?.vehicle_registration || ''}
-            make={job?.vehicle_make || ''}
-            model={job?.vehicle_model || ''}
-            subtitle={invoice.invoice_number}
-            reference={`INVOICE #${invoice.id}`}
-          />
-        </div>
-        <div className="pageHeaderActions">
+    <div className="documentPage">
+      <header className="documentHeader noPrint">
+        <div className="documentHeaderLeft">
           {onBack && (
-            <button type="button" className="secondaryButton" onClick={onBack}>
-              Back to Job
+            <button type="button" className="documentBackButton" onClick={onBack} title="Back to Job" aria-label="Back to Job">
+              ←
             </button>
           )}
+          <div>
+            <h1 className="documentTitle">Invoice {invoice.invoice_number}</h1>
+            <p className="documentSubtitle">Reference: #{invoice.id}</p>
+          </div>
+        </div>
+        <div className="documentHeaderActions">
           <button
             type="button"
             className="primaryButton"
             onClick={printInvoice}
             disabled={printStatus === 'loading'}
           >
-            {printStatus === 'loading' ? 'Loading print…' : 'Print Invoice'}
+            {printStatus === 'loading' ? 'Loading…' : '🖨 Print'}
           </button>
         </div>
       </header>
 
-      <div className="cardBox">
-        <div className="cardTop">
-          <h3 className="cardTitle">{invoice.invoice_number}</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label className="fieldLabel" style={{ margin: 0 }}>Status</label>
-            <select
-              className="compactInput"
-              value={invoice.status || 'draft'}
-              disabled={actionStatus === 'saving'}
-              onChange={(e) => updateInvoiceStatus(e.target.value)}
-              style={{ width: 'auto' }}
-            >
-              <option value="draft">Draft</option>
-              <option value="sent">Sent</option>
-              <option value="paid">Paid</option>
-              <option value="void">Void</option>
-            </select>
-          </div>
+      <div className="documentControlsSection noPrint">
+        <div className="documentStatusControl">
+          <label className="fieldLabel">Status:</label>
+          <select
+            className="compactInput"
+            value={invoice.status || 'draft'}
+            disabled={actionStatus === 'saving'}
+            onChange={(e) => updateInvoiceStatus(e.target.value)}
+          >
+            <option value="draft">Draft</option>
+            <option value="sent">Sent</option>
+            <option value="paid">Paid</option>
+            <option value="void">Void</option>
+          </select>
         </div>
-        <div className="fieldGrid" style={{ marginTop: 12 }}>
-          <div className="field">
-            <div className="fieldLabel">Customer</div>
-            <div>{customerName}</div>
-          </div>
-          <div className="field">
-            <div className="fieldLabel">Vehicle</div>
-            <div>
-              {job?.vehicle_registration ? (
-                <span className="mono">{job.vehicle_registration}</span>
-              ) : '—'}
-              {job?.vehicle_make ? ` ${job.vehicle_make}` : ''}
-              {job?.vehicle_model ? ` ${job.vehicle_model}` : ''}
+      </div>
+
+      <div className="documentCardContainer">
+        <div className="documentCard">
+          <div className="documentCardContent">
+            {/* Invoice Header */}
+            <div className="invoiceHeader">
+              <div>
+                <h2 className="invoiceTitle">INVOICE</h2>
+                <p className="invoiceNumber">{invoice.invoice_number}</p>
+              </div>
+              <div className="invoiceCompanyInfo">
+                <p className="invoiceCompanyName">AUTOSS</p>
+                <p className="invoiceCompanyDetails">Service & Repair Garage</p>
+              </div>
+            </div>
+
+            {/* Customer & Vehicle Info */}
+            <div className="invoiceInfoGrid">
+              <div className="invoiceInfoSection">
+                <p className="invoiceInfoLabel">Bill To:</p>
+                <p className="invoiceInfoValue">{customerName}</p>
+              </div>
+              <div className="invoiceInfoSection">
+                <p className="invoiceInfoLabel">Vehicle:</p>
+                <p className="invoiceInfoValue">
+                  {job?.vehicle_registration || '—'}
+                  {job?.vehicle_make ? ` ${job.vehicle_make}` : ''}
+                  {job?.vehicle_model ? ` ${job.vehicle_model}` : ''}
+                </p>
+              </div>
+              <div className="invoiceInfoSection">
+                <p className="invoiceInfoLabel">Date:</p>
+                <p className="invoiceInfoValue">{formatDateTime(invoice.updated_at || invoice.created_at)}</p>
+              </div>
+            </div>
+
+            {/* Line Items Table */}
+            <div className="invoiceLineItems">
+              <table className="invoiceTable">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Type</th>
+                    <th>Qty</th>
+                    <th>Unit ex VAT</th>
+                    <th>Total ex VAT</th>
+                    <th>Total inc VAT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.length ? items.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.description || '—'}</td>
+                      <td>{item.item_type || '—'}</td>
+                      <td className="mono">{item.quantity}</td>
+                      <td className="mono">{fmt(item.unit_price_ex_vat)}</td>
+                      <td className="mono">{fmt(item.total_ex_vat)}</td>
+                      <td className="mono">{fmt(item.total_inc_vat)}</td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', opacity: 0.5, padding: '16px 0' }}>
+                        No line items — invoice may not be linked to an accepted quote.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totals */}
+            <div className="invoiceTotals">
+              <div className="invoiceTotalRow">
+                <span>Subtotal ex VAT:</span>
+                <span className="mono">{fmt(subtotal)}</span>
+              </div>
+              <div className="invoiceTotalRow">
+                <span>VAT:</span>
+                <span className="mono">{fmt(vat)}</span>
+              </div>
+              <div className="invoiceTotalRowFinal">
+                <span>Total inc VAT:</span>
+                <span className="mono">{fmt(total)}</span>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {invoice.notes ? (
+              <div className="invoiceNotes">
+                <p className="invoiceNotesLabel">Notes:</p>
+                <p className="invoiceNotesValue">{invoice.notes}</p>
+              </div>
+            ) : null}
+
+            {/* Footer */}
+            <div className="invoiceFooter">
+              <p>Thank you for your business.</p>
             </div>
           </div>
-          <div className="field">
-            <div className="fieldLabel">Date</div>
-            <div>{formatDateTime(invoice.updated_at || invoice.created_at)}</div>
-          </div>
         </div>
-      </div>
-
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Line Items</h3>
-          <div className="fieldHint">{items.length} item(s)</div>
-        </div>
-        <div className="quoteTableWrap" style={{ marginTop: 12 }}>
-          <table className="quoteTable" style={{ minWidth: 640 }}>
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th>Type</th>
-                <th>Qty</th>
-                <th>Unit ex VAT</th>
-                <th>Total ex VAT</th>
-                <th>Total inc VAT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length ? items.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.description || '—'}</td>
-                  <td>{item.item_type || '—'}</td>
-                  <td className="mono">{item.quantity}</td>
-                  <td className="mono">{fmt(item.unit_price_ex_vat)}</td>
-                  <td className="mono">{fmt(item.total_ex_vat)}</td>
-                  <td className="mono">{fmt(item.total_inc_vat)}</td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', opacity: 0.5, padding: '16px 0' }}>
-                    No line items — invoice may not be linked to an accepted quote.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Totals</h3>
-        </div>
-        <div className="fieldGrid" style={{ marginTop: 12 }}>
-          <div className="field">
-            <div className="fieldLabel">Subtotal ex VAT</div>
-            <div className="mono">{fmt(subtotal)}</div>
-          </div>
-          <div className="field">
-            <div className="fieldLabel">VAT</div>
-            <div className="mono">{fmt(vat)}</div>
-          </div>
-          <div className="field">
-            <div className="fieldLabel">Total inc VAT</div>
-            <div className="mono" style={{ fontWeight: 800, fontSize: 18 }}>{fmt(total)}</div>
-          </div>
-        </div>
-        {invoice.notes ? (
-          <div style={{ marginTop: 12 }}>
-            <div className="fieldLabel">Notes</div>
-            <div style={{ marginTop: 4 }}>{invoice.notes}</div>
-          </div>
-        ) : null}
       </div>
     </div>
   )
