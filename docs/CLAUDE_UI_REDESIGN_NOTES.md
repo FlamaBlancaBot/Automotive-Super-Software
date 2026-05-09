@@ -995,3 +995,94 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 - ✅ `frontend/src/pages/NewIntake.jsx`
 - ✅ `frontend/src/pages/Settings.jsx`
 - ✅ Backend routes
+
+---
+
+## Phase 7B: MOT Control Fix (v1.1.019)
+
+**Date:** 2026-05-08
+**Issue:** Phase 7 introduced incomplete/dead UI controls
+
+### Problems fixed
+
+1. **Dead header button** — "Check MOT Result" button in header had no onClick handler
+   - **Fix:** Removed dead button, keeping header clean
+
+2. **Dead filter button** — "Filters" button had no onClick handler
+   - **Fix:** Removed dead button, restored functional status filter dropdown
+
+3. **Missing status filter UI** — Component had status filter logic but no visible control
+   - **Fix:** Restored functional `<select>` dropdown with 9 status options:
+     - All statuses (default)
+     - Booked
+     - In Progress
+     - Checking Result
+     - Passed
+     - Failed
+     - Retest Required
+     - Completed
+     - Cancelled
+
+4. **Emoji icons in primary UI** — Search box (🔍), filter button (⚙), status icons
+   - **Fix:** Replaced with clean symbol characters:
+     - In Progress: → (arrow)
+     - Booked: ● (bullet)
+     - Checking Result: ◐ (crescent)
+     - Other: standard check (✓), cross (✕), refresh (↻)
+
+### Files modified
+
+- `frontend/src/pages/MotEvents.jsx` — Removed dead buttons, restored status filter dropdown
+- `frontend/src/App.css` — Renamed `.motSearchSection` → `.motControlsSection`, updated `.motFilterButton` → `.motStatusFilter` with dropdown styling
+- `frontend/src/config/version.js` — Bumped from `1.1.018` to `1.1.019`
+- `backend/package.json` — Bumped from `1.1.018` to `1.1.019`
+- `package.json` (root) — Bumped from `1.1.018` to `1.1.019`
+
+### Functionality preserved & restored
+
+✅ **Status filtering now works:**
+- Dropdown changes `filter` state
+- Triggers reload of `/api/mot-events?status={selected}`
+- All 9 status options functional
+
+✅ **Search still works:**
+- Client-side search by REG, vehicle, supplier
+- Independent of status filter
+
+✅ **All other functionality:**
+- MOT events list loads correctly
+- Check result per row works
+- Create quote for failed MOT works
+- REG column remains prominent
+- Table layout clean and scannable
+- No horizontal overflow
+- Light mode readable
+
+✅ **Zero backend changes** — All endpoints unchanged
+✅ **QuoteDetail.jsx untouched** — No impact to quote page
+
+### Controls now in place
+
+- **Search box** — Text input for REG/vehicle/supplier (always visible)
+- **Status filter** — Dropdown select with 9 options (always visible)
+- **Table actions** — Check result, Create quote buttons per row (functional)
+- **No dead buttons** — All controls have proper handlers
+
+### Build & test
+
+- ✅ npm run build: Success (CSS: 73.33 kB, gzip: 12.62 kB)
+- ✅ All controls wired
+- ✅ Status filtering functional
+- ✅ Ready for Hostinger deployment
+
+### What to test on Hostinger
+
+1. Top bar shows v1.1.019
+2. MOT page loads without errors
+3. Search box filters MOT events by REG/vehicle/supplier
+4. Status dropdown filters by status (All, Booked, In Progress, etc.)
+5. Changing status filter reloads events correctly
+6. Check result button works per row
+7. Create quote button works for failed MOT events only
+8. REG column remains easy to scan
+9. No horizontal overflow on desktop/tablet/mobile

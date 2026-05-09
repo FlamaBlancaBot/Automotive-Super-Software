@@ -66,16 +66,13 @@ export default function MotEvents({ onOpenQuote }) {
           <h2 className="pageTitle">MOT Events</h2>
           <p className="pageSubtitle">Booked/in-progress MOT checks and result polling.</p>
         </div>
-        <button type="button" className="primaryButton">
-          Check MOT Result
-        </button>
       </header>
 
       {error ? <div className="notice bad">{error}</div> : null}
 
-      <div className="motSearchSection">
+      <div className="motControlsSection">
         <div className="motSearchBox">
-          <span className="motSearchIcon">🔍</span>
+          <span className="motSearchIcon">⚙</span>
           <input
             type="text"
             value={searchQuery}
@@ -84,9 +81,22 @@ export default function MotEvents({ onOpenQuote }) {
             className="motSearchInput"
           />
         </div>
-        <button type="button" className="motFilterButton">
-          ⚙ Filters
-        </button>
+
+        <select
+          className="motStatusFilter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="">All statuses</option>
+          <option value="booked">Booked</option>
+          <option value="in_progress">In Progress</option>
+          <option value="checking_result">Checking Result</option>
+          <option value="passed">Passed</option>
+          <option value="failed">Failed</option>
+          <option value="retest_required">Retest Required</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
       </div>
 
       {status === 'loading' ? (
@@ -101,7 +111,7 @@ export default function MotEvents({ onOpenQuote }) {
         <>
           {filteredRows.length === 0 ? (
             <div className="emptyState">
-              {searchQuery ? 'No MOT events match your search.' : 'No MOT events found.'}
+              {searchQuery || filter ? 'No MOT events match your criteria.' : 'No MOT events found.'}
             </div>
           ) : (
             <div className="motTableWrap">
@@ -195,11 +205,11 @@ function getStatusColor(status) {
 function getStatusIcon(status) {
   if (status === 'passed') return '✓'
   if (status === 'failed') return '✕'
-  if (status === 'in_progress') return '⏳'
-  if (status === 'booked') return '📅'
-  if (status === 'checking_result') return '🔍'
+  if (status === 'in_progress') return '→'
+  if (status === 'booked') return '●'
+  if (status === 'checking_result') return '◐'
   if (status === 'retest_required') return '↻'
   if (status === 'completed') return '✓'
-  if (status === 'cancelled') return '⊘'
-  return '•'
+  if (status === 'cancelled') return '✕'
+  return '●'
 }

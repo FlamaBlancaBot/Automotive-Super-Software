@@ -5563,10 +5563,11 @@
   flex-direction: column;
 }
 
-.motSearchSection {
+.motControlsSection {
   display: flex;
   gap: 12px;
   margin-bottom: 24px;
+  align-items: center;
 }
 
 .motSearchBox {
@@ -5608,26 +5609,29 @@
   color: var(--muted);
 }
 
-.motFilterButton {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--surface-2);
+.motStatusFilter {
+  padding: 10px 12px;
+  background: var(--surface-1);
   border: 1px solid var(--separator);
   border-radius: 10px;
   color: var(--text);
   font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
   white-space: nowrap;
   flex-shrink: 0;
+  min-width: 140px;
 }
 
-.motFilterButton:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--text);
+.motStatusFilter:hover {
+  border-color: var(--text-strong);
+  background: var(--surface-2);
+}
+
+.motStatusFilter:focus {
+  outline: none;
+  border-color: var(--gradient-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
 /* MOT Table */
@@ -5806,11 +5810,11 @@
 
 /* Responsive */
 @media (max-width: 1024px) {
-  .motSearchSection {
+  .motControlsSection {
     flex-direction: column;
   }
 
-  .motFilterButton {
+  .motStatusFilter {
     width: 100%;
   }
 
