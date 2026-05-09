@@ -32,7 +32,7 @@ export default function Sidebar({ activeKey, onNavigate, isOpen, onClose, onLogo
     if (typeof onClose === 'function') onClose()
   }
 
-  const visibleItems = NAV_ITEMS.filter(x => !x.hidden)
+  const visibleItems = NAV_ITEMS.filter(x => !x.hidden && x.key !== 'settings')
 
   return (
     <>
