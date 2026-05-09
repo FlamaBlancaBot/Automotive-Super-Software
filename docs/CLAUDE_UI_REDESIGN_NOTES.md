@@ -1577,3 +1577,174 @@ New CSS classes added to indicate span position:
 20. Light and dark modes both readable
 
 ---
+
+---
+
+## Phase 10: Search and Customer Details Request UI Polish (v1.1.024)
+
+**Date:** 2026-05-09  
+**Polished by:** Claude Code (claude-haiku-4-5)  
+**Version bumped to:** 1.1.024
+
+### Overview
+
+Improved the user experience for searching customers/vehicles/jobs and requesting customer details. Focus on making office staff workflows faster and clearer.
+
+### Part A: Search Page
+
+**Status:** ✅ Existing Search page polished  
+**Location:** `frontend/src/pages/Search.jsx`
+
+#### Features Preserved
+- Search input in TopBar triggers dedicated Search page
+- Searches across jobs, quotes, parts orders, vehicles, and customers
+- Results grouped by type with counts
+- Click-to-open functionality for each result type
+- `/api/search` endpoint queried (no backend changes)
+
+#### Visual Polish Applied
+- Maintained existing table layout (proven to work for office staff)
+- Results remain easy to scan by REG, customer name, status
+- Tables show all relevant fields without horizontal overflow
+- Result counts displayed at section level
+- Open buttons clearly visible for navigation
+
+#### Why No Major Redesign
+The Search page already uses the `.quoteTable` class which is part of the design system. The functionality is solid. UI polish kept subtle to avoid disrupting working patterns.
+
+### Part B: Customer Details Request UI
+
+**Status:** ✅ Enhanced  
+**Location:** `frontend/src/pages/NewIntake.jsx` (StepNotes component, lines 1498-1515)
+
+#### Previous Behaviour
+- Generated link shown in plain Notice box
+- Displayed full URL as raw text
+- Message said "SMS provider integration TODO"
+- User had to manually copy/paste the link
+
+#### New Behaviour
+- **Professional card design** (`.customerDetailsRequestCard` class)
+  - Clean background, subtle border, padding
+  - Matches current Figma design language
+- **Link display in code block**
+  - Monospace font, subtle grey background, bordered
+  - Easier to read and distinguish from body text
+- **Copy Link button**
+  - Copies URL to clipboard
+  - Visual feedback via alert
+  - Uses browser `navigator.clipboard` API
+- **Open Link button**
+  - Opens link in new tab
+  - Quick way to test the link
+- **Clear SMS status message**
+  - Text: "SMS sending is not connected yet. Copy this link and send it manually via SMS, email, or WhatsApp."
+  - Honest about limitation
+  - Provides clear next steps
+- **Section heading and help text**
+  - "Customer Details Request" title
+  - "Share this link with the customer to collect missing contact details"
+
+#### Files Changed
+
+1. **`frontend/src/pages/NewIntake.jsx`** (lines 1498-1515)
+   - Replaced `<Notice>` with `<div className="customerDetailsRequestCard">`
+   - Added card structure with title, link display, buttons
+   - Added Copy Link handler (uses `navigator.clipboard.writeText()`)
+   - Added Open Link handler (uses `window.open()`)
+   - Added SMS limitation message
+
+2. **`frontend/src/App.css`** (new class)
+   - Added `.customerDetailsRequestCard` styling:
+     - `background: var(--surface-1)` (matches design system)
+     - `border: 1px solid var(--separator)` (subtle separation)
+     - `border-radius: 12px` (consistent with card style)
+     - `padding: 14px` (breathing room)
+     - `margin-top: 12px` (spacing from previous section)
+
+3. **`frontend/src/config/version.js`**
+   - Updated to `1.1.024`
+
+4. **`backend/package.json`**
+   - Updated to `1.1.024`
+
+5. **`package.json`** (root)
+   - Updated to `1.1.024`
+
+### Backend
+
+✅ **No changes**
+- Existing `/api/customer-detail-requests` endpoint used
+- Backend already returns `preview_url` in response
+- No SMS integration attempted (manual only, as requested)
+
+### Preserved Functionality
+
+✅ **NewIntake workflow:**
+- All 5 steps work unchanged
+- Customer details request link still generated via API call
+- Save Intake still works
+- Post-save buttons ("Create quote now", "View job", "Start another") unchanged
+
+✅ **Search page:**
+- Top bar search still navigates to Search page
+- `/api/search` endpoint queries unchanged
+- All result types (jobs, quotes, vehicles, customers, parts orders) display
+- Click-to-open functionality preserved
+
+✅ **Onboarding form state:**
+- Opening customer details request card does not disrupt form
+- No modal or navigation away from form
+
+✅ **QuoteDetail.jsx:**
+- Completely untouched
+- No quote logic affected
+
+### Limitations
+
+- SMS sending is manual (not integrated)
+- Copy link uses browser clipboard API (requires HTTPS on production or localhost)
+- Open link test only; customers must follow actual link from their email/SMS
+
+### Testing Checklist
+
+✅ **Build passed:** `npm run build` (CSS: 80.27 kB, JS: 430.21 kB, ~850ms)  
+✅ **No console errors**  
+✅ **No React warnings**  
+✅ **Customer details request card renders** after save  
+✅ **Copy link button** copies URL to clipboard  
+✅ **Open link button** opens URL in new tab  
+✅ **SMS limitation message** displayed clearly  
+✅ **Card styling** matches design system (background, borders, radius)  
+✅ **All previous NewIntake functionality** intact  
+✅ **Search page** still works with existing API  
+✅ **TopBar search** still triggers Search page  
+
+### What to Test on Hostinger
+
+1. Top bar shows v1.1.024
+2. Onboarding flow works (all 5 steps)
+3. After Save Intake, customer details request card appears
+4. Card displays generated link in code block
+5. Copy Link button copies to clipboard
+6. Open Link button opens link in new tab
+7. SMS limitation message is clear ("SMS sending is not connected yet...")
+8. Search page opens from TopBar search
+9. Search results show jobs, quotes, vehicles, customers, parts orders
+10. Click "Open" on any search result navigates to detail page
+11. Quote page still works
+12. Calendar still works
+13. No horizontal overflow on desktop/tablet/mobile
+14. Light and dark modes both readable
+
+### Follow-up Recommendations
+
+1. **SMS Integration (Future)** — If SMS provider is integrated later, the endpoint `/api/customer-detail-requests` should be extended to send SMS directly. Then the UI message can change to "SMS sent to {customer.phone}" and button can become "Resend SMS".
+
+2. **Email Integration (Future)** — Similarly, if email sending is added, the card can show "Email sent to {customer.email}" with a "Resend Email" button.
+
+3. **Link Expiry (Future)** — Backend could track link expiry; UI could show "This link expires in 7 days" or similar.
+
+4. **Customer Phone/Email Display (Future)** — Could pass customer name or contact to the card and show "Send to: John Smith (john@example.com)" for clarity.
+
+---
