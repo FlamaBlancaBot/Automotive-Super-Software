@@ -1250,3 +1250,135 @@ Service Bay panel is marked with a "Demo" label. The 6-bay configuration is UI-o
 7. Create quote button works for failed MOT events only
 8. REG column remains easy to scan
 9. No horizontal overflow on desktop/tablet/mobile
+
+---
+
+## Phase 9: Workshop Calendar Planner (v1.1.022)
+
+**Date:** 2026-05-09  
+**Redesigned by:** Claude Code (claude-haiku-4-5)  
+**Version bumped to:** 1.1.022
+
+### Overview
+
+Enhanced the Calendar view to better visualize garage scheduling and integrated quick-access calendar into the Onboarding workflow. Key improvements focus on multi-day job visualization and job filtering by status.
+
+### Features Implemented
+
+#### 1. Multi-day Job Visualization
+- Jobs now appear on **all calendar days they span**, not just their start date
+- Example: A 3-day job (Mon–Wed) appears in three calendar columns
+- Safe date calculation: uses `Date.setDate()` to advance one day at a time, handles month/year boundaries
+- Helper functions added:
+  - `parseDate(dateStr)` — Safely converts "2026-05-15" or "2026-05-15 14:30:00" to Date
+  - `getDaysBetween(startStr, endStr)` — Returns array of YYYY-MM-DD strings for all days in range
+
+#### 2. Status-Based Job Filtering
+- Added 7 status filter checkboxes in Calendar view:
+  - In Progress, Completed, Cancelled, Waiting Parts, MOT, Needs Quote, Ready to Collect
+- All statuses enabled by default
+- Clicking checkbox updates filter state instantly
+- Unknown statuses always shown (graceful degradation)
+- Filters work in both full-page Calendar and embedded modal versions
+
+#### 3. Onboarding Calendar Integration
+- New button in **Booking Details step (StepBooking):** "View Workshop Calendar"
+- Opens compact Calendar in a **fixed-position modal** without disrupting form
+- Modal features:
+  - Shows embedded Calendar component (header/page chrome hidden via `embedded={true}`)
+  - ✕ close button top-right
+  - Click outside to close
+  - Responsive: 90vw width, 85vh height
+  - Form state preserved when modal closes (no data loss)
+
+### Files Changed
+
+#### Frontend
+- **`frontend/src/pages/Calendar.jsx`**
+  - Added `STATUS_FILTERS` object (7 status keys with display labels)
+  - Added `statusFilters` state (checkbox values, default all true)
+  - Added `parseDate()` and `getDaysBetween()` helper functions
+  - Refactored `jobsByDate` memo to distribute jobs across all days they span
+  - Added status filter UI: 7 checkboxes below week navigation buttons
+  - Fixed filter logic: unknown statuses always included (not filtered out)
+
+- **`frontend/src/pages/NewIntake.jsx`**
+  - Imported Calendar component at top of file
+  - Added `showingCalendarModal` state (boolean, default false)
+  - Added `onOpenCalendar()` handler function
+  - Updated `StepBooking` component signature to accept `onOpenCalendar` prop
+  - Added "View Workshop Calendar" button next to "Check availability" button in Booking Details step
+  - Added modal overlay rendering with Calendar component inside (at end of return statement, before closing intakeWizard div)
+  - Modal uses existing CSS classes: `.modalOverlay` and `.modal`
+
+#### Version Files (3x)
+- **`frontend/src/config/version.js`** — Updated to `1.1.022`
+- **`backend/package.json`** — Updated to `1.1.022`
+- **`package.json`** (root) — Updated to `1.1.022`
+
+### Functionality Preserved
+
+✅ **Calendar core functionality unchanged:**
+- Week navigation (Previous/Today/Next buttons) works as before
+- Show inactive/unbooked jobs toggle preserved
+- Job click-to-open-detail functionality preserved
+- Time-based job positioning unchanged (uses booked_start minutes)
+
+✅ **Onboarding workflow unchanged:**
+- All 5 steps work as before
+- Form validation preserved
+- API calls to `/api/intake` unchanged
+- Availability check button still functions
+- MOT booking fields still present and functional
+- Form state preserved when modal opens/closes
+
+✅ **Backend unchanged:**
+- `/api/calendar/jobs` endpoint unchanged — already returns multi-day data via booked_start/booked_end
+- No new API endpoints required
+- No database changes required
+
+✅ **CSS:**
+- No App.css changes — uses existing `.modalOverlay` and `.modal` styles
+- Inline styles for modal sizing and margins only
+- Calendar styling unchanged
+
+### Testing Checklist
+
+- ✅ Calendar shows jobs spanning multiple days (job appears on each day of span)
+- ✅ Status filter checkboxes appear in Calendar view
+- ✅ Toggling status checkbox hides/shows relevant jobs
+- ✅ Unknown statuses appear regardless of filter state
+- ✅ "View Workshop Calendar" button appears in Onboarding Booking Details step
+- ✅ Clicking "View Workshop Calendar" opens modal without closing form
+- ✅ Modal closes on ✕ button click or click-outside
+- ✅ Form state preserved after modal close (no data loss)
+- ✅ Embedded calendar in modal hides page header
+- ✅ All previous Calendar functionality still works (week nav, job click, inactive toggle)
+- ✅ All previous Onboarding functionality still works (validation, save, MOT fields)
+- ✅ Build succeeds: `npm run build` (CSS: ~79 kB, JS: ~428 kB)
+- ✅ No console errors or warnings
+- ✅ Responsive on desktop, tablet, mobile
+- ✅ Git history clean: commit message documents all changes
+
+### Build Status
+
+✅ **npm run build:** Success  
+- CSS: 79.48 kB (gzip: 13.61 kB)  
+- JS: 428.23 kB (gzip: 105.40 kB)  
+- No errors, no warnings  
+- Vite build time: ~861ms  
+
+### What to Test on Hostinger
+
+1. Top bar shows v1.1.022
+2. Calendar page loads and displays week view
+3. Multi-day jobs appear on all days they span (not just start date)
+4. Status filter checkboxes appear and toggling them hides/shows jobs
+5. Week navigation works (Previous/Today/Next)
+6. "View Workshop Calendar" button appears in Onboarding Booking Details
+7. Opening calendar modal doesn't close the form or lose input
+8. Calendar in modal is responsive and fully functional
+9. Closing modal returns to Onboarding form with all data intact
+10. All previous functionality preserved (Quote page, MOT page, Jobs, etc.)
+
+---
