@@ -16,6 +16,11 @@ function pad4(n) {
   return String(n).padStart(4, '0')
 }
 
+async function ensureJobExists(db, jobId) {
+  const row = await db.get(`SELECT id FROM jobs WHERE id = ?`, [jobId])
+  return Boolean(row && row.id)
+}
+
 async function generateQuoteNumber(tx) {
   const year = new Date().getFullYear()
   const prefix = `Q-${year}-`
@@ -281,6 +286,173 @@ function createJobsRouter({ db }) {
       res.json({ ok: true, job, quote: quote || null, parts: parts || [] })
     } catch {
       res.status(500).json({ ok: false, error: 'Failed to load job sheet.' })
+    }
+  })
+
+  router.get('/jobs/:id/technicians', async (req, res) => {
+    const jobId = toInt(req.params.id, 0)
+    if (!jobId) return res.status(400).json({ ok: false, error: 'Invalid job id.' })
+    try {
+      if (!(await ensureJobExists(db, jobId))) {
+        return res.status(404).json({ ok: false, error: 'Job not found.' })
+      }
+      const assignments = await db.all(
+        `SELECT
+          a.id,
+          a.job_id,
+          a.technician_id,
+          a.assignment_role,
+          a.estimated_hours,
+          a.actual_hours,
+          a.status,
+          a.assigned_at,
+          a.completed_at,
+          a.created_at,
+          a.updated_at,
+          t.name AS technician_name,
+          t.email AS technician_email,
+          t.phone AS technician_phone,
+          t.role_title AS technician_role_title,
+          t.skills_notes AS technician_skills_notes,
+          t.active AS technician_active
+        FROM job_technician_assignments a
+        JOIN technicians t ON t.id = a.technician_id
+        WHERE a.job_id = ?
+        ORDER BY a.assigned_at DESC, a.id DESC`,
+        [jobId],
+      )
+      res.json({ ok: true, assignments: assignments || [] })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to load job technicians.' })
+    }
+  })
+
+  router.post('/jobs/:id/technicians', async (req, res) => {
+    const jobId = toInt(req.params.id, 0)
+    if (!jobId) return res.status(400).json({ ok: false, error: 'Invalid job id.' })
+    const body = req.body || {}
+    const technicianId = toInt(body.technician_id, 0)
+    if (!technicianId) return res.status(400).json({ ok: false, error: 'technician_id is required.' })
+    const assignmentRole = String(body.assignment_role || '').trim() || null
+    const estimatedHours = body.estimated_hours == null || body.estimated_hours === '' ? null : Number(body.estimated_hours)
+    const actualHours = body.actual_hours == null || body.actual_hours === '' ? null : Number(body.actual_hours)
+    const status = String(body.status || 'assigned').trim().toLowerCase()
+    if (estimatedHours != null && !Number.isFinite(estimatedHours)) return res.status(400).json({ ok: false, error: 'estimated_hours must be numeric.' })
+    if (actualHours != null && !Number.isFinite(actualHours)) return res.status(400).json({ ok: false, error: 'actual_hours must be numeric.' })
+    try {
+      if (!(await ensureJobExists(db, jobId))) {
+        return res.status(404).json({ ok: false, error: 'Job not found.' })
+      }
+      const tech = await db.get(`SELECT id FROM technicians WHERE id = ?`, [technicianId])
+      if (!tech) return res.status(404).json({ ok: false, error: 'Technician not found.' })
+      const created = await db.run(
+        `INSERT INTO job_technician_assignments
+         (job_id, technician_id, assignment_role, estimated_hours, actual_hours, status, assigned_at, completed_at)
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`,
+        [jobId, technicianId, assignmentRole, estimatedHours, actualHours, status, status === 'completed' ? new Date() : null],
+      )
+      const assignment = await db.get(`SELECT * FROM job_technician_assignments WHERE id = ?`, [created.lastInsertId])
+      res.status(201).json({ ok: true, assignment })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to assign technician.' })
+    }
+  })
+
+  router.patch('/jobs/:id/technicians/:assignmentId', async (req, res) => {
+    const jobId = toInt(req.params.id, 0)
+    const assignmentId = toInt(req.params.assignmentId, 0)
+    if (!jobId || !assignmentId) return res.status(400).json({ ok: false, error: 'Invalid ids.' })
+    const body = req.body || {}
+    try {
+      const row = await db.get(`SELECT * FROM job_technician_assignments WHERE id = ? AND job_id = ?`, [assignmentId, jobId])
+      if (!row) return res.status(404).json({ ok: false, error: 'Assignment not found.' })
+      const nextStatus = body.status != null ? String(body.status).trim().toLowerCase() : row.status
+      const next = {
+        technician_id: body.technician_id != null ? toInt(body.technician_id, row.technician_id) : row.technician_id,
+        assignment_role: body.assignment_role != null ? String(body.assignment_role).trim() || null : row.assignment_role,
+        estimated_hours: body.estimated_hours != null ? (body.estimated_hours === '' ? null : Number(body.estimated_hours)) : row.estimated_hours,
+        actual_hours: body.actual_hours != null ? (body.actual_hours === '' ? null : Number(body.actual_hours)) : row.actual_hours,
+        status: nextStatus,
+      }
+      if (next.estimated_hours != null && !Number.isFinite(next.estimated_hours)) return res.status(400).json({ ok: false, error: 'estimated_hours must be numeric.' })
+      if (next.actual_hours != null && !Number.isFinite(next.actual_hours)) return res.status(400).json({ ok: false, error: 'actual_hours must be numeric.' })
+      await db.run(
+        `UPDATE job_technician_assignments
+         SET technician_id = ?, assignment_role = ?, estimated_hours = ?, actual_hours = ?, status = ?, completed_at = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [next.technician_id, next.assignment_role, next.estimated_hours, next.actual_hours, next.status, next.status === 'completed' ? new Date() : row.completed_at, assignmentId],
+      )
+      const updated = await db.get(`SELECT * FROM job_technician_assignments WHERE id = ?`, [assignmentId])
+      res.json({ ok: true, assignment: updated })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to update assignment.' })
+    }
+  })
+
+  router.delete('/jobs/:id/technicians/:assignmentId', async (req, res) => {
+    const jobId = toInt(req.params.id, 0)
+    const assignmentId = toInt(req.params.assignmentId, 0)
+    if (!jobId || !assignmentId) return res.status(400).json({ ok: false, error: 'Invalid ids.' })
+    try {
+      await db.run(`DELETE FROM job_technician_assignments WHERE id = ? AND job_id = ?`, [assignmentId, jobId])
+      res.json({ ok: true })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to remove assignment.' })
+    }
+  })
+
+  router.get('/jobs/:id/activity', async (req, res) => {
+    const jobId = toInt(req.params.id, 0)
+    if (!jobId) return res.status(400).json({ ok: false, error: 'Invalid job id.' })
+    try {
+      if (!(await ensureJobExists(db, jobId))) {
+        return res.status(404).json({ ok: false, error: 'Job not found.' })
+      }
+      const events = await db.all(
+        `SELECT
+          e.id, e.job_id, e.technician_id, e.event_type, e.title, e.description, e.metadata_json, e.created_at,
+          t.name AS technician_name
+         FROM job_activity_events e
+         LEFT JOIN technicians t ON t.id = e.technician_id
+         WHERE e.job_id = ?
+         ORDER BY e.created_at DESC, e.id DESC
+         LIMIT 200`,
+        [jobId],
+      )
+      res.json({ ok: true, events: events || [] })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to load job activity.' })
+    }
+  })
+
+  router.post('/jobs/:id/activity', async (req, res) => {
+    const jobId = toInt(req.params.id, 0)
+    if (!jobId) return res.status(400).json({ ok: false, error: 'Invalid job id.' })
+    const body = req.body || {}
+    const eventType = String(body.event_type || '').trim().toLowerCase()
+    const title = String(body.title || '').trim()
+    const description = body.description != null ? String(body.description).trim() : null
+    const technicianId = body.technician_id != null && body.technician_id !== '' ? toInt(body.technician_id, 0) : null
+    const metadataJson = body.metadata_json != null ? JSON.stringify(body.metadata_json) : null
+    if (!eventType || !title) return res.status(400).json({ ok: false, error: 'event_type and title are required.' })
+    if (technicianId != null && !technicianId) return res.status(400).json({ ok: false, error: 'Invalid technician_id.' })
+    try {
+      if (!(await ensureJobExists(db, jobId))) {
+        return res.status(404).json({ ok: false, error: 'Job not found.' })
+      }
+      if (technicianId) {
+        const tech = await db.get(`SELECT id FROM technicians WHERE id = ?`, [technicianId])
+        if (!tech) return res.status(404).json({ ok: false, error: 'Technician not found.' })
+      }
+      const created = await db.run(
+        `INSERT INTO job_activity_events (job_id, technician_id, event_type, title, description, metadata_json)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [jobId, technicianId, eventType, title, description, metadataJson],
+      )
+      const event = await db.get(`SELECT * FROM job_activity_events WHERE id = ?`, [created.lastInsertId])
+      res.status(201).json({ ok: true, event })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to add job activity event.' })
     }
   })
 

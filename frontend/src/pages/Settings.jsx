@@ -36,7 +36,7 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
   const [error, setError] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
 
-  const [techDraft, setTechDraft] = useState({ name: '', capabilities: '', active: true })
+  const [techDraft, setTechDraft] = useState({ name: '', email: '', phone: '', role: '', skills_notes: '', capabilities: '', active: true })
   const [supplierDraft, setSupplierDraft] = useState({
     name: '',
     contact_name: '',
@@ -140,10 +140,14 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
     try {
       await apiPost('/api/admin/technicians', {
         name: toOperationalUpper(techDraft.name),
+        email: String(techDraft.email || '').trim(),
+        phone: techDraft.phone || '',
+        role: toOperationalUpper(techDraft.role),
+        skills_notes: toOperationalUpper(techDraft.skills_notes),
         capabilities: toOperationalUpper(techDraft.capabilities),
         active: techDraft.active ? 1 : 0,
       })
-      setTechDraft({ name: '', capabilities: '', active: true })
+      setTechDraft({ name: '', email: '', phone: '', role: '', skills_notes: '', capabilities: '', active: true })
       const data = await apiGet('/api/admin/technicians')
       setTechnicians(data.technicians || [])
       setSaveMessage('Technician added.')
@@ -157,6 +161,10 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
     try {
       await apiPatch(`/api/admin/technicians/${modal.data.id}`, {
         name: toOperationalUpper(modal.data.name),
+        email: String(modal.data.email || '').trim(),
+        phone: modal.data.phone || '',
+        role: toOperationalUpper(modal.data.role),
+        skills_notes: toOperationalUpper(modal.data.skills_notes),
         capabilities: toOperationalUpper(modal.data.capabilities),
         active: modal.data.active ? 1 : 0,
       })
@@ -511,13 +519,16 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
           <div className="quoteTableWrap" style={{ marginTop: 12 }}>
             <table className="quoteTable">
               <thead>
-                <tr><th>Name</th><th>Capabilities</th><th>Active</th><th></th></tr>
+                <tr><th>Name</th><th>Role</th><th>Phone</th><th>Email</th><th>Skills/Notes</th><th>Active</th><th></th></tr>
               </thead>
               <tbody>
                 {technicians.map((t) => (
                   <tr key={t.id}>
                     <td>{t.name}</td>
-                    <td>{t.capabilities || '—'}</td>
+                    <td>{t.role || '—'}</td>
+                    <td>{t.phone || '—'}</td>
+                    <td>{t.email || '—'}</td>
+                    <td>{t.skills_notes || t.capabilities || '—'}</td>
                     <td>{Number(t.active) ? 'YES' : 'NO'}</td>
                     <td>
                       <button type="button" className="miniButton" onClick={() => setModal({ type: 'technician-edit', data: { ...t, active: Number(t.active) === 1 } })}>Edit</button>{' '}
@@ -808,7 +819,10 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
             <>
               <h3 className="cardTitle">{modal.type === 'technician-add' ? 'Add technician' : 'Edit technician'}</h3>
               <Field label="Name"><input className="input" value={modal.data.name || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, name: e.target.value } }))} /></Field>
-              <Field label="Capabilities"><input className="input" value={modal.data.capabilities || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, capabilities: e.target.value } }))} /></Field>
+              <Field label="Role / title"><input className="input" value={modal.data.role || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, role: e.target.value } }))} /></Field>
+              <Field label="Email"><input className="input" value={modal.data.email || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, email: e.target.value } }))} /></Field>
+              <Field label="Phone"><input className="input" value={modal.data.phone || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, phone: e.target.value } }))} /></Field>
+              <Field label="Skills / notes"><textarea className="textarea" rows={4} value={modal.data.skills_notes || modal.data.capabilities || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, skills_notes: e.target.value, capabilities: e.target.value } }))} /></Field>
               <div className="pageHeaderActions"><button className="primaryButton" type="button" onClick={modal.type === 'technician-add' ? async () => { setTechDraft(modal.data); await addTechnician(); setModal({ type: '', data: null }) } : saveTechnicianEdit}>Save</button></div>
             </>
           ) : null}

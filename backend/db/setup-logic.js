@@ -17,6 +17,8 @@ const SETUP_TABLES = [
   'predefined_quote_items',
   'company_settings',
   'technicians',
+  'job_technician_assignments',
+  'job_activity_events',
   'parts_orders',
   'goods_received',
   'part_status_logs',
@@ -165,6 +167,10 @@ async function migrateDatabase(db) {
   await ensureColumn(db, 'jobs', 'technician_notes', 'TEXT NULL')
   await ensureColumn(db, 'jobs', 'extra_work_found', 'TEXT NULL')
   await ensureColumn(db, 'jobs', 'final_checks', 'TEXT NULL')
+  await ensureColumn(db, 'technicians', 'email', 'VARCHAR(180) NULL')
+  await ensureColumn(db, 'technicians', 'phone', 'VARCHAR(40) NULL')
+  await ensureColumn(db, 'technicians', 'role_title', 'VARCHAR(120) NULL')
+  await ensureColumn(db, 'technicians', 'skills_notes', 'TEXT NULL')
 
   // parts_orders status simplification migration (safe, non-destructive).
   await db.run(`UPDATE parts_orders SET status = 'pending' WHERE status = 'to_order'`)

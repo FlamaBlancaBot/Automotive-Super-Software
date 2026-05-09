@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { apiGet, apiPost } from '../api/http'
+import { apiDelete, apiGet, apiPatch, apiPost } from '../api/http'
 import { setDocumentTitle } from '../utils/title'
 import { partsOrderTone } from '../utils/statusChips'
 import VehicleHeader from '../components/VehicleHeader'
@@ -19,7 +19,13 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [quotes, setQuotes] = useState([])
   const [partsOrders, setPartsOrders] = useState([])
   const [jobSheet, setJobSheet] = useState(null)
-  const [activity, setActivity] = useState([])
+  const [jobActivity, setJobActivity] = useState([])
+  const [technicians, setTechnicians] = useState([])
+  const [assignments, setAssignments] = useState([])
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [showActivityModal, setShowActivityModal] = useState(false)
+  const [assignDraft, setAssignDraft] = useState({ technician_id: '', assignment_role: '', estimated_hours: '', status: 'assigned' })
+  const [activityDraft, setActivityDraft] = useState({ technician_id: '', event_type: 'internal_note', title: '', description: '' })
   const [invoices, setInvoices] = useState([])
   const [actionStatus, setActionStatus] = useState('idle')
 
@@ -37,12 +43,16 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setPartsOrders(data.parts_orders || [])
       const invoiceRes = await apiGet(`/api/jobs/${jobId}/invoices`).catch(() => ({ invoices: [] }))
       setInvoices(invoiceRes.invoices || [])
-      const [sheetRes, activityRes] = await Promise.all([
+      const [sheetRes, techRes, assignmentsRes, jobActivityRes] = await Promise.all([
         apiGet(`/api/jobs/${jobId}/job-sheet`).catch(() => null),
-        apiGet(`/api/activity?entity_type=job&entity_id=${jobId}&limit=40`).catch(() => null),
+        apiGet('/api/technicians').catch(() => ({ technicians: [] })),
+        apiGet(`/api/jobs/${jobId}/technicians`).catch(() => ({ assignments: [] })),
+        apiGet(`/api/jobs/${jobId}/activity`).catch(() => ({ events: [] })),
       ])
       setJobSheet(sheetRes || null)
-      setActivity((activityRes && activityRes.activity) || [])
+      setTechnicians((techRes && techRes.technicians) || [])
+      setAssignments((assignmentsRes && assignmentsRes.assignments) || [])
+      setJobActivity((jobActivityRes && jobActivityRes.events) || [])
       setStatus('ready')
     } catch (err) {
       setStatus('error')
@@ -87,6 +97,51 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
     } finally {
       setActionStatus('idle')
     }
+  }
+
+  async function refreshAssignmentsAndActivity() {
+    const [assignmentsRes, jobActivityRes] = await Promise.all([
+      apiGet(`/api/jobs/${jobId}/technicians`).catch(() => ({ assignments: [] })),
+      apiGet(`/api/jobs/${jobId}/activity`).catch(() => ({ events: [] })),
+    ])
+    setAssignments(assignmentsRes.assignments || [])
+    setJobActivity(jobActivityRes.events || [])
+  }
+
+  async function addAssignment() {
+    if (!assignDraft.technician_id) return
+    await apiPost(`/api/jobs/${jobId}/technicians`, {
+      technician_id: Number(assignDraft.technician_id),
+      assignment_role: assignDraft.assignment_role || null,
+      estimated_hours: assignDraft.estimated_hours === '' ? null : Number(assignDraft.estimated_hours),
+      status: assignDraft.status || 'assigned',
+    })
+    setShowAssignModal(false)
+    setAssignDraft({ technician_id: '', assignment_role: '', estimated_hours: '', status: 'assigned' })
+    await refreshAssignmentsAndActivity()
+  }
+
+  async function updateAssignment(assignment, patch) {
+    await apiPatch(`/api/jobs/${jobId}/technicians/${assignment.id}`, patch)
+    await refreshAssignmentsAndActivity()
+  }
+
+  async function removeAssignment(assignment) {
+    await apiDelete(`/api/jobs/${jobId}/technicians/${assignment.id}`)
+    await refreshAssignmentsAndActivity()
+  }
+
+  async function addActivityEvent() {
+    if (!activityDraft.event_type || !activityDraft.title.trim()) return
+    await apiPost(`/api/jobs/${jobId}/activity`, {
+      technician_id: activityDraft.technician_id ? Number(activityDraft.technician_id) : null,
+      event_type: activityDraft.event_type,
+      title: activityDraft.title.trim(),
+      description: activityDraft.description.trim() || null,
+    })
+    setShowActivityModal(false)
+    setActivityDraft({ technician_id: '', event_type: 'internal_note', title: '', description: '' })
+    await refreshAssignmentsAndActivity()
   }
 
   if (status === 'loading') {
@@ -168,17 +223,61 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
           </div>
 
           <div className="jobDetailCard" style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 className="jobDetailCardTitle">Technicians</h2>
+              <button type="button" className="secondaryButton" onClick={() => setShowAssignModal(true)}>Assign Technician</button>
+            </div>
+            {assignments.length ? (
+              <div className="quoteTableWrap">
+                <table className="quoteTable">
+                  <thead>
+                    <tr><th>Name</th><th>Role</th><th>Est. hours</th><th>Actual hours</th><th>Status</th><th>Assigned</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    {assignments.map((a) => (
+                      <tr key={a.id}>
+                        <td>{a.technician_name || `TECH ${a.technician_id}`}</td>
+                        <td>{a.assignment_role || '—'}</td>
+                        <td>{a.estimated_hours ?? '—'}</td>
+                        <td>
+                          <button type="button" className="miniButton" onClick={() => {
+                            const value = window.prompt('Enter actual hours', a.actual_hours ?? '')
+                            if (value == null) return
+                            updateAssignment(a, { actual_hours: value })
+                          }}>{a.actual_hours ?? 'Set'}</button>
+                        </td>
+                        <td>
+                          <select className="select" value={a.status || 'assigned'} onChange={(e) => updateAssignment(a, { status: e.target.value })}>
+                            <option value="assigned">assigned</option>
+                            <option value="in_progress">in_progress</option>
+                            <option value="completed">completed</option>
+                            <option value="paused">paused</option>
+                          </select>
+                        </td>
+                        <td>{formatDateTime(a.assigned_at)}</td>
+                        <td><button type="button" className="miniButton" onClick={() => removeAssignment(a)}>Remove</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <div className="emptyState">No technicians assigned yet.</div>}
+          </div>
+
+          <div className="jobDetailCard" style={{ marginTop: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 20, height: 20, color: 'var(--accent)' }}><circle cx="12" cy="12" r="1"></circle><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path><path d="M5 12h14"></path></svg>
-              <h2 className="jobDetailCardTitle">Activity Timeline</h2>
+              <h2 className="jobDetailCardTitle">Job Activity</h2>
+              <button type="button" className="secondaryButton" style={{ marginLeft: 'auto' }} onClick={() => setShowActivityModal(true)}>Add Internal Note</button>
             </div>
             <div className="activityTimelineList">
-              {activity.length ? activity.map((entry) => (
+              {jobActivity.length ? jobActivity.map((entry) => (
                 <div className="activityTimelineItem" key={entry.id}>
                   <div className="activityTimelineMarker"></div>
                   <div className="activityTimelineContent">
-                    <div className="activityTimelineText">{entry.summary}</div>
-                    <div className="activityTimelineMeta">{formatDateTime(entry.created_at)} · {entry.user_name || 'SYSTEM'}</div>
+                    <div className="activityTimelineText">{entry.title}</div>
+                    <div className="fieldHint">{entry.description || '—'}</div>
+                    <div className="activityTimelineMeta">{formatDateTime(entry.created_at)} · {entry.technician_name || 'NO TECHNICIAN'}</div>
                   </div>
                 </div>
               )) : (
@@ -402,6 +501,36 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
           </div>
         )}
       </div>
+
+      {showAssignModal ? (
+        <div className="modalOverlay" onClick={() => setShowAssignModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="cardTitle">Assign Technician</h3>
+            <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+              <div className="field"><div className="fieldLabel">Technician</div><select className="select" value={assignDraft.technician_id} onChange={(e) => setAssignDraft((d) => ({ ...d, technician_id: e.target.value }))}><option value="">Select technician…</option>{technicians.filter((t) => Number(t.active) === 1).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
+              <div className="field"><div className="fieldLabel">Assignment role</div><input className="input" value={assignDraft.assignment_role} onChange={(e) => setAssignDraft((d) => ({ ...d, assignment_role: e.target.value }))} /></div>
+              <div className="field"><div className="fieldLabel">Estimated hours</div><input className="input" value={assignDraft.estimated_hours} onChange={(e) => setAssignDraft((d) => ({ ...d, estimated_hours: e.target.value }))} /></div>
+              <div className="field"><div className="fieldLabel">Status</div><select className="select" value={assignDraft.status} onChange={(e) => setAssignDraft((d) => ({ ...d, status: e.target.value }))}><option value="assigned">assigned</option><option value="in_progress">in_progress</option><option value="completed">completed</option><option value="paused">paused</option></select></div>
+              <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={() => setShowAssignModal(false)}>Cancel</button><button type="button" className="primaryButton" onClick={addAssignment}>Save</button></div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showActivityModal ? (
+        <div className="modalOverlay" onClick={() => setShowActivityModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="cardTitle">Add Job Activity</h3>
+            <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+              <div className="field"><div className="fieldLabel">Event type</div><input className="input" value={activityDraft.event_type} onChange={(e) => setActivityDraft((d) => ({ ...d, event_type: e.target.value }))} /></div>
+              <div className="field"><div className="fieldLabel">Title</div><input className="input" value={activityDraft.title} onChange={(e) => setActivityDraft((d) => ({ ...d, title: e.target.value }))} /></div>
+              <div className="field"><div className="fieldLabel">Description</div><textarea className="textarea" rows={4} value={activityDraft.description} onChange={(e) => setActivityDraft((d) => ({ ...d, description: e.target.value }))} /></div>
+              <div className="field"><div className="fieldLabel">Technician (optional)</div><select className="select" value={activityDraft.technician_id} onChange={(e) => setActivityDraft((d) => ({ ...d, technician_id: e.target.value }))}><option value="">No technician</option>{technicians.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
+              <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={() => setShowActivityModal(false)}>Cancel</button><button type="button" className="primaryButton" onClick={addActivityEvent}>Save</button></div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
     </div>
   )

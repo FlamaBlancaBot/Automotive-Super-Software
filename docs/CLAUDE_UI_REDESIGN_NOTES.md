@@ -1748,3 +1748,90 @@ The Search page already uses the `.quoteTable` class which is part of the design
 4. **Customer Phone/Email Display (Future)** — Could pass customer name or contact to the card and show "Send to: John Smith (john@example.com)" for clarity.
 
 ---
+
+## Technician assignment and job activity foundation
+
+**Date:** 2026-05-09  
+**Version bumped to:** 1.1.025
+
+### Files changed
+
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `backend/routes/admin.js`
+- `backend/routes/jobs.js`
+- `backend/routes/technicians.js` (new)
+- `backend/server.js`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/pages/Settings.jsx`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+
+### Database tables added
+
+- `job_technician_assignments`
+- `job_activity_events`
+
+Also extended `technicians` safely with new nullable columns:
+- `email`
+- `phone`
+- `role_title`
+- `skills_notes`
+
+### Endpoints added
+
+Technicians:
+- `GET /api/technicians`
+- `POST /api/technicians`
+- `PATCH /api/technicians/:id`
+
+Job technician assignments:
+- `GET /api/jobs/:id/technicians`
+- `POST /api/jobs/:id/technicians`
+- `PATCH /api/jobs/:id/technicians/:assignmentId`
+- `DELETE /api/jobs/:id/technicians/:assignmentId`
+
+Job activity:
+- `GET /api/jobs/:id/activity`
+- `POST /api/jobs/:id/activity`
+
+### Job Detail UI changes
+
+- Added an internal **Technicians** section:
+  - list assignments with role, estimated/actual hours, status, assigned date
+  - remove assignment action
+  - assign technician modal
+- Added an internal **Job Activity** section:
+  - timeline from `job_activity_events`
+  - technician name (optional)
+  - add internal activity note modal
+
+### Settings changes (Technicians)
+
+- Extended technicians management to include:
+  - role/title
+  - email
+  - phone
+  - skills/notes
+  - active/deactivate support retained
+
+### Analytics/reporting readiness enabled
+
+This foundation now supports future reporting work for:
+- jobs completed per technician
+- average time per job
+- estimated vs actual hours
+- technician-level workload/capacity views
+- internal handoff/activity histories
+
+### Limitations / future work
+
+- Calendar technician labels are not added yet to avoid risky data path changes.
+- No analytics dashboard shipped in this phase.
+- No labour timer, no bay planner, and no drag/drop scheduling yet.
+
+### Quote safety confirmation
+
+- `frontend/src/pages/QuoteDetail.jsx` was **not modified**.
+- Quote logic and supplier comparison workflow were left untouched.

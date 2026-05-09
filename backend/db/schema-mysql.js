@@ -360,6 +360,10 @@ const MYSQL_SCHEMA_STATEMENTS = [
   CREATE TABLE IF NOT EXISTS technicians (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(150) NOT NULL,
+    email VARCHAR(180) NULL,
+    phone VARCHAR(40) NULL,
+    role_title VARCHAR(120) NULL,
+    skills_notes TEXT NULL,
     capabilities TEXT NULL,
     active TINYINT(1) NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -367,6 +371,46 @@ const MYSQL_SCHEMA_STATEMENTS = [
     PRIMARY KEY (id),
     KEY idx_technicians_active (active),
     KEY idx_technicians_name (name)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS job_technician_assignments (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    job_id BIGINT UNSIGNED NOT NULL,
+    technician_id BIGINT UNSIGNED NOT NULL,
+    assignment_role VARCHAR(120) NULL,
+    estimated_hours DECIMAL(8,2) NULL,
+    actual_hours DECIMAL(8,2) NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'assigned',
+    assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_job_tech_assign_job (job_id),
+    KEY idx_job_tech_assign_tech (technician_id),
+    KEY idx_job_tech_assign_status (status),
+    CONSTRAINT fk_job_tech_assign_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_job_tech_assign_tech FOREIGN KEY (technician_id) REFERENCES technicians(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS job_activity_events (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    job_id BIGINT UNSIGNED NOT NULL,
+    technician_id BIGINT UNSIGNED NULL,
+    event_type VARCHAR(50) NOT NULL,
+    title VARCHAR(160) NOT NULL,
+    description TEXT NULL,
+    metadata_json JSON NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_job_activity_events_job (job_id),
+    KEY idx_job_activity_events_tech (technician_id),
+    KEY idx_job_activity_events_type (event_type),
+    KEY idx_job_activity_events_created (created_at),
+    CONSTRAINT fk_job_activity_events_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_job_activity_events_tech FOREIGN KEY (technician_id) REFERENCES technicians(id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
   `
