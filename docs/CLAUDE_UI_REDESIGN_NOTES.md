@@ -1924,3 +1924,49 @@ Workshop bays:
 
 ### Quote safety confirmation
 - `frontend/src/pages/QuoteDetail.jsx` was not modified.
+
+## Reports and Analytics dashboard foundation
+
+**Date:** 2026-05-10  
+**Version bumped to:** 1.1.027
+
+### Files changed
+- `backend/routes/reports.js` (new)
+- `backend/server.js`
+- `frontend/src/pages/Reports.jsx` (new)
+- `frontend/src/App.jsx`
+- `frontend/src/config/navigation.js`
+- `frontend/src/components/Sidebar.jsx`
+- `frontend/src/App.css`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+
+### Endpoint added
+- `GET /api/reports/summary?range=7d|30d|90d|12m`
+
+### Metrics included
+- Overview: revenue, invoice counts, paid/unpaid counts, jobs totals/completed/in-progress, quote totals/accepted, average invoice value
+- Revenue trend buckets: day/week/month depending on range
+- Technician analytics: assigned/completed jobs, estimated/actual hours, active jobs, activity events, skills count
+- Bay analytics: active assignments, range assignments, released counts, current registration where available
+- Services ranking: jobs/completed/revenue totals
+- Customer retention basics: total/repeat/repeat-rate/new-in-range
+- Parts overview: total/pending/received/returned in range
+- Profit/margin section returns explicit null placeholders when reliable cost basis is not available
+
+### No fake analytics
+- All metrics are derived from real DB aggregates.
+- Where reliable profit/cost data is incomplete, the API returns null fields and the UI shows “Not enough cost data yet”.
+
+### Data foundations used
+- Technician analytics leverage assignment/activity structures added in v1.1.025.
+- Bay analytics leverage bay/job-bay structures added in v1.1.026.
+
+### Limitations / future work
+- No forecasting or advanced cohort analysis yet.
+- No automatic staffing recommendations yet.
+- Profit margin remains placeholder until end-to-end cost reliability is confirmed.
+
+### Quote safety confirmation
+- `frontend/src/pages/QuoteDetail.jsx` was not modified.

@@ -16,6 +16,7 @@ import JobSheetDetail from './pages/JobSheetDetail'
 import Vehicles from './pages/Vehicles'
 import Suppliers from './pages/Suppliers'
 import Search from './pages/Search'
+import Reports from './pages/Reports'
 import PlaceholderPage from './pages/PlaceholderPage'
 import Login from './pages/Login'
 import CustomerDetailsRequest from './pages/CustomerDetailsRequest'
@@ -206,6 +207,8 @@ function App() {
               onStartNewIntake={() => navigate('new-intake')}
               onViewJobsNeedingQuote={() => navigateToPath('/jobs?needs_quote=1')}
             />
+          ) : activeKey === 'reports' ? (
+            <Reports />
           ) : activeKey === 'new-intake' ? (
             <NewIntake
               locationPath={pathname}
