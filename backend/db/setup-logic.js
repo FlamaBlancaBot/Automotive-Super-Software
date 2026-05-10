@@ -27,6 +27,7 @@ const SETUP_TABLES = [
   'communication_templates',
   'communication_messages',
   'communication_events',
+  'invoice_payments',
   'parts_orders',
   'goods_received',
   'part_status_logs',
@@ -183,6 +184,10 @@ async function migrateDatabase(db) {
   await ensureColumn(db, 'quotes', 'supersedes_quote_id', 'BIGINT UNSIGNED NULL')
   await ensureColumn(db, 'quotes', 'revision_number', 'INT NOT NULL DEFAULT 1')
   await ensureColumn(db, 'quotes', 'revision_reason', 'TEXT NULL')
+  await ensureColumn(db, 'invoices', 'amount_paid', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00')
+  await ensureColumn(db, 'invoices', 'balance_due', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00')
+  await ensureColumn(db, 'invoices', 'payment_status', "VARCHAR(30) NOT NULL DEFAULT 'unpaid'")
+  await ensureColumn(db, 'invoices', 'due_date', 'DATETIME NULL')
 
   // parts_orders status simplification migration (safe, non-destructive).
   await db.run(`UPDATE parts_orders SET status = 'pending' WHERE status = 'to_order'`)

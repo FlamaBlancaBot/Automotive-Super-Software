@@ -86,10 +86,18 @@ export default function Reports() {
           <div className="cards" style={{ marginTop: 12 }}>
             <div className="cardBox"><div className="fieldLabel">Revenue</div><div className="kpiValue">{money(overview.revenue_total)}</div></div>
             <div className="cardBox"><div className="fieldLabel">Paid invoices</div><div className="kpiValue">{number(overview.paid_invoices_count)}</div></div>
+            <div className="cardBox"><div className="fieldLabel">Payments received</div><div className="kpiValue">{money(overview.payments_received_total)}</div></div>
             <div className="cardBox"><div className="fieldLabel">Jobs completed</div><div className="kpiValue">{number(overview.jobs_completed)}</div></div>
             <div className="cardBox"><div className="fieldLabel">Jobs in progress</div><div className="kpiValue">{number(overview.jobs_in_progress)}</div></div>
             <div className="cardBox"><div className="fieldLabel">Quote acceptance</div><div className="kpiValue">{pct(quoteAcceptanceRate)}</div></div>
             <div className="cardBox"><div className="fieldLabel">Avg invoice value</div><div className="kpiValue">{money(overview.average_invoice_value)}</div></div>
+          </div>
+
+          <div className="cards" style={{ marginTop: 12 }}>
+            <div className="cardBox"><div className="fieldLabel">Outstanding balance</div><div className="kpiValue">{money(overview.outstanding_balance_total)}</div></div>
+            <div className="cardBox"><div className="fieldLabel">Unpaid invoices</div><div className="kpiValue">{number(overview.unpaid_invoices_count)}</div></div>
+            <div className="cardBox"><div className="fieldLabel">Partially paid invoices</div><div className="kpiValue">{number(overview.partially_paid_invoices_count)}</div></div>
+            <div className="cardBox"><div className="fieldLabel">Payments count</div><div className="kpiValue">{number(overview.payments_count)}</div></div>
           </div>
 
           <div className="cardBox" style={{ marginTop: 16 }}>

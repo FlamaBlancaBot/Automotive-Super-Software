@@ -303,6 +303,10 @@ const MYSQL_SCHEMA_STATEMENTS = [
     subtotal_ex_vat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     vat_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     total_inc_vat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    amount_paid DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    balance_due DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    payment_status VARCHAR(30) NOT NULL DEFAULT 'unpaid',
+    due_date DATETIME NULL,
     notes TEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -310,6 +314,35 @@ const MYSQL_SCHEMA_STATEMENTS = [
     UNIQUE KEY ux_invoices_invoice_number (invoice_number),
     KEY idx_invoices_job_id (job_id),
     KEY idx_invoices_quote_id (quote_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS invoice_payments (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    invoice_id BIGINT UNSIGNED NOT NULL,
+    customer_id BIGINT UNSIGNED NULL,
+    job_id BIGINT UNSIGNED NULL,
+    quote_id BIGINT UNSIGNED NULL,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    payment_method VARCHAR(30) NOT NULL DEFAULT 'other',
+    payment_type VARCHAR(30) NOT NULL DEFAULT 'partial',
+    payment_reference VARCHAR(160) NULL,
+    notes TEXT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'recorded',
+    paid_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_invoice_payments_invoice (invoice_id),
+    KEY idx_invoice_payments_customer (customer_id),
+    KEY idx_invoice_payments_job (job_id),
+    KEY idx_invoice_payments_quote (quote_id),
+    KEY idx_invoice_payments_status (status),
+    KEY idx_invoice_payments_paid_at (paid_at),
+    CONSTRAINT fk_invoice_payments_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id),
+    CONSTRAINT fk_invoice_payments_customer FOREIGN KEY (customer_id) REFERENCES customers(id),
+    CONSTRAINT fk_invoice_payments_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_invoice_payments_quote FOREIGN KEY (quote_id) REFERENCES quotes(id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
   `

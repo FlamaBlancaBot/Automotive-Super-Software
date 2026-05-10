@@ -2218,6 +2218,66 @@ Workshop bays:
 ### Quote safety confirmation
 - `frontend/src/pages/QuoteDetail.jsx` was not modified in this phase.
 
+## Payment and financial tracking foundation
+
+**Date:** 2026-05-10  
+**Version bumped to:** 1.1.034
+
+### Files changed
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `backend/routes/invoices.js`
+- `backend/routes/reports.js`
+- `frontend/src/pages/InvoiceDetail.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/pages/Reports.jsx`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+- `docs/CLAUDE_UI_REDESIGN_NOTES.md`
+
+### Tables/columns added
+- Added table: `invoice_payments`.
+- Added invoice columns:
+  - `amount_paid`
+  - `balance_due`
+  - `payment_status`
+  - `due_date`
+
+### Endpoints added
+- `GET /api/invoices/:id/payments`
+- `POST /api/invoices/:id/payments`
+- `PATCH /api/invoices/:id/payments/:paymentId`
+- `DELETE /api/invoices/:id/payments/:paymentId`
+- `POST /api/invoices/:id/recalculate-payment-status`
+- `GET /api/payments/summary` (optional range summary)
+
+### Invoice Detail changes
+- Added Payment Tracking section with:
+  - total, paid, balance, payment status, due date
+  - payment history table
+  - record/edit/delete payment actions
+  - recalculate payment status action
+
+### Job Detail changes
+- Expanded invoices section with payment status, amount paid, balance due, and open invoice action.
+
+### Reports / payment metrics
+- Added payment-focused overview metrics:
+  - payments received total
+  - outstanding balance total
+  - unpaid invoice count
+  - partially paid invoice count
+  - payments count
+
+### Gateway/accounting limitations
+- No real Stripe/Square/QuickBooks integration in this phase.
+- No fake payment processing: records are internal bookkeeping entries only.
+
+### Quote safety confirmation
+- `frontend/src/pages/QuoteDetail.jsx` was not modified in this phase.
+
 ## Calendar capacity planner foundation
 
 **Date:** 2026-05-10  

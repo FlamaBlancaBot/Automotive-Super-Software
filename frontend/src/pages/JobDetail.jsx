@@ -671,14 +671,19 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
         {invoices.length ? (
           <div className="quoteTableWrap" style={{ marginTop: 12 }}>
             <table className="quoteTable">
-              <thead><tr><th>Invoice</th><th>Status</th><th>Subtotal</th><th>Total</th></tr></thead>
+              <thead><tr><th>Invoice</th><th>Status</th><th>Payment</th><th>Total</th><th>Paid</th><th>Balance</th><th></th></tr></thead>
               <tbody>
                 {invoices.map((inv) => (
                   <tr key={inv.id}>
                     <td className="mono">{inv.invoice_number}</td>
                     <td>{inv.status}</td>
-                    <td>£{Number(inv.subtotal_ex_vat || 0).toFixed(2)}</td>
+                    <td>{inv.payment_status || 'unpaid'}</td>
                     <td>£{Number(inv.total_inc_vat || 0).toFixed(2)}</td>
+                    <td>£{Number(inv.amount_paid || 0).toFixed(2)}</td>
+                    <td>£{Number(inv.balance_due != null ? inv.balance_due : Math.max(0, Number(inv.total_inc_vat || 0) - Number(inv.amount_paid || 0))).toFixed(2)}</td>
+                    <td>
+                      <button type="button" className="miniButton" onClick={() => onOpenInvoice && onOpenInvoice(inv.id)}>Open</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -30,11 +30,23 @@ function createReportsRouter({ db }) {
         `SELECT
           COALESCE(SUM(total_inc_vat), 0) AS revenue_total,
           COUNT(*) AS invoices_count,
-          SUM(CASE WHEN LOWER(status) = 'paid' THEN 1 ELSE 0 END) AS paid_invoices_count
+          SUM(CASE WHEN LOWER(COALESCE(payment_status, status)) = 'paid' THEN 1 ELSE 0 END) AS paid_invoices_count,
+          SUM(CASE WHEN LOWER(COALESCE(payment_status, 'unpaid')) IN ('unpaid', 'overdue') THEN 1 ELSE 0 END) AS unpaid_invoices_count,
+          SUM(CASE WHEN LOWER(COALESCE(payment_status, '')) IN ('deposit_paid', 'partially_paid') THEN 1 ELSE 0 END) AS partially_paid_invoices_count,
+          COALESCE(SUM(COALESCE(balance_due, total_inc_vat)), 0) AS outstanding_balance_total
          FROM invoices
          WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)`,
         [config.days],
       )
+
+      const paymentsSummary = await db.get(
+        `SELECT
+          COALESCE(SUM(CASE WHEN status NOT IN ('failed','cancelled') THEN amount ELSE 0 END), 0) AS payments_received_total,
+          COUNT(*) AS payments_count
+         FROM invoice_payments
+         WHERE COALESCE(paid_at, created_at) >= DATE_SUB(NOW(), INTERVAL ? DAY)`,
+        [config.days],
+      ).catch(() => ({ payments_received_total: 0, payments_count: 0 }))
 
       const jobsSummary = await db.get(
         `SELECT
@@ -208,7 +220,11 @@ function createReportsRouter({ db }) {
           revenue_total: revenueTotal,
           invoices_count: invoicesCount,
           paid_invoices_count: paidInvoicesCount,
-          unpaid_invoices_count: Math.max(0, invoicesCount - paidInvoicesCount),
+          unpaid_invoices_count: toNumber(invoicesSummary?.unpaid_invoices_count, Math.max(0, invoicesCount - paidInvoicesCount)),
+          partially_paid_invoices_count: toNumber(invoicesSummary?.partially_paid_invoices_count, 0),
+          outstanding_balance_total: toNumber(invoicesSummary?.outstanding_balance_total, 0),
+          payments_received_total: toNumber(paymentsSummary?.payments_received_total, 0),
+          payments_count: toNumber(paymentsSummary?.payments_count, 0),
           jobs_total: toNumber(jobsSummary?.jobs_total, 0),
           jobs_completed: toNumber(jobsSummary?.jobs_completed, 0),
           jobs_in_progress: toNumber(jobsSummary?.jobs_in_progress, 0),

@@ -220,4 +220,6 @@ Current important pages/routes in active workflow:
 - Job Detail now includes scheduling suggestions with refresh and optional one-click assignment using existing bay/technician endpoints.
 - Calendar capacity planner foundation added in v1.1.033 with day-level workload and assignment warnings.
 - Drag/drop scheduling and fully automatic assignment remain future work.
+- Payment and financial tracking foundation added in v1.1.034 (deposits/partial/final/refund records, balances, payment statuses, and reporting metrics).
+- Stripe/Square/QuickBooks live integrations remain future work.
 - Future work remains: drag/drop scheduling, live capacity heatmaps, and fully automatic assignment decisions.
