@@ -46,6 +46,54 @@ function truthy(value) {
   return v === '1' || v === 'true' || v === 'yes' || v === 'y'
 }
 
+function quoteIsLockedForEdits(quoteRow) {
+  return String(quoteRow && quoteRow.status ? quoteRow.status : '').toLowerCase() === 'accepted'
+}
+
+async function ensureQuoteEditable(tx, quoteId) {
+  const quote = await tx.get(`SELECT id, status FROM quotes WHERE id = ?`, [quoteId])
+  if (!quote) {
+    const err = new Error('Quote not found.')
+    err.status = 404
+    throw err
+  }
+  if (quoteIsLockedForEdits(quote)) {
+    const err = new Error('Accepted quotes are locked. Create a revised/additional quote instead.')
+    err.status = 409
+    throw err
+  }
+  return quote
+}
+
+async function getQuoteWithContext(tx, quoteId) {
+  return tx.get(
+    `
+    SELECT
+      q.*,
+      COALESCE(v.registration, jv.registration) AS vehicle_registration,
+      COALESCE(v.make, jv.make) AS vehicle_make,
+      COALESCE(v.model, jv.model) AS vehicle_model,
+      c.first_name AS customer_first_name,
+      c.surname AS customer_surname,
+      c.phone AS customer_phone,
+      c.email AS customer_email,
+      c.postcode AS customer_postcode,
+      c.address AS customer_address,
+      qp.quote_number AS parent_quote_number,
+      qs.quote_number AS supersedes_quote_number
+    FROM quotes q
+    LEFT JOIN vehicles v ON v.id = q.vehicle_id
+    LEFT JOIN customers c ON c.id = q.customer_id
+    LEFT JOIN jobs j ON j.id = q.job_id
+    LEFT JOIN vehicles jv ON jv.id = j.vehicle_id
+    LEFT JOIN quotes qp ON qp.id = q.parent_quote_id
+    LEFT JOIN quotes qs ON qs.id = q.supersedes_quote_id
+    WHERE q.id = ?
+  `,
+    [quoteId],
+  )
+}
+
 async function recalculateQuote(tx, quoteId) {
   const quote = await tx.get(`SELECT id, vat_rate FROM quotes WHERE id = ?`, [quoteId])
   if (!quote) {
@@ -276,16 +324,29 @@ function createQuotesRouter({ db }) {
           q.quote_number,
           q.status,
           q.title,
+          q.job_id,
+          q.customer_id,
+          q.vehicle_id,
+          q.parent_quote_id,
+          q.supersedes_quote_id,
+          q.revision_number,
           q.total_sell,
           q.updated_at,
-          v.registration AS vehicle_registration,
-          v.make AS vehicle_make,
-          v.model AS vehicle_model,
+          COALESCE(v.registration, jv.registration) AS vehicle_registration,
+          COALESCE(v.make, jv.make) AS vehicle_make,
+          COALESCE(v.model, jv.model) AS vehicle_model,
           c.first_name AS customer_first_name,
-          c.surname AS customer_surname
+          c.surname AS customer_surname,
+          j.id AS linked_job_id,
+          qp.quote_number AS parent_quote_number,
+          qs.quote_number AS supersedes_quote_number
         FROM quotes q
-        JOIN vehicles v ON v.id = q.vehicle_id
-        JOIN customers c ON c.id = q.customer_id
+        LEFT JOIN vehicles v ON v.id = q.vehicle_id
+        LEFT JOIN customers c ON c.id = q.customer_id
+        LEFT JOIN jobs j ON j.id = q.job_id
+        LEFT JOIN vehicles jv ON jv.id = j.vehicle_id
+        LEFT JOIN quotes qp ON qp.id = q.parent_quote_id
+        LEFT JOIN quotes qs ON qs.id = q.supersedes_quote_id
         ORDER BY q.updated_at DESC
         LIMIT 200
       `,
@@ -301,26 +362,7 @@ function createQuotesRouter({ db }) {
     if (!quoteId) return res.status(400).json({ ok: false, error: 'Invalid quote id.' })
 
     try {
-      const quote = await db.get(
-        `
-        SELECT
-          q.*,
-          v.registration AS vehicle_registration,
-          v.make AS vehicle_make,
-          v.model AS vehicle_model,
-          c.first_name AS customer_first_name,
-          c.surname AS customer_surname,
-          c.phone AS customer_phone,
-          c.email AS customer_email,
-          c.postcode AS customer_postcode,
-          c.address AS customer_address
-        FROM quotes q
-        JOIN vehicles v ON v.id = q.vehicle_id
-        JOIN customers c ON c.id = q.customer_id
-        WHERE q.id = ?
-      `,
-        [quoteId],
-      )
+      const quote = await getQuoteWithContext(db, quoteId)
 
       if (!quote) return res.status(404).json({ ok: false, error: 'Quote not found.' })
 
@@ -388,12 +430,7 @@ function createQuotesRouter({ db }) {
 
     try {
       const updated = await db.transaction(async (tx) => {
-        const quote = await tx.get(`SELECT * FROM quotes WHERE id = ?`, [quoteId])
-        if (!quote) {
-          const err = new Error('Quote not found.')
-          err.status = 404
-          throw err
-        }
+        await ensureQuoteEditable(tx, quoteId)
 
         await tx.run(
           `
@@ -411,10 +448,7 @@ function createQuotesRouter({ db }) {
 
         await recalculateQuote(tx, quoteId)
 
-        return tx.get(
-          `SELECT * FROM quotes WHERE id = ?`,
-          [quoteId],
-        )
+        return getQuoteWithContext(tx, quoteId)
       })
 
       res.json({ ok: true, quote: updated })
@@ -441,6 +475,19 @@ function createQuotesRouter({ db }) {
 
     try {
       const out = await db.transaction(async (tx) => {
+        if (jobId) {
+          const job = await tx.get(`SELECT id, customer_id, vehicle_id FROM jobs WHERE id = ?`, [jobId])
+          if (!job) {
+            const err = new Error('Job not found.')
+            err.status = 400
+            throw err
+          }
+          if (Number(job.customer_id) !== Number(customerId) || Number(job.vehicle_id) !== Number(vehicleId)) {
+            const err = new Error('Selected customer/vehicle do not match the linked job.')
+            err.status = 400
+            throw err
+          }
+        }
         const customer = await tx.get(`SELECT id FROM customers WHERE id = ?`, [customerId])
         const vehicle = await tx.get(`SELECT id FROM vehicles WHERE id = ?`, [vehicleId])
         if (!customer || !vehicle) {
@@ -458,15 +505,16 @@ function createQuotesRouter({ db }) {
             const created = await tx.run(
               `INSERT INTO quotes (
                 quote_number, customer_id, vehicle_id, job_id, status, title,
+                parent_quote_id, supersedes_quote_id, revision_number, revision_reason,
                 internal_notes, customer_notes,
                 subtotal_cost, subtotal_sell, vat_rate, vat_amount, total_sell, estimated_margin
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0.2000, 0, 0, 0)`,
+              ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 1, NULL, ?, ?, 0, 0, 0.2000, 0, 0, 0)`,
               [quoteNumber, customerId, vehicleId, jobId, status, title, internalNotes, customerNotes],
             )
 
             const quoteId = created.lastInsertId
             const recalculated = await recalculateQuote(tx, quoteId)
-            const quote = await tx.get(`SELECT * FROM quotes WHERE id = ?`, [quoteId])
+            const quote = await getQuoteWithContext(tx, quoteId)
             return { quote, totals: recalculated }
           } catch (e) {
             const code = e && e.code ? String(e.code) : ''
@@ -529,6 +577,7 @@ function createQuotesRouter({ db }) {
 
     try {
       const out = await db.transaction(async (tx) => {
+        await ensureQuoteEditable(tx, quoteId)
         const quote = await tx.get(`SELECT id FROM quotes WHERE id = ?`, [quoteId])
         if (!quote) {
           const err = new Error('Quote not found.')
@@ -598,6 +647,7 @@ function createQuotesRouter({ db }) {
 
     try {
       const out = await db.transaction(async (tx) => {
+        await ensureQuoteEditable(tx, quoteId)
         const item = await tx.get(`SELECT * FROM quote_items WHERE id = ? AND quote_id = ?`, [itemId, quoteId])
         if (!item) {
           const err = new Error('Quote item not found.')
@@ -719,6 +769,7 @@ function createQuotesRouter({ db }) {
 
     try {
       await db.transaction(async (tx) => {
+        await ensureQuoteEditable(tx, quoteId)
         const item = await tx.get(`SELECT id FROM quote_items WHERE id = ? AND quote_id = ?`, [itemId, quoteId])
         if (!item) return
 
@@ -1132,9 +1183,148 @@ function createQuotesRouter({ db }) {
     }
   })
 
+  router.post('/quotes/:id/revise', async (req, res) => {
+    const sourceQuoteId = toInt(req.params.id, 0)
+    if (!sourceQuoteId) return res.status(400).json({ ok: false, error: 'Invalid quote id.' })
+    const body = req.body || {}
+    const revisionReason = body.revision_reason != null ? normaliseOperationalText(body.revision_reason) : null
+
+    try {
+      const out = await db.transaction(async (tx) => {
+        const source = await tx.get(`SELECT * FROM quotes WHERE id = ?`, [sourceQuoteId])
+        if (!source) {
+          const err = new Error('Source quote not found.')
+          err.status = 404
+          throw err
+        }
+
+        const nextRevision = Number(source.revision_number || 1) + 1
+        const quoteNumber = await generateQuoteNumber(tx)
+
+        const created = await tx.run(
+          `INSERT INTO quotes (
+            quote_number, customer_id, vehicle_id, job_id,
+            parent_quote_id, supersedes_quote_id, revision_number, revision_reason,
+            status, title, internal_notes, customer_notes,
+            subtotal_cost, subtotal_sell, vat_rate, vat_amount, total_sell, estimated_margin
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, 0, 0, ?, 0, 0, 0)`,
+          [
+            quoteNumber,
+            source.customer_id,
+            source.vehicle_id,
+            source.job_id,
+            source.parent_quote_id || source.id,
+            source.id,
+            nextRevision,
+            revisionReason,
+            source.title,
+            source.internal_notes,
+            source.customer_notes,
+            source.vat_rate != null ? source.vat_rate : 0.2,
+          ],
+        )
+
+        const newQuoteId = created.lastInsertId
+        const sourceItems = await tx.all(
+          `SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order ASC, id ASC`,
+          [sourceQuoteId],
+        )
+
+        const itemIdMap = new Map()
+        for (const srcItem of sourceItems || []) {
+          const itemCreated = await tx.run(
+            `INSERT INTO quote_items (
+              quote_id, item_type, description, quantity, unit_cost, unit_sell, markup_percent, vat_rate,
+              eta_text, total_cost, total_sell, supplier_id, part_brand, part_number, selected_for_quote, sort_order
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              newQuoteId,
+              srcItem.item_type,
+              srcItem.description,
+              srcItem.quantity,
+              srcItem.unit_cost,
+              srcItem.unit_sell,
+              srcItem.markup_percent,
+              srcItem.vat_rate,
+              srcItem.eta_text,
+              srcItem.total_cost,
+              srcItem.total_sell,
+              srcItem.supplier_id,
+              srcItem.part_brand,
+              srcItem.part_number,
+              srcItem.selected_for_quote,
+              srcItem.sort_order,
+            ],
+          )
+          itemIdMap.set(srcItem.id, itemCreated.lastInsertId)
+        }
+
+        const srcOptions = await tx.all(
+          `SELECT * FROM part_supplier_options WHERE quote_item_id IN (
+            SELECT id FROM quote_items WHERE quote_id = ?
+          )`,
+          [sourceQuoteId],
+        )
+        for (const srcOption of srcOptions || []) {
+          const newItemId = itemIdMap.get(srcOption.quote_item_id)
+          if (!newItemId) continue
+          await tx.run(
+            `INSERT INTO part_supplier_options (
+              quote_item_id, supplier_id, part_name, description, brand, part_number, cost_price, sell_price,
+              markup_percent, vat_rate, eta_text, eta_datetime, is_available, is_ordered, is_selected
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              newItemId,
+              srcOption.supplier_id,
+              srcOption.part_name,
+              srcOption.description,
+              srcOption.brand,
+              srcOption.part_number,
+              srcOption.cost_price,
+              srcOption.sell_price,
+              srcOption.markup_percent,
+              srcOption.vat_rate,
+              srcOption.eta_text,
+              srcOption.eta_datetime,
+              srcOption.is_available,
+              srcOption.is_ordered,
+              srcOption.is_selected,
+            ],
+          )
+        }
+
+        const totals = await recalculateQuote(tx, newQuoteId)
+        const quote = await tx.get(`SELECT * FROM quotes WHERE id = ?`, [newQuoteId])
+        return { quote, totals, source_quote_id: sourceQuoteId }
+      })
+
+      await logActivity(db, {
+        userId: req.authUser ? req.authUser.id : null,
+        entityType: 'quote',
+        entityId: out.quote.id,
+        action: 'quote_revised',
+        summary: `QUOTE REVISED FROM SOURCE ID ${sourceQuoteId}`,
+        metadata: { source_quote_id: sourceQuoteId },
+      })
+
+      res.status(201).json({ ok: true, ...out })
+    } catch (err) {
+      const status = err && err.status ? err.status : 500
+      res.status(status).json({ ok: false, error: err.message || 'Failed to create revised quote.' })
+    }
+  })
+
   return router
 }
 
 module.exports = {
   createQuotesRouter,
 }
+        await ensureQuoteEditable(tx, item.quote_id)
+
+        await ensureQuoteEditable(tx, item.quote_id)
+
+        const parentItem = await tx.get(`SELECT quote_id FROM quote_items WHERE id = ?`, [option.quote_item_id])
+        if (parentItem && parentItem.quote_id) {
+          await ensureQuoteEditable(tx, parentItem.quote_id)
+        }

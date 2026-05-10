@@ -179,6 +179,10 @@ async function migrateDatabase(db) {
   await ensureColumn(db, 'technicians', 'phone', 'VARCHAR(40) NULL')
   await ensureColumn(db, 'technicians', 'role_title', 'VARCHAR(120) NULL')
   await ensureColumn(db, 'technicians', 'skills_notes', 'TEXT NULL')
+  await ensureColumn(db, 'quotes', 'parent_quote_id', 'BIGINT UNSIGNED NULL')
+  await ensureColumn(db, 'quotes', 'supersedes_quote_id', 'BIGINT UNSIGNED NULL')
+  await ensureColumn(db, 'quotes', 'revision_number', 'INT NOT NULL DEFAULT 1')
+  await ensureColumn(db, 'quotes', 'revision_reason', 'TEXT NULL')
 
   // parts_orders status simplification migration (safe, non-destructive).
   await db.run(`UPDATE parts_orders SET status = 'pending' WHERE status = 'to_order'`)

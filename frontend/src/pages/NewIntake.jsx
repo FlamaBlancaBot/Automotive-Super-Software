@@ -798,6 +798,28 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
           </div>
         </main>
       </div>
+
+      {showingCalendarModal ? (
+        <div className="modalOverlay" onClick={() => setShowingCalendarModal(false)}>
+          <div className="modal" style={{ width: '90vw', maxWidth: '90vw', maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modalTop">
+              <h2 style={{ margin: 0 }}>Workshop Calendar</h2>
+              <button
+                type="button"
+                className="closeButton"
+                onClick={() => setShowingCalendarModal(false)}
+                title="Close calendar"
+                style={{ marginTop: -6 }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <Calendar embedded={true} />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1569,27 +1591,6 @@ function StepNotes({ notesCustomerWords, setNotesCustomerWords, notesInternal, s
         </div>
       </div>
 
-      {showingCalendarModal && (
-        <div className="modalOverlay" onClick={() => setShowingCalendarModal(false)}>
-          <div className="modal" style={{ width: '90vw', maxWidth: '90vw', maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modalTop">
-              <h2 style={{ margin: 0 }}>Workshop Calendar</h2>
-              <button
-                type="button"
-                className="closeButton"
-                onClick={() => setShowingCalendarModal(false)}
-                title="Close calendar"
-                style={{ marginTop: -6 }}
-              >
-                ✕
-              </button>
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <Calendar embedded={true} />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

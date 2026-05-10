@@ -285,6 +285,7 @@ function App() {
               <QuoteDetail
                 quoteId={quoteIdFromPath}
                 onBackToQuotes={() => navigate('quotes')}
+                onOpenQuote={(id) => navigateToPath(`/quotes/${id}`)}
                 onViewPartsOrders={(quoteId) => navigateToPath(`/parts?quote_id=${quoteId}`)}
               />
             ) : (

@@ -242,7 +242,7 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
               </div>
               <div className="jobDetailInfoField">
                 <div className="jobDetailLabel">REG</div>
-                <div className="jobDetailValue mono">{job.vehicle_registration}</div>
+                <div className="jobDetailValue mono">{job.vehicle_registration || 'Registration missing - check linked vehicle/job'}</div>
               </div>
               <div className="jobDetailInfoField">
                 <div className="jobDetailLabel">Phone</div>

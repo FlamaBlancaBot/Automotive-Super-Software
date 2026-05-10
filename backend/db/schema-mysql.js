@@ -184,6 +184,10 @@ const MYSQL_SCHEMA_STATEMENTS = [
     customer_id BIGINT UNSIGNED NOT NULL,
     vehicle_id BIGINT UNSIGNED NOT NULL,
     job_id BIGINT UNSIGNED NULL,
+    parent_quote_id BIGINT UNSIGNED NULL,
+    supersedes_quote_id BIGINT UNSIGNED NULL,
+    revision_number INT NOT NULL DEFAULT 1,
+    revision_reason TEXT NULL,
     status VARCHAR(30) NOT NULL DEFAULT 'draft',
     title VARCHAR(255) NOT NULL,
     internal_notes TEXT NULL,
@@ -202,10 +206,15 @@ const MYSQL_SCHEMA_STATEMENTS = [
     KEY idx_quotes_customer_id (customer_id),
     KEY idx_quotes_vehicle_id (vehicle_id),
     KEY idx_quotes_job_id (job_id),
+    KEY idx_quotes_parent_quote_id (parent_quote_id),
+    KEY idx_quotes_supersedes_quote_id (supersedes_quote_id),
+    KEY idx_quotes_revision_number (revision_number),
     KEY idx_quotes_status (status),
     CONSTRAINT fk_quotes_customer FOREIGN KEY (customer_id) REFERENCES customers(id),
     CONSTRAINT fk_quotes_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
-    CONSTRAINT fk_quotes_job FOREIGN KEY (job_id) REFERENCES jobs(id)
+    CONSTRAINT fk_quotes_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_quotes_parent_quote FOREIGN KEY (parent_quote_id) REFERENCES quotes(id),
+    CONSTRAINT fk_quotes_supersedes_quote FOREIGN KEY (supersedes_quote_id) REFERENCES quotes(id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
   `

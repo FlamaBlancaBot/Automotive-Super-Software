@@ -60,7 +60,7 @@ function createInvoicesRouter({ db }) {
         }
 
         const quote = await tx.get(
-          `SELECT * FROM quotes WHERE job_id = ? AND status = 'accepted' ORDER BY updated_at DESC, id DESC LIMIT 1`,
+          `SELECT * FROM quotes WHERE job_id = ? AND status = 'accepted' ORDER BY id DESC LIMIT 1`,
           [jobId],
         )
 

@@ -522,7 +522,9 @@ export default function Quotes({ onOpenQuote, locationPath }) {
                 <tr>
                   <th>Quote</th>
                   <th>Status</th>
+                  <th>Revision</th>
                   <th>REG</th>
+                  <th>Job</th>
                   <th>Vehicle</th>
                   <th>Customer</th>
                   <th>Title</th>
@@ -536,7 +538,11 @@ export default function Quotes({ onOpenQuote, locationPath }) {
                   <tr key={q.id}>
                     <td className="mono">{q.quote_number}</td>
                     <td>{q.status}</td>
-                    <td className="mono">{q.vehicle_registration || '—'}</td>
+                    <td>{Number(q.revision_number || 1) > 1 ? `R${q.revision_number}` : 'Original'}</td>
+                    <td className="mono">
+                      {q.vehicle_registration || 'Registration missing - check linked vehicle/job'}
+                    </td>
+                    <td className="mono">{q.job_id || q.linked_job_id || '—'}</td>
                     <td>
                       {[q.vehicle_make, q.vehicle_model].filter(Boolean).join(' ') || '—'}
                     </td>

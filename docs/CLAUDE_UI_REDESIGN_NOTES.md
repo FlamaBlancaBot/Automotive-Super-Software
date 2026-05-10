@@ -2068,3 +2068,68 @@ Workshop bays:
 
 ### Quote safety confirmation
 - `frontend/src/pages/QuoteDetail.jsx` was not modified.
+
+## Stability hardening: layout, onboarding, communications and quote revisions
+
+**Date:** 2026-05-10  
+**Version bumped to:** 1.1.030
+
+### Files changed
+- `frontend/src/pages/NewIntake.jsx`
+- `frontend/src/pages/Communications.jsx`
+- `frontend/src/pages/Quotes.jsx`
+- `frontend/src/pages/QuoteDetail.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/App.css`
+- `backend/routes/quotes.js`
+- `backend/routes/jobs.js`
+- `backend/routes/invoices.js`
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+
+### Overflow fixes
+- Added overflow-safe layout guards for multi-column forms and card content on quotes/communications/onboarding/report-style pages.
+- Ensured inputs/buttons respect container width and long text wraps safely.
+- Preserved intended internal horizontal scrollers (notably quote supplier comparison).
+
+### Onboarding blank step fix
+- Fixed Notes & Summary runtime crash caused by calendar modal state being referenced inside `StepNotes` without scope.
+- Moved workshop calendar modal render to parent `NewIntake` scope where state exists.
+
+### Communications UI improvements
+- Added explicit manual provider limitation banner.
+- Added summary cards (total/manual required/sent/failed/templates).
+- Added tabbed structure: Compose, Message History, Templates.
+- Improved compose grouping and history/template readability.
+
+### Registration/job/quote integrity work
+- Quote listing/detail now uses resilient joins and REG fallback from linked job vehicle when available.
+- Added clearer UI warnings when registration is still missing.
+- Quote list now shows revision and job context.
+
+### Quote revision/additional quote workflow
+- Added accepted-quote lock for direct edits (prevents overwriting accepted originals).
+- Added backend quote revision endpoint that creates a new quote number and copies quote items + supplier options.
+- Added accepted-quote UI action to create additional/revised quote.
+- Job quote creation path now creates a new draft when latest quote is accepted (instead of reopening accepted quote).
+
+### Backend/schema changes
+- Added quote revision fields:
+  - `parent_quote_id`
+  - `supersedes_quote_id`
+  - `revision_number`
+  - `revision_reason`
+- Added safe migration guards for these columns in setup logic.
+
+### QuoteDetail safeguard confirmation
+- `QuoteDetail.jsx` was touched for revision workflow + warnings only.
+- Preserved per-part supplier comparison, multi-supplier support, cheapest/selected/N-A logic, ordered status, totals, save, accept, preview/print, and parts-order creation flow.
+
+### Limitations / future work
+- More explicit invoice-from-specific-accepted-quote selection UI can be added later.
+- Additional relational diagnostics for legacy data with broken foreign keys can be expanded.

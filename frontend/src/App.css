@@ -6526,3 +6526,124 @@
 .reportsOverrunRow {
   background: rgba(239, 68, 68, 0.08);
 }
+
+/* v1.1.030 stability hardening: overflow-safe forms and communications layout */
+.quotes,
+.communicationsPage,
+.intakeWizard,
+.jobsPage,
+.documentPage,
+.reportsPage,
+.cardBox {
+  min-width: 0;
+}
+
+.quotes .cardBox > *,
+.communicationsPage .cardBox > *,
+.intakeWizard .cardBox > *,
+.reportsPage .cardBox > * {
+  min-width: 0;
+}
+
+.quotes .fieldGrid,
+.communicationsPage .fieldGrid,
+.intakeWizard .fieldGrid,
+.reportsPage .fieldGrid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.quotes .field,
+.communicationsPage .field,
+.intakeWizard .field,
+.reportsPage .field {
+  min-width: 0;
+}
+
+.input,
+.select,
+.textarea,
+.primaryButton,
+.secondaryButton,
+.miniButton {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.fieldHint,
+.notice,
+.activityTimelineMeta,
+.activityTimelineText,
+.mono,
+.communicationsBodyPreview {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.communicationsPage .tabs {
+  margin-bottom: 10px;
+}
+
+.communicationsHistory {
+  display: grid;
+  gap: 10px;
+}
+
+.communicationsHistoryCard {
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.communicationsHistoryTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.communicationsBodyPreview {
+  margin-top: 8px;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(148, 163, 184, 0.06);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.communicationsTemplatesList {
+  display: grid;
+  gap: 8px;
+}
+
+.communicationsTemplateCard {
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 1200px) {
+  .communicationsPage .field {
+    grid-column: span 6 !important;
+  }
+
+  .communicationsPage .field[style*='span 12'],
+  .communicationsPage .field[style*='gridColumn: \"span 12\"'] {
+    grid-column: span 12 !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .quotes .field,
+  .communicationsPage .field,
+  .intakeWizard .field,
+  .reportsPage .field {
+    grid-column: span 12 !important;
+  }
+}

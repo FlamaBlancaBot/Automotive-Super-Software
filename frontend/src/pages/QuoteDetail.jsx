@@ -52,7 +52,7 @@ function getCheapestSupplierId(item) {
   return valid.sort((a, b) => toNumber(a.sell_price, 0) - toNumber(b.sell_price, 0))[0].supplier_id
 }
 
-export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders }) {
+export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders, onOpenQuote }) {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -256,6 +256,26 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
       }
     } catch (err) {
       setError(err.message || 'Failed to create customer details request link.')
+    }
+  }
+
+  async function createRevisedQuote() {
+    if (!quote || !quote.id) return
+    const reason = window.prompt('Reason for revised/additional quote', 'Additional work discovered')
+    if (reason == null) return
+    setSaveBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const out = await apiPost(`/api/quotes/${quote.id}/revise`, { revision_reason: reason })
+      if (out && out.quote && out.quote.id) {
+        setNotice(`Revised quote created: ${out.quote.quote_number}`)
+        if (typeof onOpenQuote === 'function') onOpenQuote(out.quote.id)
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to create revised quote.')
+    } finally {
+      setSaveBusy(false)
     }
   }
 
@@ -489,6 +509,16 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           <p className="pageSubtitle">
             Job #{quote.job_id || '—'} · {quote.title || 'QUOTE'}
           </p>
+          {!quote.vehicle_registration ? (
+            <div className="notice warn" style={{ marginTop: 8 }}>
+              Registration missing - check linked vehicle/job.
+            </div>
+          ) : null}
+          {Number(quote.revision_number || 1) > 1 ? (
+            <div className="fieldHint" style={{ marginTop: 4 }}>
+              Revision R{quote.revision_number} · Parent {quote.parent_quote_number || quote.parent_quote_id || '—'}
+            </div>
+          ) : null}
         </div>
         <div className="quoteHeaderRight">
           <div className="pageHeaderActions">
@@ -510,6 +540,11 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
             <button type="button" className="secondaryButton" onClick={() => onViewPartsOrders && onViewPartsOrders(quote.id)}>
               Parts orders
             </button>
+            {quote.status === 'accepted' ? (
+              <button type="button" className="secondaryButton" onClick={createRevisedQuote} disabled={saveBusy}>
+                Create Additional Quote
+              </button>
+            ) : null}
             <button type="button" className="secondaryButton noPrint" onClick={async () => { const next = !showCustomerQuote; setShowCustomerQuote(next); if (next) await loadCustomerQuotePreview() }}>
               {showCustomerQuote ? 'Hide preview' : 'Preview quote'}
             </button>

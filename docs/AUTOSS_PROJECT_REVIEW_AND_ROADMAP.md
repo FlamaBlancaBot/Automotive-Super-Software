@@ -202,3 +202,9 @@ Current important pages/routes in active workflow:
 - Update docs after significant features.
 - Commit and push each completed feature phase.
 - In final reports, include: files changed, build result, commit hash, push status, and Hostinger test checklist.
+
+## Stability hardening update (v1.1.030)
+- Added accepted-quote-safe revision/additional quote workflow so original accepted quotes are not overwritten.
+- Added registration/job context hardening for quote listing/detail responses where links exist.
+- Communications UI moved to clearer manager-facing structure (manual mode banner, summary cards, tabs).
+- Continued roadmap priority: harden workflow data consistency across quotes/jobs/invoices and add stronger relational diagnostics for missing vehicle/customer links.

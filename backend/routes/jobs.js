@@ -486,7 +486,7 @@ function createJobsRouter({ db }) {
 
         const existing = await tx.get(
           `
-          SELECT id, quote_number, status, title, updated_at
+          SELECT id, quote_number, status, title, updated_at, revision_number
           FROM quotes
           WHERE job_id = ?
           ORDER BY updated_at DESC, id DESC
@@ -495,21 +495,41 @@ function createJobsRouter({ db }) {
           [jobId],
         )
 
-        if (existing && !forceNew) {
+        const existingStatus = String(existing && existing.status ? existing.status : '').toLowerCase()
+        if (existing && !forceNew && existingStatus !== 'accepted') {
           return { quote: existing, reused: true }
         }
 
-        const title =
+        const titleBase =
           String(job.title || '').trim() ||
           String(job.service_template_name || 'Job').trim()
+        const title =
+          existing && existingStatus === 'accepted'
+            ? `${titleBase} - ADDITIONAL WORK`
+            : titleBase
 
         const quoteNumber = await generateQuoteNumber(tx)
+        const sourceQuoteId = existing && existingStatus === 'accepted' ? existing.id : null
+        const nextRevision = sourceQuoteId
+          ? Math.max(2, Number(existing.revision_number || 1) + 1)
+          : 1
         const created = await tx.run(
           `INSERT INTO quotes (
             quote_number, customer_id, vehicle_id, job_id, status, title,
+            parent_quote_id, supersedes_quote_id, revision_number, revision_reason,
             subtotal_cost, subtotal_sell, vat_rate, vat_amount, total_sell, estimated_margin
-          ) VALUES (?, ?, ?, ?, 'draft', ?, 0, 0, 0.2000, 0, 0, 0)`,
-          [quoteNumber, job.customer_id, job.vehicle_id, job.id, title],
+          ) VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, 0, 0, 0.2000, 0, 0, 0)`,
+          [
+            quoteNumber,
+            job.customer_id,
+            job.vehicle_id,
+            job.id,
+            title,
+            sourceQuoteId ? sourceQuoteId : null,
+            sourceQuoteId,
+            nextRevision,
+            sourceQuoteId ? 'Additional work discovered after acceptance' : null,
+          ],
         )
 
         const quote = await tx.get(
