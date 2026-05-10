@@ -2167,3 +2167,53 @@ Workshop bays:
 - Confirm app serves without 503.
 - Open `/quotes` and specific quote routes (e.g. `/quotes/20`) to verify API-backed page loading.
 - Confirm quote revise/additional flow and accepted quote protections still behave as in v1.1.030.
+
+## Booking availability and smart bay/technician suggestions
+
+**Date:** 2026-05-10  
+**Version bumped to:** 1.1.032
+
+### Files changed
+- `backend/routes/availability.js`
+- `frontend/src/pages/NewIntake.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/App.css`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+- `docs/CLAUDE_UI_REDESIGN_NOTES.md`
+
+### Endpoint added/updated
+- Updated `GET /api/availability/suggest` from basic overlap check to structured availability suggestions.
+
+### Suggestion logic
+- Accepts requested date/time/duration plus optional service/job context.
+- Builds bay suggestions from active bays, MOT requirement, and active bay assignments in overlapping windows.
+- Builds technician suggestions from active technicians, overlapping technician assignments, and technician skill matches.
+- Includes skill hints inferred from service title (MOT, diagnostics, brakes, suspension, electrical, engine, clutch/gearbox, air conditioning, welding, servicing).
+- Returns warnings and conflict lists rather than failing when related tables have no data.
+- Keeps backward-compatible fields (`busy`, `message`, `suggestion`) so existing UI does not break.
+
+### Onboarding changes
+- Booking step now calls the improved availability endpoint with service/MOT context.
+- Added availability result card showing requested slot, summary chips, bay suggestions, technician suggestions, and conflicts/warnings.
+- Save Intake flow and workshop calendar modal behavior preserved.
+
+### Job Detail changes
+- Added internal “Scheduling Suggestions” section.
+- Loads suggestions from current job booking context and supports refresh.
+- Shows bay/technician suggestions and conflicts.
+- Added safe optional quick actions: assign suggested bay/technician via existing assignment endpoints.
+
+### Calendar changes
+- No risky calendar backend redesign in this phase.
+- Existing calendar behavior preserved.
+
+### Limitations / future work
+- Suggestions are advisory only; no automatic scheduling or drag/drop yet.
+- Capacity warning logic is based on current overlap checks and assignment data, not a full planning engine.
+- More advanced workload balancing can be added in a later phase.
+
+### Quote safety confirmation
+- `frontend/src/pages/QuoteDetail.jsx` was not modified in this phase.

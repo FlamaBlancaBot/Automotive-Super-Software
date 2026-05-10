@@ -213,3 +213,9 @@ Current important pages/routes in active workflow:
 - A production 503 incident was traced to a backend startup failure from stray top-level `await` code left at the end of `backend/routes/quotes.js`.
 - Hotfix v1.1.031 removed the orphaned lines and restored server startup.
 - Release verification should include backend runtime start checks after quote-route edits, not only syntax checks.
+
+## Booking availability foundation (v1.1.032)
+- Added database-backed availability suggestions endpoint for requested slot, bays, technicians, skills, and conflict summaries.
+- Onboarding booking step now shows structured bay/technician suggestions and warnings instead of basic busy/free text only.
+- Job Detail now includes scheduling suggestions with refresh and optional one-click assignment using existing bay/technician endpoints.
+- Future work remains: drag/drop scheduling, live capacity heatmaps, and fully automatic assignment decisions.

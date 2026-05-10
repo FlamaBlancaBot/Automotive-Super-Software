@@ -33,6 +33,9 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [bayDraft, setBayDraft] = useState({ bay_id: '', notes: '' })
   const [invoices, setInvoices] = useState([])
   const [actionStatus, setActionStatus] = useState('idle')
+  const [suggestionsStatus, setSuggestionsStatus] = useState('idle')
+  const [suggestionsError, setSuggestionsError] = useState('')
+  const [suggestions, setSuggestions] = useState(null)
 
   useEffect(() => {
     setDocumentTitle('Jobs')
@@ -82,6 +85,12 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
     setDocumentTitle(`Job ${job.id} - ${reg}`)
   }, [job])
 
+  useEffect(() => {
+    if (!job) return
+    refreshSuggestions(job)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.id, job?.booked_start, job?.booked_end, job?.estimated_duration_minutes, job?.service_template_name])
+
   async function createOrOpenQuote() {
     if (!job) return
     setActionStatus('saving')
@@ -121,6 +130,50 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
     setJobActivity(jobActivityRes.events || [])
     setCurrentBayAssignment(jobBayRes.current_assignment || null)
     setJobCommunications(commsRes.messages || [])
+  }
+
+  function resolveSuggestionInputs(sourceJob) {
+    if (!sourceJob) return null
+    const startSource = sourceJob.booked_start || (sourceJob.requested_date ? `${sourceJob.requested_date} 09:00:00` : null)
+    if (!startSource) return null
+    const startDate = new Date(String(startSource).replace(' ', 'T'))
+    if (Number.isNaN(startDate.getTime())) return null
+    const date = startDate.toISOString().slice(0, 10)
+    const hh = String(startDate.getHours()).padStart(2, '0')
+    const mm = String(startDate.getMinutes()).padStart(2, '0')
+    const time = `${hh}:${mm}`
+    const duration = Math.max(15, Number(sourceJob.estimated_duration_minutes || 60))
+    const serviceTitle = sourceJob.service_template_name || sourceJob.title || ''
+    const requiresMotBay = Number(sourceJob.service_is_mot || 0) === 1 || String(serviceTitle).toLowerCase().includes('mot')
+    return { date, time, duration, serviceTitle, requiresMotBay }
+  }
+
+  async function refreshSuggestions(sourceJob = job) {
+    const inputs = resolveSuggestionInputs(sourceJob)
+    if (!inputs) {
+      setSuggestionsStatus('error')
+      setSuggestionsError('No booking date/time available for this job yet.')
+      setSuggestions(null)
+      return
+    }
+    setSuggestionsStatus('loading')
+    setSuggestionsError('')
+    try {
+      const qs = new URLSearchParams({
+        date: inputs.date,
+        time: inputs.time,
+        duration_minutes: String(inputs.duration),
+        service_title: String(inputs.serviceTitle || ''),
+        requires_mot_bay: inputs.requiresMotBay ? 'true' : 'false',
+        job_id: String(jobId),
+      })
+      const data = await apiGet(`/api/availability/suggest?${qs.toString()}`)
+      setSuggestions(data)
+      setSuggestionsStatus('ready')
+    } catch (err) {
+      setSuggestionsStatus('error')
+      setSuggestionsError(err.message || 'Failed to load scheduling suggestions.')
+    }
   }
 
   async function assignBay() {
@@ -270,6 +323,111 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
                 <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Notes</div><div>{currentBayAssignment.notes || '—'}</div></div>
               </div>
             ) : <div className="emptyState">No bay assigned yet.</div>}
+          </div>
+
+          <div className="jobDetailCard" style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 className="jobDetailCardTitle">Scheduling Suggestions</h2>
+              <button type="button" className="secondaryButton" onClick={() => refreshSuggestions()}>
+                {suggestionsStatus === 'loading' ? 'Refreshing…' : 'Refresh Suggestions'}
+              </button>
+            </div>
+            {suggestionsError ? <div className="notice bad">{suggestionsError}</div> : null}
+            {suggestions ? (
+              <div>
+                <div className="availabilitySummaryRow">
+                  <StatusPill>{`Bays available: ${Number(suggestions?.summary?.available_bays || 0)}`}</StatusPill>
+                  <StatusPill>{`Technicians available: ${Number(suggestions?.summary?.available_technicians || 0)}`}</StatusPill>
+                  <StatusPill>{`Matching skills: ${Number(suggestions?.summary?.matching_technicians || 0)}`}</StatusPill>
+                </div>
+                {suggestions?.summary?.warnings?.length ? (
+                  <div className="availabilityWarnings">
+                    {suggestions.summary.warnings.map((w, idx) => <div key={`${w}-${idx}`} className="notice warn">{w}</div>)}
+                  </div>
+                ) : null}
+                <div className="availabilityListsGrid">
+                  <div className="availabilityListCard">
+                    <h4 className="cardTitle" style={{ marginTop: 0, marginBottom: 8 }}>Suggested bays</h4>
+                    {(suggestions?.bay_suggestions || []).slice(0, 5).map((b) => (
+                      <div key={b.bay_id} className="availabilityRowItem">
+                        <div>
+                          <div className="availabilityRowTitle">{b.bay_name} ({b.bay_type || 'general'})</div>
+                          <div className="fieldHint">{b.reason}</div>
+                        </div>
+                        <div className="availabilityRowBadges">
+                          {b.is_mot_bay ? <StatusPill>MOT</StatusPill> : null}
+                          <StatusPill tone={b.available ? 'good' : 'warn'}>{b.available ? 'Available' : 'Unavailable'}</StatusPill>
+                          {b.available ? (
+                            <button
+                              type="button"
+                              className="miniButton"
+                              onClick={async () => {
+                                await apiPost(`/api/jobs/${jobId}/bay`, { bay_id: Number(b.bay_id), notes: 'Assigned from scheduling suggestion.' })
+                                await refreshAssignmentsAndActivity()
+                                await refreshSuggestions()
+                              }}
+                            >
+                              Assign this bay
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                    {!suggestions?.bay_suggestions?.length ? <div className="emptyState">No bay suggestions.</div> : null}
+                  </div>
+                  <div className="availabilityListCard">
+                    <h4 className="cardTitle" style={{ marginTop: 0, marginBottom: 8 }}>Suggested technicians</h4>
+                    {(suggestions?.technician_suggestions || []).slice(0, 8).map((t) => (
+                      <div key={t.technician_id} className="availabilityRowItem">
+                        <div>
+                          <div className="availabilityRowTitle">{t.name}</div>
+                          <div className="fieldHint">{t.reason}</div>
+                          <div className="fieldHint">{(t.matching_skills || []).length ? `Skills: ${t.matching_skills.join(', ')}` : 'No exact matching skills recorded'}</div>
+                        </div>
+                        <div className="availabilityRowBadges">
+                          <StatusPill>{`Active jobs: ${Number(t.active_jobs || 0)}`}</StatusPill>
+                          <StatusPill tone={t.available ? 'good' : 'warn'}>{t.available ? 'Available' : 'Busy'}</StatusPill>
+                          {t.available ? (
+                            <button
+                              type="button"
+                              className="miniButton"
+                              onClick={async () => {
+                                await apiPost(`/api/jobs/${jobId}/technicians`, {
+                                  technician_id: Number(t.technician_id),
+                                  assignment_role: 'suggested_assignment',
+                                  status: 'assigned',
+                                })
+                                await refreshAssignmentsAndActivity()
+                                await refreshSuggestions()
+                              }}
+                            >
+                              Assign this technician
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                    {!suggestions?.technician_suggestions?.length ? <div className="emptyState">No technician suggestions.</div> : null}
+                  </div>
+                </div>
+                {suggestions?.conflicts?.length ? (
+                  <div className="availabilityListCard" style={{ marginTop: 10 }}>
+                    <h4 className="cardTitle" style={{ marginTop: 0, marginBottom: 8 }}>Conflicts</h4>
+                    {suggestions.conflicts.slice(0, 12).map((c, idx) => (
+                      <div key={`${c.type}-${c.job_id}-${idx}`} className="availabilityRowItem">
+                        <div>
+                          <div className="availabilityRowTitle">{String(c.type || '').toUpperCase()} · {c.name || 'Unknown'}</div>
+                          <div className="fieldHint">Job #{c.job_id} · {c.registration || 'REG unknown'}</div>
+                        </div>
+                        <div className="fieldHint">{formatDateTime(c.start)} → {formatDateTime(c.end)}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="emptyState">No suggestions loaded.</div>
+            )}
           </div>
 
           <div className="jobDetailCard" style={{ marginTop: 20 }}>
@@ -624,4 +782,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
 
     </div>
   )
+}
+
+function StatusPill({ children, tone }) {
+  return <span className={`statusPill ${tone || ''}`}>{children}</span>
 }

@@ -432,10 +432,13 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
 
     try {
       const qs = new URLSearchParams({
-        requested_date: requestedDate,
-        arrival_time: arrivalTime,
+        date: requestedDate,
+        time: arrivalTime,
         duration_minutes: String(estimatedDurationMinutes),
         priority,
+        service_title: selectedService?.name ? String(selectedService.name) : '',
+        service_id: selectedService?.id ? String(selectedService.id) : '',
+        requires_mot_bay: motSelected ? 'true' : 'false',
       })
       const data = await apiGet(`/api/availability/suggest?${qs.toString()}`)
       setAvailabilityStatus('done')
@@ -733,6 +736,8 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
               availabilityStatus={availabilityStatus}
               availabilityError={availabilityError}
               availabilityResult={availabilityResult}
+              estimatedDurationMinutes={estimatedDurationMinutes}
+              selectedService={selectedService}
               onOpenCalendar={onOpenCalendar}
               motSelected={motSelected}
               motRenewalMessage={motRenewalMessage}
@@ -1225,7 +1230,7 @@ function StepService({ servicesStatus, servicesError, serviceTemplateId, setServ
   )
 }
 
-function StepBooking({ requestedDate, setRequestedDate, arrivalTime, setArrivalTime, priority, setPriority, initialStatus, setInitialStatus, onCheckAvailability, availabilityStatus, availabilityError, availabilityResult, motSelected, motRenewalMessage, motTime, setMotTime, motSupplierName, setMotSupplierName, motSupplierContact, setMotSupplierContact, motIsExternal, setMotIsExternal, reminderOffsetsEnabled, setReminderOffsetsEnabled, onOpenCalendar }) {
+function StepBooking({ requestedDate, setRequestedDate, arrivalTime, setArrivalTime, priority, setPriority, initialStatus, setInitialStatus, onCheckAvailability, availabilityStatus, availabilityError, availabilityResult, estimatedDurationMinutes, selectedService, motSelected, motRenewalMessage, motTime, setMotTime, motSupplierName, setMotSupplierName, motSupplierContact, setMotSupplierContact, motIsExternal, setMotIsExternal, reminderOffsetsEnabled, setReminderOffsetsEnabled, onOpenCalendar }) {
   return (
     <div className="intakeStepContent">
       <div className="intakeStepHeader">
@@ -1305,21 +1310,106 @@ function StepBooking({ requestedDate, setRequestedDate, arrivalTime, setArrivalT
           View Workshop Calendar
         </button>
         <div className="fieldHint">
-          Basic database-backed check against seeded jobs. Urgent/high-value fit-in logic will be improved later.
+          Suggestions use current jobs, bay assignments, technician assignments, and skill matching.
         </div>
       </div>
 
       {availabilityError ? <Notice tone="bad">{availabilityError}</Notice> : null}
       {availabilityResult ? (
-        <Notice tone={availabilityResult.busy ? 'warn' : 'good'}>
-          {availabilityResult.message}{' '}
-          {availabilityResult.suggestion ? (
-            <span>
-              Suggested: {availabilityResult.suggestion.requested_date}{' '}
-              {availabilityResult.suggestion.arrival_time}
-            </span>
+        <div className="availabilityResultCard">
+          <div className="availabilityResultHeader">
+            <h3 className="cardTitle" style={{ margin: 0 }}>Availability suggestions</h3>
+            <StatusPill tone={availabilityResult?.conflicts?.length ? 'warn' : 'good'}>
+              {availabilityResult?.conflicts?.length ? 'Conflicts found' : 'No direct conflicts'}
+            </StatusPill>
+          </div>
+
+          <div className="fieldGrid" style={{ marginTop: 10 }}>
+            <div className="field">
+              <div className="fieldLabel">Requested slot</div>
+              <div>{requestedDate || '—'} {arrivalTime || '—'}</div>
+            </div>
+            <div className="field">
+              <div className="fieldLabel">Duration</div>
+              <div>{Number(estimatedDurationMinutes || 0)} minutes</div>
+            </div>
+            <div className="field">
+              <div className="fieldLabel">Service</div>
+              <div>{selectedService?.name || '—'}</div>
+            </div>
+            <div className="field">
+              <div className="fieldLabel">MOT bay requirement</div>
+              <div>{availabilityResult?.requested?.requires_mot_bay ? 'Required' : 'Not required'}</div>
+            </div>
+          </div>
+
+          {availabilityResult?.summary?.warnings?.length ? (
+            <div className="availabilityWarnings">
+              {availabilityResult.summary.warnings.map((w, idx) => (
+                <Notice key={`${w}-${idx}`} tone="warn">{w}</Notice>
+              ))}
+            </div>
           ) : null}
-        </Notice>
+
+          <div className="availabilitySummaryRow">
+            <StatusPill>{`Bays available: ${Number(availabilityResult?.summary?.available_bays || 0)}`}</StatusPill>
+            <StatusPill>{`Busy bays: ${Number(availabilityResult?.summary?.busy_bays || 0)}`}</StatusPill>
+            <StatusPill>{`Technicians available: ${Number(availabilityResult?.summary?.available_technicians || 0)}`}</StatusPill>
+            <StatusPill>{`Matching technicians: ${Number(availabilityResult?.summary?.matching_technicians || 0)}`}</StatusPill>
+          </div>
+
+          <div className="availabilityListsGrid">
+            <div className="availabilityListCard">
+              <h4 className="cardTitle" style={{ marginTop: 0, marginBottom: 8 }}>Bay suggestions</h4>
+              {(availabilityResult?.bay_suggestions || []).slice(0, 6).map((b) => (
+                <div key={b.bay_id} className="availabilityRowItem">
+                  <div>
+                    <div className="availabilityRowTitle">{b.bay_name} ({b.bay_type || 'general'})</div>
+                    <div className="fieldHint">{b.reason}</div>
+                  </div>
+                  <div className="availabilityRowBadges">
+                    {b.is_mot_bay ? <StatusPill>MOT</StatusPill> : null}
+                    <StatusPill tone={b.available ? 'good' : 'warn'}>{b.available ? 'Available' : 'Unavailable'}</StatusPill>
+                  </div>
+                </div>
+              ))}
+              {!availabilityResult?.bay_suggestions?.length ? <div className="emptyState">No bays available.</div> : null}
+            </div>
+
+            <div className="availabilityListCard">
+              <h4 className="cardTitle" style={{ marginTop: 0, marginBottom: 8 }}>Technician suggestions</h4>
+              {(availabilityResult?.technician_suggestions || []).slice(0, 8).map((t) => (
+                <div key={t.technician_id} className="availabilityRowItem">
+                  <div>
+                    <div className="availabilityRowTitle">{t.name}</div>
+                    <div className="fieldHint">{t.reason}</div>
+                    <div className="fieldHint">{(t.matching_skills || []).length ? `Skills: ${t.matching_skills.join(', ')}` : 'No exact skill match recorded'}</div>
+                  </div>
+                  <div className="availabilityRowBadges">
+                    <StatusPill>{`Active jobs: ${Number(t.active_jobs || 0)}`}</StatusPill>
+                    <StatusPill tone={t.available ? 'good' : 'warn'}>{t.available ? 'Available' : 'Busy'}</StatusPill>
+                  </div>
+                </div>
+              ))}
+              {!availabilityResult?.technician_suggestions?.length ? <div className="emptyState">No technicians available.</div> : null}
+            </div>
+          </div>
+
+          {availabilityResult?.conflicts?.length ? (
+            <div className="availabilityListCard" style={{ marginTop: 10 }}>
+              <h4 className="cardTitle" style={{ marginTop: 0, marginBottom: 8 }}>Conflicts</h4>
+              {availabilityResult.conflicts.slice(0, 12).map((c, idx) => (
+                <div key={`${c.type}-${c.job_id}-${idx}`} className="availabilityRowItem">
+                  <div>
+                    <div className="availabilityRowTitle">{String(c.type || '').toUpperCase()} · {c.name || 'Unknown'}</div>
+                    <div className="fieldHint">Job #{c.job_id} · {c.registration || 'REG unknown'}</div>
+                  </div>
+                  <div className="fieldHint">{String(c.start || '').slice(0, 16).replace('T', ' ')} → {String(c.end || '').slice(0, 16).replace('T', ' ')}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {motSelected ? (
@@ -1416,6 +1506,10 @@ function StepBooking({ requestedDate, setRequestedDate, arrivalTime, setArrivalT
       ) : null}
     </div>
   )
+}
+
+function StatusPill({ children, tone }) {
+  return <span className={`statusPill ${tone || ''}`}>{children}</span>
 }
 
 function StepNotes({ notesCustomerWords, setNotesCustomerWords, notesInternal, setNotesInternal, regNormalised, firstName, surname, phoneNumber, selectedCustomer, selectedService, requestedDate, arrivalTime, requiredMissing, canSave, saveStatus, onSaveIntake, saveError, saveResult, customerDetailsLink, onCreateQuoteNow, resetForAnother, onViewJob }) {
