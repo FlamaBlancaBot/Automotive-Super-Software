@@ -525,10 +525,12 @@
 
 /* ── Sidebar (Icon Rail) ── */
 .sidebar {
-  width: 80px;
+  --sidebar-collapsed: 78px;
+  --sidebar-expanded: 232px;
+  width: var(--sidebar-collapsed);
   border-right: 1px solid var(--separator);
   background: var(--surface-1);
-  padding: 16px 14px;
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -538,6 +540,7 @@
   scrollbar-width: none;
   flex-shrink: 0;
   z-index: 20;
+  transition: width 0.2s ease, padding 0.2s ease;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -558,17 +561,22 @@
   z-index: 30;
 }
 
+.sidebarTop {
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
 /* Logo badge at top */
 .sidebarLogo {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
   background: var(--gradient-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  margin: 0 auto 18px;
+  margin: 0 auto;
   cursor: pointer;
   border: none;
   flex-shrink: 0;
@@ -584,11 +592,12 @@
 .sidebarNav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
+  min-height: 0;
 }
 
 .sidebarNav::-webkit-scrollbar {
@@ -597,8 +606,8 @@
 
 /* Nav item button: 48x48 icon button */
 .navItem {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -611,7 +620,10 @@
   transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
   margin: 0 auto;
-  padding: 0;
+  padding: 0 12px;
+  gap: 12px;
+  overflow: hidden;
+  transition: background 0.15s, color 0.15s, width 0.2s ease;
 }
 
 .navItem:hover {
@@ -642,7 +654,7 @@
 /* Tooltip on hover */
 .navTooltip {
   position: absolute;
-  left: calc(100% + 14px);
+  left: calc(100% + 12px);
   top: 50%;
   transform: translateY(-50%);
   background: #1e293b;
@@ -658,6 +670,8 @@
   transition: opacity 0.15s;
   z-index: 100;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  max-width: 0;
+  overflow: hidden;
 }
 
 .navTooltip::before {
@@ -672,17 +686,20 @@
 
 .navItem:hover .navTooltip {
   opacity: 1;
+  max-width: 240px;
 }
 
 /* Bottom section: settings + logout */
 .sidebarBottom {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-top: 12px;
+  gap: 4px;
+  padding-top: 8px;
   border-top: 1px solid var(--separator);
   margin-top: 8px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .navLogout:hover {
@@ -690,9 +707,52 @@
   color: #f87171;
 }
 
+@media (min-width: 901px) {
+  .sidebar:hover,
+  .sidebar:focus-within {
+    width: var(--sidebar-expanded);
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .sidebar:hover .navItem,
+  .sidebar:focus-within .navItem {
+    width: 100%;
+    margin: 0;
+    justify-content: flex-start;
+  }
+
+  .sidebar:hover .sidebarLogo,
+  .sidebar:focus-within .sidebarLogo {
+    margin-left: 0;
+  }
+
+  .sidebar:hover .navTooltip,
+  .sidebar:focus-within .navTooltip {
+    position: static;
+    transform: none;
+    opacity: 1;
+    pointer-events: none;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    box-shadow: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    max-width: 140px;
+  }
+
+  .sidebar:hover .navTooltip::before,
+  .sidebar:focus-within .navTooltip::before {
+    display: none;
+  }
+}
+
 /* Mobile sidebar overlay */
 @media (max-width: 900px) {
   .sidebar {
+    width: var(--sidebar-expanded);
     position: fixed;
     top: 0;
     left: 0;

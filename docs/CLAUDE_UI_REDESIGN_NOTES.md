@@ -2030,3 +2030,41 @@ Workshop bays:
 
 ### Quote safety confirmation
 - `frontend/src/pages/QuoteDetail.jsx` was not modified.
+
+## Sidebar responsive hover and height fix
+
+**Date:** 2026-05-10  
+**Version bumped to:** 1.1.029
+
+### Files changed
+- `frontend/src/components/Sidebar.jsx`
+- `frontend/src/App.css`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+
+### What caused the issue
+- The sidebar was locked to icon-rail behavior with tooltip-only labels and no desktop expand state.
+- As navigation items increased (including Reports and Communications), fixed icon sizing and spacing made the rail too tall for typical laptop viewports.
+
+### Hover expansion restored
+- Restored desktop hover/focus expansion with smooth width transition.
+- Collapsed state remains compact icon rail.
+- Expanded state shows icon + text labels inline.
+- Tooltip conflict removed by switching labels inline when expanded.
+- Keyboard accessibility supported via `:focus-within` expansion.
+
+### Bottom controls pinned
+- Sidebar remains `height: 100vh` with column flex layout.
+- Main nav area uses internal scroll (`flex: 1`, `overflow-y: auto`) only when needed.
+- Bottom section (Settings + Logout) is fixed at the bottom via non-shrinking footer block.
+- No full page scroll needed to reach logout.
+
+### Responsive behavior
+- Desktop: compact by default, expands on hover/focus.
+- Small laptop/tablet: nav remains usable with internal sidebar scrolling.
+- Mobile behavior (slide-in sidebar/overlay) preserved.
+- Reports and Communications remain visible in navigation.
+
+### Quote safety confirmation
+- `frontend/src/pages/QuoteDetail.jsx` was not modified.

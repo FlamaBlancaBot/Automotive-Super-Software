@@ -46,16 +46,18 @@ export default function Sidebar({ activeKey, onNavigate, isOpen, onClose, onLogo
         aria-hidden={!isOpen}
       />
       <aside className={`sidebar ${isOpen ? 'isOpen' : ''}`}>
-        {/* Logo badge at top */}
-        <button
-          type="button"
-          className="sidebarLogo"
-          onClick={() => nav('dashboard')}
-          title={`AUTOSS v${APP_VERSION}`}
-          aria-label="Dashboard"
-        >
-          <IcoCar />
-        </button>
+        <div className="sidebarTop">
+          {/* Logo badge at top */}
+          <button
+            type="button"
+            className="sidebarLogo"
+            onClick={() => nav('dashboard')}
+            title={`AUTOSS v${APP_VERSION}`}
+            aria-label="Dashboard"
+          >
+            <IcoCar />
+          </button>
+        </div>
 
         {/* Main nav */}
         <nav className="sidebarNav" aria-label="Primary navigation">
