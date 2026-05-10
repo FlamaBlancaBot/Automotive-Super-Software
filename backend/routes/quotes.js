@@ -1320,11 +1320,3 @@ function createQuotesRouter({ db }) {
 module.exports = {
   createQuotesRouter,
 }
-        await ensureQuoteEditable(tx, item.quote_id)
-
-        await ensureQuoteEditable(tx, item.quote_id)
-
-        const parentItem = await tx.get(`SELECT quote_id FROM quote_items WHERE id = ?`, [option.quote_item_id])
-        if (parentItem && parentItem.quote_id) {
-          await ensureQuoteEditable(tx, parentItem.quote_id)
-        }

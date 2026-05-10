@@ -208,3 +208,8 @@ Current important pages/routes in active workflow:
 - Added registration/job context hardening for quote listing/detail responses where links exist.
 - Communications UI moved to clearer manager-facing structure (manual mode banner, summary cards, tabs).
 - Continued roadmap priority: harden workflow data consistency across quotes/jobs/invoices and add stronger relational diagnostics for missing vehicle/customer links.
+
+## Deployment incident note (v1.1.031)
+- A production 503 incident was traced to a backend startup failure from stray top-level `await` code left at the end of `backend/routes/quotes.js`.
+- Hotfix v1.1.031 removed the orphaned lines and restored server startup.
+- Release verification should include backend runtime start checks after quote-route edits, not only syntax checks.

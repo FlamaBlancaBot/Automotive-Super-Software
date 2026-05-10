@@ -2133,3 +2133,37 @@ Workshop bays:
 ### Limitations / future work
 - More explicit invoice-from-specific-accepted-quote selection UI can be added later.
 - Additional relational diagnostics for legacy data with broken foreign keys can be expanded.
+
+## Emergency hotfix: production 503 on quote detail
+
+**Date:** 2026-05-10  
+**Version bumped to:** 1.1.031
+
+### Root cause found
+- Production 503 was caused by a backend startup crash introduced in v1.1.030.
+- `backend/routes/quotes.js` contained stray top-level `await` lines appended after `module.exports`.
+- This triggered Node runtime failure (`ERR_REQUIRE_ASYNC_MODULE`) when loading the quotes route, which prevented server startup.
+
+### Files changed
+- `backend/routes/quotes.js`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+
+### Backend/schema/route fix
+- Removed orphaned top-level `await` statements and stray block from the end of `backend/routes/quotes.js`.
+- Kept route paths and quote revision logic intact.
+- No additional schema migration changes were required for this hotfix.
+
+### QuoteDetail.jsx touch status
+- `frontend/src/pages/QuoteDetail.jsx` was **not** modified in this hotfix.
+
+### Quote workflow safeguards preserved
+- Accepted quote immutability workflow remains in place.
+- Revised/additional quote creation flow remains in place.
+- Supplier comparison and acceptance/parts-order behaviors were not altered by this patch.
+
+### Hostinger verification
+- Confirm app serves without 503.
+- Open `/quotes` and specific quote routes (e.g. `/quotes/20`) to verify API-backed page loading.
+- Confirm quote revise/additional flow and accepted quote protections still behave as in v1.1.030.
