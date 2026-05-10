@@ -414,6 +414,86 @@ const MYSQL_SCHEMA_STATEMENTS = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
   `
+  CREATE TABLE IF NOT EXISTS technician_skills (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(120) NOT NULL,
+    description TEXT NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_technician_skills_name (name),
+    KEY idx_technician_skills_active (active)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS technician_skill_assignments (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    technician_id BIGINT UNSIGNED NOT NULL,
+    skill_id BIGINT UNSIGNED NOT NULL,
+    level VARCHAR(30) NULL,
+    notes TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_technician_skill_once (technician_id, skill_id),
+    KEY idx_technician_skill_skill (skill_id),
+    CONSTRAINT fk_tech_skill_assignment_tech FOREIGN KEY (technician_id) REFERENCES technicians(id),
+    CONSTRAINT fk_tech_skill_assignment_skill FOREIGN KEY (skill_id) REFERENCES technician_skills(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS workshop_bays (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(120) NOT NULL,
+    bay_type VARCHAR(30) NOT NULL DEFAULT 'general',
+    description TEXT NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    is_mot_bay TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_workshop_bays_name (name),
+    KEY idx_workshop_bays_active (active),
+    KEY idx_workshop_bays_type (bay_type)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS bay_technician_assignments (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    bay_id BIGINT UNSIGNED NOT NULL,
+    technician_id BIGINT UNSIGNED NOT NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_bay_technician_once (bay_id, technician_id),
+    KEY idx_bay_technician_tech (technician_id),
+    CONSTRAINT fk_bay_technician_bay FOREIGN KEY (bay_id) REFERENCES workshop_bays(id),
+    CONSTRAINT fk_bay_technician_tech FOREIGN KEY (technician_id) REFERENCES technicians(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS job_bay_assignments (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    job_id BIGINT UNSIGNED NOT NULL,
+    bay_id BIGINT UNSIGNED NOT NULL,
+    assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    released_at DATETIME NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'assigned',
+    notes TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_job_bay_assign_job (job_id),
+    KEY idx_job_bay_assign_bay (bay_id),
+    KEY idx_job_bay_assign_status (status),
+    KEY idx_job_bay_assign_current (job_id, released_at),
+    CONSTRAINT fk_job_bay_assignment_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_job_bay_assignment_bay FOREIGN KEY (bay_id) REFERENCES workshop_bays(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
   CREATE TABLE IF NOT EXISTS parts_orders (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     job_id BIGINT UNSIGNED NULL,

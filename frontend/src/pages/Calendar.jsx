@@ -237,6 +237,8 @@ export default function Calendar({ embedded = false }) {
                             <StatusChip label={j.status_label || j.status} tone={statusTone(j.status_colour, j.faded)} />
                             {j.quote_status ? <span className="fieldHint">Quote {j.quote_status}</span> : null}
                             {j.parts_status && j.parts_status !== 'none' ? <span className="fieldHint">Parts {j.parts_status}</span> : null}
+                            {j.bay_name ? <span className="fieldHint">Bay {j.bay_name} ({j.bay_type || 'general'})</span> : null}
+                            {Number(j.is_mot_bay) ? <span className="fieldHint">MOT BAY</span> : null}
                           </div>
                         </button>
                       )

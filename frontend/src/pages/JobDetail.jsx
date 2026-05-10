@@ -24,8 +24,12 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [assignments, setAssignments] = useState([])
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [showActivityModal, setShowActivityModal] = useState(false)
+  const [showBayModal, setShowBayModal] = useState(false)
   const [assignDraft, setAssignDraft] = useState({ technician_id: '', assignment_role: '', estimated_hours: '', status: 'assigned' })
   const [activityDraft, setActivityDraft] = useState({ technician_id: '', event_type: 'internal_note', title: '', description: '' })
+  const [bays, setBays] = useState([])
+  const [currentBayAssignment, setCurrentBayAssignment] = useState(null)
+  const [bayDraft, setBayDraft] = useState({ bay_id: '', notes: '' })
   const [invoices, setInvoices] = useState([])
   const [actionStatus, setActionStatus] = useState('idle')
 
@@ -43,16 +47,20 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setPartsOrders(data.parts_orders || [])
       const invoiceRes = await apiGet(`/api/jobs/${jobId}/invoices`).catch(() => ({ invoices: [] }))
       setInvoices(invoiceRes.invoices || [])
-      const [sheetRes, techRes, assignmentsRes, jobActivityRes] = await Promise.all([
+      const [sheetRes, techRes, assignmentsRes, jobActivityRes, baysRes, jobBayRes] = await Promise.all([
         apiGet(`/api/jobs/${jobId}/job-sheet`).catch(() => null),
         apiGet('/api/technicians').catch(() => ({ technicians: [] })),
         apiGet(`/api/jobs/${jobId}/technicians`).catch(() => ({ assignments: [] })),
         apiGet(`/api/jobs/${jobId}/activity`).catch(() => ({ events: [] })),
+        apiGet('/api/bays').catch(() => ({ bays: [] })),
+        apiGet(`/api/jobs/${jobId}/bay`).catch(() => ({ current_assignment: null })),
       ])
       setJobSheet(sheetRes || null)
       setTechnicians((techRes && techRes.technicians) || [])
       setAssignments((assignmentsRes && assignmentsRes.assignments) || [])
       setJobActivity((jobActivityRes && jobActivityRes.events) || [])
+      setBays((baysRes && baysRes.bays) || [])
+      setCurrentBayAssignment((jobBayRes && jobBayRes.current_assignment) || null)
       setStatus('ready')
     } catch (err) {
       setStatus('error')
@@ -100,12 +108,28 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   }
 
   async function refreshAssignmentsAndActivity() {
-    const [assignmentsRes, jobActivityRes] = await Promise.all([
+    const [assignmentsRes, jobActivityRes, jobBayRes] = await Promise.all([
       apiGet(`/api/jobs/${jobId}/technicians`).catch(() => ({ assignments: [] })),
       apiGet(`/api/jobs/${jobId}/activity`).catch(() => ({ events: [] })),
+      apiGet(`/api/jobs/${jobId}/bay`).catch(() => ({ current_assignment: null })),
     ])
     setAssignments(assignmentsRes.assignments || [])
     setJobActivity(jobActivityRes.events || [])
+    setCurrentBayAssignment(jobBayRes.current_assignment || null)
+  }
+
+  async function assignBay() {
+    if (!bayDraft.bay_id) return
+    await apiPost(`/api/jobs/${jobId}/bay`, { bay_id: Number(bayDraft.bay_id), notes: bayDraft.notes || null })
+    setShowBayModal(false)
+    setBayDraft({ bay_id: '', notes: '' })
+    await refreshAssignmentsAndActivity()
+  }
+
+  async function releaseBay() {
+    if (!currentBayAssignment) return
+    await apiDelete(`/api/jobs/${jobId}/bay/${currentBayAssignment.id}`)
+    await refreshAssignmentsAndActivity()
   }
 
   async function addAssignment() {
@@ -220,6 +244,27 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
                 <div className="jobDetailValue mono">{job.customer_phone || '—'}</div>
               </div>
             </div>
+          </div>
+
+          <div className="jobDetailCard" style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 className="jobDetailCardTitle">Workshop Bay</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="secondaryButton" onClick={() => setShowBayModal(true)}>
+                  {currentBayAssignment ? 'Change Bay' : 'Assign Bay'}
+                </button>
+                {currentBayAssignment ? <button type="button" className="secondaryButton" onClick={releaseBay}>Release</button> : null}
+              </div>
+            </div>
+            {currentBayAssignment ? (
+              <div className="fieldGrid">
+                <div className="field"><div className="fieldLabel">Current bay</div><div>{currentBayAssignment.bay_name}</div></div>
+                <div className="field"><div className="fieldLabel">Bay type</div><div>{currentBayAssignment.bay_type || '—'}</div></div>
+                <div className="field"><div className="fieldLabel">MOT bay</div><div>{Number(currentBayAssignment.is_mot_bay) ? 'YES' : 'NO'}</div></div>
+                <div className="field"><div className="fieldLabel">Assigned at</div><div>{formatDateTime(currentBayAssignment.assigned_at)}</div></div>
+                <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Notes</div><div>{currentBayAssignment.notes || '—'}</div></div>
+              </div>
+            ) : <div className="emptyState">No bay assigned yet.</div>}
           </div>
 
           <div className="jobDetailCard" style={{ marginTop: 20 }}>
@@ -512,6 +557,19 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
               <div className="field"><div className="fieldLabel">Estimated hours</div><input className="input" value={assignDraft.estimated_hours} onChange={(e) => setAssignDraft((d) => ({ ...d, estimated_hours: e.target.value }))} /></div>
               <div className="field"><div className="fieldLabel">Status</div><select className="select" value={assignDraft.status} onChange={(e) => setAssignDraft((d) => ({ ...d, status: e.target.value }))}><option value="assigned">assigned</option><option value="in_progress">in_progress</option><option value="completed">completed</option><option value="paused">paused</option></select></div>
               <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={() => setShowAssignModal(false)}>Cancel</button><button type="button" className="primaryButton" onClick={addAssignment}>Save</button></div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showBayModal ? (
+        <div className="modalOverlay" onClick={() => setShowBayModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="cardTitle">Assign Workshop Bay</h3>
+            <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+              <div className="field"><div className="fieldLabel">Bay</div><select className="select" value={bayDraft.bay_id} onChange={(e) => setBayDraft((d) => ({ ...d, bay_id: e.target.value }))}><option value="">Select bay…</option>{bays.filter((b) => Number(b.active) === 1).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.bay_type}){Number(b.is_mot_bay) ? ' - MOT' : ''}</option>)}</select></div>
+              <div className="field"><div className="fieldLabel">Notes (optional)</div><textarea className="textarea" rows={4} value={bayDraft.notes} onChange={(e) => setBayDraft((d) => ({ ...d, notes: e.target.value }))} /></div>
+              <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={() => setShowBayModal(false)}>Cancel</button><button type="button" className="primaryButton" onClick={assignBay}>Save</button></div>
             </div>
           </div>
         </div>

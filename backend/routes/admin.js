@@ -14,6 +14,11 @@ function toInt(value, fallback = null) {
   return Number.isFinite(n) ? Math.trunc(n) : fallback
 }
 
+function toText(value) {
+  if (value == null) return ''
+  return String(value).trim()
+}
+
 function mapTechnicianRow(row) {
   if (!row) return null
   return {
@@ -117,18 +122,18 @@ function createAdminRouter({ db }) {
 
   router.post('/admin/technicians', async (req, res) => {
     const body = req.body || {}
-    const name = toOperationalUpper(body.name)
+    const name = toText(body.name)
     if (!name) return res.status(400).json({ ok: false, error: 'Technician name is required.' })
 
     const capabilities =
-      body.capabilities != null ? toOperationalUpper(body.capabilities) || null : null
+      body.capabilities != null ? toText(body.capabilities) || null : null
     const skillsNotes =
-      body.skills_notes != null ? toOperationalUpper(body.skills_notes) || null : capabilities
+      body.skills_notes != null ? toText(body.skills_notes) || null : capabilities
     const roleTitle =
       body.role_title != null
-        ? toOperationalUpper(body.role_title) || null
+        ? toText(body.role_title) || null
         : body.role != null
-          ? toOperationalUpper(body.role) || null
+          ? toText(body.role) || null
           : null
     const email = body.email != null ? String(body.email).trim() || null : null
     const phone = body.phone != null ? cleanPhone(body.phone) || null : null
@@ -164,26 +169,27 @@ function createAdminRouter({ db }) {
       if (!row) return res.status(404).json({ ok: false, error: 'Technician not found.' })
 
       const next = {
-        name: body.name != null ? toOperationalUpper(body.name) : row.name,
+        name: body.name != null ? toText(body.name) : row.name,
         email: body.email != null ? String(body.email).trim() || null : row.email,
         phone: body.phone != null ? cleanPhone(body.phone) || null : row.phone,
         role_title:
           body.role_title != null
-            ? toOperationalUpper(body.role_title) || null
+            ? toText(body.role_title) || null
             : body.role != null
-              ? toOperationalUpper(body.role) || null
+              ? toText(body.role) || null
               : row.role_title,
         capabilities:
-          body.capabilities != null ? toOperationalUpper(body.capabilities) || null : row.capabilities,
+          body.capabilities != null ? toText(body.capabilities) || null : row.capabilities,
         skills_notes:
           body.skills_notes != null
-            ? toOperationalUpper(body.skills_notes) || null
+            ? toText(body.skills_notes) || null
             : body.capabilities != null
-              ? toOperationalUpper(body.capabilities) || null
+              ? toText(body.capabilities) || null
               : (row.skills_notes != null ? row.skills_notes : row.capabilities),
         active:
           body.active != null ? (body.active === 0 || body.active === false ? 0 : 1) : row.active,
       }
+      if (!next.name) return res.status(400).json({ ok: false, error: 'Technician name is required.' })
 
       await db.run(
         `UPDATE technicians

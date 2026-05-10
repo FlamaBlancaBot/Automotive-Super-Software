@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { apiGet, apiPatch, apiPost } from '../api/http'
+import { apiDelete, apiGet, apiPatch, apiPost } from '../api/http'
 import { setDocumentTitle } from '../utils/title'
 import { toOperationalUpper } from '../utils/text'
 
 const TABS = [
   { key: 'company', label: 'Company Info' },
   { key: 'technicians', label: 'Technicians' },
+  { key: 'bays', label: 'Bays' },
   { key: 'suppliers', label: 'Suppliers' },
   { key: 'services', label: 'Service Templates' },
   { key: 'job-statuses', label: 'Job Statuses' },
@@ -23,6 +24,10 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
   const [settings, setSettings] = useState(null)
   const [settingsDraft, setSettingsDraft] = useState(null)
   const [technicians, setTechnicians] = useState([])
+  const [skills, setSkills] = useState([])
+  const [skillsByTech, setSkillsByTech] = useState({})
+  const [bays, setBays] = useState([])
+  const [bayTechniciansByBay, setBayTechniciansByBay] = useState({})
   const [suppliers, setSuppliers] = useState([])
   const [serviceTemplates, setServiceTemplates] = useState([])
   const [predefinedItems, setPredefinedItems] = useState([])
@@ -37,6 +42,8 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
   const [saveMessage, setSaveMessage] = useState('')
 
   const [techDraft, setTechDraft] = useState({ name: '', email: '', phone: '', role: '', skills_notes: '', capabilities: '', active: true })
+  const [skillDraft, setSkillDraft] = useState({ name: '', description: '', active: true })
+  const [bayDraft, setBayDraft] = useState({ name: '', bay_type: 'general', description: '', active: true, is_mot_bay: false })
   const [supplierDraft, setSupplierDraft] = useState({
     name: '',
     contact_name: '',
@@ -70,10 +77,12 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
     setStatus('loading')
     setError('')
     try {
-      const [settingsRes, techRes, supplierRes, serviceRes, itemRes, statusesRes, healthRes, integrationsRes, templatesRes] =
+      const [settingsRes, techRes, skillsRes, baysRes, supplierRes, serviceRes, itemRes, statusesRes, healthRes, integrationsRes, templatesRes] =
         await Promise.all([
           apiGet('/api/admin/company-settings').catch(() => ({ settings: null })),
           apiGet('/api/admin/technicians').catch(() => ({ technicians: [] })),
+          apiGet('/api/technician-skills').catch(() => ({ skills: [] })),
+          apiGet('/api/bays').catch(() => ({ bays: [] })),
           apiGet('/api/suppliers').catch(() => ({ suppliers: [] })),
           apiGet('/api/service-templates?include_inactive=true').catch(() => ({ service_templates: [] })),
           apiGet('/api/predefined-quote-items').catch(() => ({ items: [] })),
@@ -86,6 +95,8 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
       setSettings(settingsRes.settings || null)
       setSettingsDraft(settingsRes.settings ? { ...settingsRes.settings } : null)
       setTechnicians(techRes.technicians || [])
+      setSkills(skillsRes.skills || [])
+      setBays(baysRes.bays || [])
       setSuppliers(supplierRes.suppliers || [])
       setServiceTemplates(serviceRes.service_templates || [])
       setPredefinedItems(itemRes.items || [])
@@ -94,6 +105,25 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
       setIntegrationsStatus(integrationsRes || null)
       setTemplates(templatesRes.templates || [])
       setShortcodeHelp(templatesRes.shortcode_help || null)
+
+      const techList = techRes.technicians || []
+      const bayList = baysRes.bays || []
+      const [skillsAssignments, bayAssignments] = await Promise.all([
+        Promise.all(
+          techList.map(async (t) => {
+            const out = await apiGet(`/api/technicians/${t.id}/skills`).catch(() => ({ assignments: [] }))
+            return [t.id, out.assignments || []]
+          }),
+        ),
+        Promise.all(
+          bayList.map(async (b) => {
+            const out = await apiGet(`/api/bays/${b.id}/technicians`).catch(() => ({ assignments: [] }))
+            return [b.id, out.assignments || []]
+          }),
+        ),
+      ])
+      setSkillsByTech(Object.fromEntries(skillsAssignments))
+      setBayTechniciansByBay(Object.fromEntries(bayAssignments))
       setStatus('ready')
     } catch (err) {
       setStatus('error')
@@ -134,25 +164,61 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
     }
   }
 
-  async function addTechnician() {
-    if (!techDraft.name.trim()) return
+  async function reloadTechniciansAndAssignments() {
+    const techData = await apiGet('/api/admin/technicians')
+    const techRows = techData.technicians || []
+    setTechnicians(techRows)
+    const assignments = await Promise.all(
+      techRows.map(async (t) => {
+        const out = await apiGet(`/api/technicians/${t.id}/skills`).catch(() => ({ assignments: [] }))
+        return [t.id, out.assignments || []]
+      }),
+    )
+    setSkillsByTech(Object.fromEntries(assignments))
+  }
+
+  async function reloadSkills() {
+    const data = await apiGet('/api/technician-skills')
+    setSkills(data.skills || [])
+  }
+
+  async function reloadBaysAndAssignments() {
+    const bayData = await apiGet('/api/bays')
+    const bayRows = bayData.bays || []
+    setBays(bayRows)
+    const assignments = await Promise.all(
+      bayRows.map(async (b) => {
+        const out = await apiGet(`/api/bays/${b.id}/technicians`).catch(() => ({ assignments: [] }))
+        return [b.id, out.assignments || []]
+      }),
+    )
+    setBayTechniciansByBay(Object.fromEntries(assignments))
+  }
+
+  async function addTechnician(draft) {
+    const input = draft || techDraft
+    if (!String(input.name || '').trim()) {
+      setError('Technician name is required.')
+      return false
+    }
     setSaveMessage('')
     try {
       await apiPost('/api/admin/technicians', {
-        name: toOperationalUpper(techDraft.name),
-        email: String(techDraft.email || '').trim(),
-        phone: techDraft.phone || '',
-        role: toOperationalUpper(techDraft.role),
-        skills_notes: toOperationalUpper(techDraft.skills_notes),
-        capabilities: toOperationalUpper(techDraft.capabilities),
-        active: techDraft.active ? 1 : 0,
+        name: String(input.name || '').trim(),
+        email: String(input.email || '').trim(),
+        phone: input.phone || '',
+        role: String(input.role || '').trim(),
+        skills_notes: String(input.skills_notes || '').trim(),
+        capabilities: String(input.capabilities || '').trim(),
+        active: input.active === false ? 0 : 1,
       })
       setTechDraft({ name: '', email: '', phone: '', role: '', skills_notes: '', capabilities: '', active: true })
-      const data = await apiGet('/api/admin/technicians')
-      setTechnicians(data.technicians || [])
+      await reloadTechniciansAndAssignments()
       setSaveMessage('Technician added.')
+      return true
     } catch (err) {
       setError(err.message || 'Failed to add technician.')
+      return false
     }
   }
 
@@ -160,16 +226,15 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
     if (!modal.data || !modal.data.id) return
     try {
       await apiPatch(`/api/admin/technicians/${modal.data.id}`, {
-        name: toOperationalUpper(modal.data.name),
+        name: String(modal.data.name || '').trim(),
         email: String(modal.data.email || '').trim(),
         phone: modal.data.phone || '',
-        role: toOperationalUpper(modal.data.role),
-        skills_notes: toOperationalUpper(modal.data.skills_notes),
-        capabilities: toOperationalUpper(modal.data.capabilities),
+        role: String(modal.data.role || '').trim(),
+        skills_notes: String(modal.data.skills_notes || '').trim(),
+        capabilities: String(modal.data.capabilities || '').trim(),
         active: modal.data.active ? 1 : 0,
       })
-      const data = await apiGet('/api/admin/technicians')
-      setTechnicians(data.technicians || [])
+      await reloadTechniciansAndAssignments()
       setSaveMessage('Technician updated.')
       setModal({ type: '', data: null })
     } catch (err) {
@@ -183,11 +248,142 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
       await apiPatch(`/api/admin/technicians/${tech.id}`, {
         active: Number(tech.active) ? 0 : 1,
       })
-      const data = await apiGet('/api/admin/technicians')
-      setTechnicians(data.technicians || [])
+      await reloadTechniciansAndAssignments()
       setSaveMessage('Technician updated.')
     } catch (err) {
       setError(err.message || 'Failed to update technician.')
+    }
+  }
+
+  async function addSkill(draft) {
+    const input = draft || skillDraft
+    if (!String(input.name || '').trim()) {
+      setError('Skill name is required.')
+      return false
+    }
+    try {
+      await apiPost('/api/technician-skills', {
+        name: String(input.name || '').trim(),
+        description: String(input.description || '').trim(),
+        active: input.active === false ? 0 : 1,
+      })
+      setSkillDraft({ name: '', description: '', active: true })
+      await reloadSkills()
+      setSaveMessage('Skill added.')
+      return true
+    } catch (err) {
+      setError(err.message || 'Failed to add skill.')
+      return false
+    }
+  }
+
+  async function saveSkillEdit() {
+    if (!modal.data || !modal.data.id) return
+    try {
+      await apiPatch(`/api/technician-skills/${modal.data.id}`, {
+        name: String(modal.data.name || '').trim(),
+        description: String(modal.data.description || '').trim(),
+        active: modal.data.active ? 1 : 0,
+      })
+      await reloadSkills()
+      setSaveMessage('Skill updated.')
+      setModal({ type: '', data: null })
+    } catch (err) {
+      setError(err.message || 'Failed to update skill.')
+    }
+  }
+
+  async function assignSkillToTechnician(technicianId, skillId, level = '', notes = '') {
+    if (!technicianId || !skillId) return
+    try {
+      await apiPost(`/api/technicians/${technicianId}/skills`, { skill_id: skillId, level, notes })
+      await reloadTechniciansAndAssignments()
+      setSaveMessage('Skill assigned.')
+    } catch (err) {
+      setError(err.message || 'Failed to assign skill.')
+    }
+  }
+
+  async function removeSkillFromTechnician(technicianId, assignmentId) {
+    try {
+      await apiDelete(`/api/technicians/${technicianId}/skills/${assignmentId}`)
+      await reloadTechniciansAndAssignments()
+      setSaveMessage('Skill removed.')
+    } catch (err) {
+      setError(err.message || 'Failed to remove skill.')
+    }
+  }
+
+  async function addBay(draft) {
+    const input = draft || bayDraft
+    if (!String(input.name || '').trim()) {
+      setError('Bay name is required.')
+      return false
+    }
+    try {
+      await apiPost('/api/bays', {
+        name: String(input.name || '').trim(),
+        bay_type: String(input.bay_type || 'general').trim().toLowerCase(),
+        description: String(input.description || '').trim(),
+        active: input.active === false ? 0 : 1,
+        is_mot_bay: input.is_mot_bay ? 1 : 0,
+      })
+      setBayDraft({ name: '', bay_type: 'general', description: '', active: true, is_mot_bay: false })
+      await reloadBaysAndAssignments()
+      setSaveMessage('Bay added.')
+      return true
+    } catch (err) {
+      setError(err.message || 'Failed to add bay.')
+      return false
+    }
+  }
+
+  async function saveBayEdit() {
+    if (!modal.data || !modal.data.id) return
+    try {
+      await apiPatch(`/api/bays/${modal.data.id}`, {
+        name: String(modal.data.name || '').trim(),
+        bay_type: String(modal.data.bay_type || 'general').trim().toLowerCase(),
+        description: String(modal.data.description || '').trim(),
+        active: modal.data.active ? 1 : 0,
+        is_mot_bay: modal.data.is_mot_bay ? 1 : 0,
+      })
+      await reloadBaysAndAssignments()
+      setSaveMessage('Bay updated.')
+      setModal({ type: '', data: null })
+    } catch (err) {
+      setError(err.message || 'Failed to update bay.')
+    }
+  }
+
+  async function toggleBayActive(bay) {
+    try {
+      await apiPatch(`/api/bays/${bay.id}`, { active: Number(bay.active) ? 0 : 1 })
+      await reloadBaysAndAssignments()
+      setSaveMessage('Bay updated.')
+    } catch (err) {
+      setError(err.message || 'Failed to update bay.')
+    }
+  }
+
+  async function assignTechnicianToBay(bayId, technicianId) {
+    if (!bayId || !technicianId) return
+    try {
+      await apiPost(`/api/bays/${bayId}/technicians`, { technician_id: technicianId })
+      await reloadBaysAndAssignments()
+      setSaveMessage('Technician assigned to bay.')
+    } catch (err) {
+      setError(err.message || 'Failed to assign technician to bay.')
+    }
+  }
+
+  async function removeTechnicianFromBay(bayId, assignmentId) {
+    try {
+      await apiDelete(`/api/bays/${bayId}/technicians/${assignmentId}`)
+      await reloadBaysAndAssignments()
+      setSaveMessage('Technician removed from bay.')
+    } catch (err) {
+      setError(err.message || 'Failed to remove bay technician.')
     }
   }
 
@@ -519,7 +715,7 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
           <div className="quoteTableWrap" style={{ marginTop: 12 }}>
             <table className="quoteTable">
               <thead>
-                <tr><th>Name</th><th>Role</th><th>Phone</th><th>Email</th><th>Skills/Notes</th><th>Active</th><th></th></tr>
+                <tr><th>Name</th><th>Role</th><th>Phone</th><th>Email</th><th>Skills/Notes</th><th>Skill assignments</th><th>Active</th><th></th></tr>
               </thead>
               <tbody>
                 {technicians.map((t) => (
@@ -529,11 +725,111 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
                     <td>{t.phone || '—'}</td>
                     <td>{t.email || '—'}</td>
                     <td>{t.skills_notes || t.capabilities || '—'}</td>
+                    <td>
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <div className="fieldHint">
+                          {(skillsByTech[t.id] || []).length
+                            ? (skillsByTech[t.id] || []).map((s) => `${s.skill_name}${s.level ? ` (${s.level})` : ''}`).join(', ')
+                            : 'No skills assigned'}
+                        </div>
+                        <div className="pageHeaderActions" style={{ justifyContent: 'flex-start', gap: 6 }}>
+                          <button type="button" className="miniButton" onClick={() => setModal({ type: 'technician-skill-add', data: { technician_id: t.id, skill_id: '', level: 'intermediate', notes: '' } })}>Assign</button>
+                          {(skillsByTech[t.id] || []).map((s) => (
+                            <button key={s.id} type="button" className="miniButton" onClick={() => removeSkillFromTechnician(t.id, s.id)}>
+                              Remove {s.skill_name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </td>
                     <td>{Number(t.active) ? 'YES' : 'NO'}</td>
                     <td>
                       <button type="button" className="miniButton" onClick={() => setModal({ type: 'technician-edit', data: { ...t, active: Number(t.active) === 1 } })}>Edit</button>{' '}
                       <button type="button" className="miniButton" onClick={() => toggleTechnicianActive(t)}>
                         {Number(t.active) ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="cardTop" style={{ marginTop: 20 }}>
+            <h3 className="cardTitle">Technician Skills</h3>
+            <div className="fieldHint">{skills.length} skill(s)</div>
+          </div>
+          <div className="pageHeaderActions" style={{ marginTop: 12 }}>
+            <button type="button" className="secondaryButton" onClick={() => setModal({ type: 'skill-add', data: { ...skillDraft } })}>
+              Add skill
+            </button>
+          </div>
+          <div className="quoteTableWrap" style={{ marginTop: 12 }}>
+            <table className="quoteTable">
+              <thead>
+                <tr><th>Name</th><th>Description</th><th>Active</th><th></th></tr>
+              </thead>
+              <tbody>
+                {skills.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.name}</td>
+                    <td>{s.description || '—'}</td>
+                    <td>{Number(s.active) ? 'YES' : 'NO'}</td>
+                    <td>
+                      <button type="button" className="miniButton" onClick={() => setModal({ type: 'skill-edit', data: { ...s, active: Number(s.active) === 1 } })}>Edit</button>{' '}
+                      <button type="button" className="miniButton" onClick={() => apiPatch(`/api/technician-skills/${s.id}`, { active: Number(s.active) ? 0 : 1 }).then(reloadSkills).catch((err) => setError(err.message || 'Failed to update skill.'))}>
+                        {Number(s.active) ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === 'bays' ? (
+        <div className="cardBox">
+          <div className="cardTop">
+            <h3 className="cardTitle">Workshop Bays</h3>
+            <div className="fieldHint">{bays.length} bay(s)</div>
+          </div>
+          <div className="pageHeaderActions" style={{ marginTop: 12 }}>
+            <button type="button" className="secondaryButton" onClick={() => setModal({ type: 'bay-add', data: { ...bayDraft } })}>
+              Add bay
+            </button>
+          </div>
+          <div className="quoteTableWrap" style={{ marginTop: 12 }}>
+            <table className="quoteTable">
+              <thead>
+                <tr><th>Name</th><th>Type</th><th>MOT bay</th><th>Description</th><th>Technicians</th><th>Active</th><th></th></tr>
+              </thead>
+              <tbody>
+                {bays.map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.name}</td>
+                    <td>{b.bay_type}</td>
+                    <td>{Number(b.is_mot_bay) ? 'YES' : 'NO'}</td>
+                    <td>{b.description || '—'}</td>
+                    <td>
+                      <div className="fieldHint">
+                        {(bayTechniciansByBay[b.id] || []).filter((x) => Number(x.active) === 1).map((x) => x.technician_name).join(', ') || 'None'}
+                      </div>
+                      <div className="pageHeaderActions" style={{ justifyContent: 'flex-start', gap: 6 }}>
+                        <button type="button" className="miniButton" onClick={() => setModal({ type: 'bay-tech-add', data: { bay_id: b.id, technician_id: '' } })}>Assign</button>
+                        {(bayTechniciansByBay[b.id] || []).filter((x) => Number(x.active) === 1).map((x) => (
+                          <button key={x.id} type="button" className="miniButton" onClick={() => removeTechnicianFromBay(b.id, x.id)}>
+                            Remove {x.technician_name}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                    <td>{Number(b.active) ? 'YES' : 'NO'}</td>
+                    <td>
+                      <button type="button" className="miniButton" onClick={() => setModal({ type: 'bay-edit', data: { ...b, active: Number(b.active) === 1, is_mot_bay: Number(b.is_mot_bay) === 1 } })}>Edit</button>{' '}
+                      <button type="button" className="miniButton" onClick={() => toggleBayActive(b)}>
+                        {Number(b.active) ? 'Deactivate' : 'Activate'}
                       </button>
                     </td>
                   </tr>
@@ -823,7 +1119,66 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
               <Field label="Email"><input className="input" value={modal.data.email || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, email: e.target.value } }))} /></Field>
               <Field label="Phone"><input className="input" value={modal.data.phone || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, phone: e.target.value } }))} /></Field>
               <Field label="Skills / notes"><textarea className="textarea" rows={4} value={modal.data.skills_notes || modal.data.capabilities || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, skills_notes: e.target.value, capabilities: e.target.value } }))} /></Field>
-              <div className="pageHeaderActions"><button className="primaryButton" type="button" onClick={modal.type === 'technician-add' ? async () => { setTechDraft(modal.data); await addTechnician(); setModal({ type: '', data: null }) } : saveTechnicianEdit}>Save</button></div>
+              <div className="pageHeaderActions"><button className="primaryButton" type="button" onClick={modal.type === 'technician-add' ? async () => { const ok = await addTechnician(modal.data); if (ok) setModal({ type: '', data: null }) } : saveTechnicianEdit}>Save</button></div>
+            </>
+          ) : null}
+          {modal.type === 'skill-add' || modal.type === 'skill-edit' ? (
+            <>
+              <h3 className="cardTitle">{modal.type === 'skill-add' ? 'Add skill' : 'Edit skill'}</h3>
+              <Field label="Name"><input className="input" value={modal.data.name || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, name: e.target.value } }))} /></Field>
+              <Field label="Description"><textarea className="textarea" rows={4} value={modal.data.description || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, description: e.target.value } }))} /></Field>
+              {modal.type === 'skill-edit' ? (
+                <label className="inlineCheck"><input type="checkbox" checked={Boolean(modal.data.active)} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, active: e.target.checked } }))} /><span>Active</span></label>
+              ) : null}
+              <div className="pageHeaderActions"><button className="primaryButton" type="button" onClick={modal.type === 'skill-add' ? async () => { const ok = await addSkill(modal.data); if (ok) setModal({ type: '', data: null }) } : saveSkillEdit}>Save</button></div>
+            </>
+          ) : null}
+          {modal.type === 'technician-skill-add' ? (
+            <>
+              <h3 className="cardTitle">Assign Skill</h3>
+              <Field label="Skill">
+                <select className="select" value={modal.data.skill_id || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, skill_id: e.target.value } }))}>
+                  <option value="">Select skill…</option>
+                  {skills.filter((s) => Number(s.active) === 1).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Level">
+                <select className="select" value={modal.data.level || 'intermediate'} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, level: e.target.value } }))}>
+                  <option value="beginner">beginner</option>
+                  <option value="intermediate">intermediate</option>
+                  <option value="advanced">advanced</option>
+                  <option value="specialist">specialist</option>
+                </select>
+              </Field>
+              <Field label="Notes"><textarea className="textarea" rows={3} value={modal.data.notes || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, notes: e.target.value } }))} /></Field>
+              <div className="pageHeaderActions"><button className="primaryButton" type="button" onClick={async () => { await assignSkillToTechnician(modal.data.technician_id, Number(modal.data.skill_id), modal.data.level, modal.data.notes); setModal({ type: '', data: null }) }}>Save</button></div>
+            </>
+          ) : null}
+          {modal.type === 'bay-add' || modal.type === 'bay-edit' ? (
+            <>
+              <h3 className="cardTitle">{modal.type === 'bay-add' ? 'Add bay' : 'Edit bay'}</h3>
+              <Field label="Name"><input className="input" value={modal.data.name || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, name: e.target.value } }))} /></Field>
+              <Field label="Bay type">
+                <select className="select" value={modal.data.bay_type || 'general'} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, bay_type: e.target.value } }))}>
+                  <option value="general">general</option><option value="mot">mot</option><option value="diagnostic">diagnostic</option><option value="engine">engine</option><option value="storage">storage</option><option value="other">other</option>
+                </select>
+              </Field>
+              <Field label="Description"><textarea className="textarea" rows={3} value={modal.data.description || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, description: e.target.value } }))} /></Field>
+              <label className="inlineCheck"><input type="checkbox" checked={Boolean(modal.data.active)} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, active: e.target.checked } }))} /><span>Active</span></label>
+              <label className="inlineCheck"><input type="checkbox" checked={Boolean(modal.data.is_mot_bay)} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, is_mot_bay: e.target.checked } }))} /><span>Internal MOT bay</span></label>
+              <div className="pageHeaderActions"><button className="primaryButton" type="button" onClick={modal.type === 'bay-add' ? async () => { const ok = await addBay(modal.data); if (ok) setModal({ type: '', data: null }) } : saveBayEdit}>Save</button></div>
+            </>
+          ) : null}
+          {modal.type === 'bay-tech-add' ? (
+            <>
+              <h3 className="cardTitle">Assign Technician To Bay</h3>
+              <Field label="Technician">
+                <select className="select" value={modal.data.technician_id || ''} onChange={(e) => setModal((m) => ({ ...m, data: { ...m.data, technician_id: e.target.value } }))}>
+                  <option value="">Select technician…</option>
+                  {technicians.filter((t) => Number(t.active) === 1).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </Field>
+              <div className="pageHeaderActions"><button className="primaryButton" type="button" onClick={async () => { await assignTechnicianToBay(modal.data.bay_id, Number(modal.data.technician_id)); setModal({ type: '', data: null }) }}>Save</button></div>
             </>
           ) : null}
           {modal.type === 'template-edit' ? (

@@ -1835,3 +1835,92 @@ This foundation now supports future reporting work for:
 
 - `frontend/src/pages/QuoteDetail.jsx` was **not modified**.
 - Quote logic and supplier comparison workflow were left untouched.
+
+## Workshop bays, technician skills and technician management fix
+
+**Date:** 2026-05-10  
+**Version bumped to:** 1.1.026
+
+### Files changed
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `backend/routes/admin.js`
+- `backend/routes/technicians.js`
+- `backend/routes/technician-skills.js` (new)
+- `backend/routes/bays.js` (new)
+- `backend/routes/calendar.js`
+- `backend/server.js`
+- `frontend/src/pages/Settings.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/pages/Calendar.jsx`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+
+### Technician management fix
+- Fixed Settings technician add flow using stale state during modal submit.
+- Add/edit/deactivate now refreshes technicians and related skill assignments after save.
+- Technician validation now enforces required name with clear errors and keeps email/phone/role/skills optional.
+- Technician assignment endpoints from v1.1.025 remain intact.
+
+### Tables added
+- `technician_skills`
+- `technician_skill_assignments`
+- `workshop_bays`
+- `bay_technician_assignments`
+- `job_bay_assignments`
+
+### Endpoints added
+Technician skills:
+- `GET /api/technician-skills`
+- `POST /api/technician-skills`
+- `PATCH /api/technician-skills/:id`
+- `GET /api/technicians/:id/skills`
+- `POST /api/technicians/:id/skills`
+- `DELETE /api/technicians/:id/skills/:assignmentId`
+
+Workshop bays:
+- `GET /api/bays`
+- `POST /api/bays`
+- `PATCH /api/bays/:id`
+- `GET /api/bays/:id/technicians`
+- `POST /api/bays/:id/technicians`
+- `DELETE /api/bays/:id/technicians/:assignmentId`
+- `GET /api/jobs/:id/bay`
+- `POST /api/jobs/:id/bay`
+- `PATCH /api/jobs/:id/bay/:assignmentId`
+- `DELETE /api/jobs/:id/bay/:assignmentId`
+
+### Settings UI changes
+- Technicians tab now includes:
+  - reliable add/edit/deactivate
+  - skill catalog management (add/edit/deactivate)
+  - assign/remove skills per technician with optional level and notes
+- New Bays tab includes:
+  - list/add/edit/deactivate bays
+  - mark internal MOT bay
+  - assign/remove technicians per bay
+
+### Job Detail bay changes
+- Added internal Workshop Bay section with:
+  - current bay, type, MOT flag, assigned time, notes
+  - assign/change bay modal
+  - release bay action
+- Kept bay data internal only (not exposed in customer quote/invoice/job sheet output).
+
+### Calendar readiness
+- Calendar job cards now show current bay name/type when available.
+- MOT bay jobs show a subtle MOT BAY indicator.
+
+### Enables next phases
+- Technician-to-skill matching foundation
+- Bay occupancy and utilisation tracking foundation
+- Future availability and scheduling intelligence based on bays + skills
+
+### Limitations / future work
+- No automatic technician/bay matching yet.
+- No drag/drop scheduler yet.
+- No reporting dashboard included in this phase.
+
+### Quote safety confirmation
+- `frontend/src/pages/QuoteDetail.jsx` was not modified.
