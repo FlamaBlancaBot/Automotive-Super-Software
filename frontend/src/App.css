@@ -2310,6 +2310,23 @@
   font-weight: 900;
   border-bottom: 1px solid var(--separator);
   background: var(--surface-2);
+  display: grid;
+  gap: 6px;
+}
+
+.calendarCapacitySummary {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--separator);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.calendarDayCapacityChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .calendarDayBody {

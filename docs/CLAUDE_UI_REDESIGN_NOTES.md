@@ -2217,3 +2217,56 @@ Workshop bays:
 
 ### Quote safety confirmation
 - `frontend/src/pages/QuoteDetail.jsx` was not modified in this phase.
+
+## Calendar capacity planner foundation
+
+**Date:** 2026-05-10  
+**Version bumped to:** 1.1.033
+
+### Files changed
+- `backend/routes/calendar.js`
+- `frontend/src/pages/Calendar.jsx`
+- `frontend/src/App.css`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+- `docs/CLAUDE_UI_REDESIGN_NOTES.md`
+
+### Endpoint added
+- Added `GET /api/calendar/capacity?start=YYYY-MM-DD&end=YYYY-MM-DD`.
+
+### Capacity metrics
+- Per day:
+  - jobs/active/completed counts
+  - estimated minutes
+  - active bay assignments vs active bays
+  - MOT jobs and active MOT bay count
+  - assigned technicians vs active technicians
+  - unassigned jobs and jobs missing bay/technician
+  - warning messages
+- Range summary:
+  - total jobs
+  - total estimated minutes
+  - overbooked/warning day count
+  - aggregate missing bay/technician and MOT totals
+
+### Calendar UI changes
+- Added weekly capacity summary strip above the week grid (hidden in embedded mode).
+- Added compact day-level capacity chips inside each day header.
+- Added warning chip state for unassigned jobs and pressure indicators.
+
+### Warnings added
+- Jobs without bay assignment.
+- Jobs without technician assignment.
+- Bay usage above active bay count.
+- MOT jobs with no active MOT bay.
+- High estimated workload for bay capacity.
+
+### Limitations / future work
+- Informational planner only; no drag/drop editing in this phase.
+- No auto-assignment; suggestions and assignments remain manual.
+- Capacity logic intentionally lightweight and resilient to partial data.
+
+### Quote safety confirmation
+- `frontend/src/pages/QuoteDetail.jsx` was not modified in this phase.

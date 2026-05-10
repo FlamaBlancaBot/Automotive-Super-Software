@@ -109,6 +109,8 @@ export default function Calendar({ embedded = false }) {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [jobs, setJobs] = useState([])
+  const [capacityDays, setCapacityDays] = useState([])
+  const [capacitySummary, setCapacitySummary] = useState(null)
 
   useEffect(() => {
     if (!embedded) setDocumentTitle('Calendar')
@@ -122,8 +124,13 @@ export default function Calendar({ embedded = false }) {
     setStatus('loading')
     setError('')
     try {
-      const data = await apiGet(`/api/calendar/jobs?start=${start}&end=${end}&includeInactive=${includeInactive ? 'true' : 'false'}`)
-      setJobs(data.jobs || [])
+      const [jobsData, capacityData] = await Promise.all([
+        apiGet(`/api/calendar/jobs?start=${start}&end=${end}&includeInactive=${includeInactive ? 'true' : 'false'}`),
+        apiGet(`/api/calendar/capacity?start=${start}&end=${end}`).catch(() => ({ days: [], summary: null })),
+      ])
+      setJobs(jobsData.jobs || [])
+      setCapacityDays(capacityData.days || [])
+      setCapacitySummary(capacityData.summary || null)
       setStatus('ready')
     } catch (err) {
       setError(err.message || 'Failed to load calendar jobs.')
@@ -159,6 +166,12 @@ export default function Calendar({ embedded = false }) {
     }
     return map
   }, [jobs, days, statusFilters])
+
+  const capacityByDate = useMemo(() => {
+    const map = new Map()
+    for (const d of capacityDays || []) map.set(String(d.date), d)
+    return map
+  }, [capacityDays])
 
   function openJob(jobId) {
     window.history.pushState({}, '', `/jobs/${jobId}`)
@@ -204,14 +217,43 @@ export default function Calendar({ embedded = false }) {
 
         {error ? <div className="notice bad" style={{ marginTop: 10 }}>{error}</div> : null}
 
+        {!embedded && capacitySummary ? (
+          <div className="calendarCapacitySummary">
+            <div className="statusPill">Jobs: {Number(capacitySummary.total_jobs || 0)}</div>
+            <div className="statusPill">Est hours: {(Number(capacitySummary.total_estimated_minutes || 0) / 60).toFixed(1)}h</div>
+            <div className={`statusPill ${Number(capacitySummary.overbooked_days || 0) > 0 ? 'warn' : ''}`}>Warning days: {Number(capacitySummary.overbooked_days || 0)}</div>
+            <div className={`statusPill ${Number(capacitySummary.total_jobs_without_bay || 0) > 0 ? 'warn' : ''}`}>No bay: {Number(capacitySummary.total_jobs_without_bay || 0)}</div>
+            <div className={`statusPill ${Number(capacitySummary.total_jobs_without_technician || 0) > 0 ? 'warn' : ''}`}>No technician: {Number(capacitySummary.total_jobs_without_technician || 0)}</div>
+            <div className="statusPill">MOT jobs: {Number(capacitySummary.total_mot_jobs || 0)}</div>
+          </div>
+        ) : null}
+
         {status === 'loading' ? <div className="emptyState" style={{ marginTop: 12 }}>Loading…</div> : (
           <div className="calendarWeekGrid" style={{ marginTop: 12 }}>
             {days.map((day) => {
               const key = toDateInput(day)
               const list = jobsByDate.get(key) || []
+              const dayCapacity = capacityByDate.get(key)
               return (
                 <div key={key} className="calendarDayCol">
-                  <div className="calendarDayHead">{fmtDayLabel(day)}</div>
+                  <div className="calendarDayHead">
+                    <div>{fmtDayLabel(day)}</div>
+                    {dayCapacity ? (
+                      <div className="calendarDayCapacityChips">
+                        <span className="statusPill">{Number(dayCapacity.jobs_count || 0)} jobs</span>
+                        <span className="statusPill">{(Number(dayCapacity.estimated_minutes || 0) / 60).toFixed(1)}h</span>
+                        <span className={`statusPill ${Number(dayCapacity.active_bay_assignments || 0) > Number(dayCapacity.available_bays || 0) ? 'warn' : ''}`}>
+                          Bays {Number(dayCapacity.active_bay_assignments || 0)}/{Number(dayCapacity.available_bays || 0)}
+                        </span>
+                        <span className={`statusPill ${Number(dayCapacity.mot_jobs_count || 0) > 0 && Number(dayCapacity.mot_bays_available || 0) === 0 ? 'warn' : ''}`}>
+                          MOT {Number(dayCapacity.mot_jobs_count || 0)}
+                        </span>
+                        {Number(dayCapacity.unassigned_jobs_count || 0) > 0 ? (
+                          <span className="statusPill warn">{Number(dayCapacity.unassigned_jobs_count || 0)} unassigned</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="calendarDayBody">
                     {list.length ? list.map((j) => {
                       const startMin = minutesFromMidnight(j.booked_start)
