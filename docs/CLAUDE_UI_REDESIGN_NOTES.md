@@ -1970,3 +1970,63 @@ Workshop bays:
 
 ### Quote safety confirmation
 - `frontend/src/pages/QuoteDetail.jsx` was not modified.
+
+## Customer Communication Center foundation
+
+**Date:** 2026-05-10  
+**Version bumped to:** 1.1.028
+
+### Files changed
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `backend/routes/communications.js` (new)
+- `backend/routes/customer-detail-requests.js`
+- `backend/server.js`
+- `frontend/src/config/navigation.js`
+- `frontend/src/components/Sidebar.jsx`
+- `frontend/src/pages/Communications.jsx` (new)
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+
+### Database tables added
+- `communication_templates`
+- `communication_messages`
+- `communication_events`
+
+### Endpoints added
+- `GET /api/communications/messages?customer_id=&job_id=&quote_id=&invoice_id=`
+- `POST /api/communications/messages`
+- `PATCH /api/communications/messages/:id`
+- `POST /api/communications/messages/:id/mark-sent`
+- `POST /api/communications/messages/:id/mark-failed`
+- `GET /api/communications/templates`
+- `POST /api/communications/templates`
+- `PATCH /api/communications/templates/:id`
+- `GET /api/communications/context/job/:jobId`
+
+### Frontend page added
+- New internal `Communications` page with:
+  - message composer (channel, purpose, recipients, IDs, subject/body, template apply)
+  - message history with channel/purpose/status filters
+  - status actions (mark sent/failed)
+  - template library (add/edit/active toggle)
+
+### Job Detail communication section
+- Added internal “Customer Communications” section in Job Detail.
+- Shows recent job-linked messages with channel/purpose/status/body preview and created/sent timestamps.
+- Added direct navigation to the Communications page for the current job context.
+
+### Manual SMS/email limitation
+- No real provider sending was added in this phase.
+- Outbound SMS/email message records default to `manual_required` unless explicitly set otherwise.
+- Customer details request link generation now also creates a communication record with manual workflow status when possible.
+
+### Future provider integration notes
+- The structure supports provider message IDs, sent/failure event logging, and message status transitions.
+- Future work can connect SMS/email providers and move `manual_required` flows to queued/sent automatically.
+
+### Quote safety confirmation
+- `frontend/src/pages/QuoteDetail.jsx` was not modified.

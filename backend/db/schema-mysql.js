@@ -494,6 +494,71 @@ const MYSQL_SCHEMA_STATEMENTS = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
   `
+  CREATE TABLE IF NOT EXISTS communication_templates (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(160) NOT NULL,
+    channel VARCHAR(30) NOT NULL,
+    purpose VARCHAR(60) NOT NULL,
+    subject VARCHAR(255) NULL,
+    body TEXT NOT NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_communication_templates_active (active),
+    KEY idx_communication_templates_channel_purpose (channel, purpose)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS communication_messages (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    customer_id BIGINT UNSIGNED NULL,
+    job_id BIGINT UNSIGNED NULL,
+    quote_id BIGINT UNSIGNED NULL,
+    invoice_id BIGINT UNSIGNED NULL,
+    channel VARCHAR(30) NOT NULL,
+    direction VARCHAR(20) NOT NULL,
+    purpose VARCHAR(60) NOT NULL,
+    recipient_name VARCHAR(160) NULL,
+    recipient_phone VARCHAR(40) NULL,
+    recipient_email VARCHAR(180) NULL,
+    subject VARCHAR(255) NULL,
+    body TEXT NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'draft',
+    provider_message_id VARCHAR(160) NULL,
+    error_message TEXT NULL,
+    sent_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_communication_messages_customer (customer_id),
+    KEY idx_communication_messages_job (job_id),
+    KEY idx_communication_messages_quote (quote_id),
+    KEY idx_communication_messages_invoice (invoice_id),
+    KEY idx_communication_messages_channel (channel),
+    KEY idx_communication_messages_status (status),
+    KEY idx_communication_messages_created (created_at),
+    CONSTRAINT fk_communication_messages_customer FOREIGN KEY (customer_id) REFERENCES customers(id),
+    CONSTRAINT fk_communication_messages_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_communication_messages_quote FOREIGN KEY (quote_id) REFERENCES quotes(id),
+    CONSTRAINT fk_communication_messages_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS communication_events (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    message_id BIGINT UNSIGNED NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    description TEXT NULL,
+    metadata_json JSON NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_communication_events_message (message_id),
+    KEY idx_communication_events_created (created_at),
+    CONSTRAINT fk_communication_events_message FOREIGN KEY (message_id) REFERENCES communication_messages(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
   CREATE TABLE IF NOT EXISTS parts_orders (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     job_id BIGINT UNSIGNED NULL,

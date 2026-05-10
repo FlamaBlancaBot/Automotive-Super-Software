@@ -12,7 +12,7 @@ function formatDateTime(value) {
   return d.toLocaleString('en-GB')
 }
 
-export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPartsOrders, onOpenJobSheet, onOpenInvoice }) {
+export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPartsOrders, onOpenJobSheet, onOpenInvoice, onOpenCommunications }) {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [job, setJob] = useState(null)
@@ -20,6 +20,7 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [partsOrders, setPartsOrders] = useState([])
   const [jobSheet, setJobSheet] = useState(null)
   const [jobActivity, setJobActivity] = useState([])
+  const [jobCommunications, setJobCommunications] = useState([])
   const [technicians, setTechnicians] = useState([])
   const [assignments, setAssignments] = useState([])
   const [showAssignModal, setShowAssignModal] = useState(false)
@@ -47,13 +48,14 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setPartsOrders(data.parts_orders || [])
       const invoiceRes = await apiGet(`/api/jobs/${jobId}/invoices`).catch(() => ({ invoices: [] }))
       setInvoices(invoiceRes.invoices || [])
-      const [sheetRes, techRes, assignmentsRes, jobActivityRes, baysRes, jobBayRes] = await Promise.all([
+      const [sheetRes, techRes, assignmentsRes, jobActivityRes, baysRes, jobBayRes, commsRes] = await Promise.all([
         apiGet(`/api/jobs/${jobId}/job-sheet`).catch(() => null),
         apiGet('/api/technicians').catch(() => ({ technicians: [] })),
         apiGet(`/api/jobs/${jobId}/technicians`).catch(() => ({ assignments: [] })),
         apiGet(`/api/jobs/${jobId}/activity`).catch(() => ({ events: [] })),
         apiGet('/api/bays').catch(() => ({ bays: [] })),
         apiGet(`/api/jobs/${jobId}/bay`).catch(() => ({ current_assignment: null })),
+        apiGet(`/api/communications/messages?job_id=${encodeURIComponent(jobId)}`).catch(() => ({ messages: [] })),
       ])
       setJobSheet(sheetRes || null)
       setTechnicians((techRes && techRes.technicians) || [])
@@ -61,6 +63,7 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setJobActivity((jobActivityRes && jobActivityRes.events) || [])
       setBays((baysRes && baysRes.bays) || [])
       setCurrentBayAssignment((jobBayRes && jobBayRes.current_assignment) || null)
+      setJobCommunications((commsRes && commsRes.messages) || [])
       setStatus('ready')
     } catch (err) {
       setStatus('error')
@@ -108,14 +111,16 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   }
 
   async function refreshAssignmentsAndActivity() {
-    const [assignmentsRes, jobActivityRes, jobBayRes] = await Promise.all([
+    const [assignmentsRes, jobActivityRes, jobBayRes, commsRes] = await Promise.all([
       apiGet(`/api/jobs/${jobId}/technicians`).catch(() => ({ assignments: [] })),
       apiGet(`/api/jobs/${jobId}/activity`).catch(() => ({ events: [] })),
       apiGet(`/api/jobs/${jobId}/bay`).catch(() => ({ current_assignment: null })),
+      apiGet(`/api/communications/messages?job_id=${encodeURIComponent(jobId)}`).catch(() => ({ messages: [] })),
     ])
     setAssignments(assignmentsRes.assignments || [])
     setJobActivity(jobActivityRes.events || [])
     setCurrentBayAssignment(jobBayRes.current_assignment || null)
+    setJobCommunications(commsRes.messages || [])
   }
 
   async function assignBay() {
@@ -327,6 +332,33 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
                 </div>
               )) : (
                 <div className="emptyState">No activity yet.</div>
+              )}
+            </div>
+          </div>
+
+          <div className="jobDetailCard" style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 className="jobDetailCardTitle">Customer Communications</h2>
+              <button
+                type="button"
+                className="secondaryButton"
+                onClick={() => typeof onOpenCommunications === 'function' && onOpenCommunications(jobId)}
+              >
+                Open Communications
+              </button>
+            </div>
+            <div className="activityTimelineList">
+              {jobCommunications.length ? jobCommunications.slice(0, 12).map((entry) => (
+                <div className="activityTimelineItem" key={entry.id}>
+                  <div className="activityTimelineMarker"></div>
+                  <div className="activityTimelineContent">
+                    <div className="activityTimelineText">{entry.channel} · {entry.purpose} · {entry.status}</div>
+                    <div className="fieldHint">{String(entry.body || '').slice(0, 180) || '—'}</div>
+                    <div className="activityTimelineMeta">{formatDateTime(entry.created_at)} · Sent: {formatDateTime(entry.sent_at)}</div>
+                  </div>
+                </div>
+              )) : (
+                <div className="emptyState">No communication history for this job yet.</div>
               )}
             </div>
           </div>

@@ -51,6 +51,35 @@ function createCustomerDetailRequestsRouter({ db }) {
 
       const path = `/customer-details/${rawToken}`
       const previewUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}${path}` : path
+
+      const preferredChannel = body.channel === 'sms' ? 'sms' : 'whatsapp_manual'
+      const messageBody = `Customer details request link: ${previewUrl}`
+      try {
+        const msg = await db.run(
+          `INSERT INTO communication_messages (
+            customer_id, job_id, quote_id, channel, direction, purpose,
+            recipient_name, recipient_phone, recipient_email, body, status
+          ) VALUES (?, ?, ?, ?, 'outbound', 'customer_details_request', ?, ?, ?, ?, 'manual_required')`,
+          [
+            customerId,
+            jobId,
+            quoteId,
+            preferredChannel,
+            body.recipient_name ? String(body.recipient_name).trim() : null,
+            body.recipient_phone ? String(body.recipient_phone).trim() : null,
+            body.recipient_email ? String(body.recipient_email).trim() : null,
+            messageBody,
+          ],
+        )
+        await db.run(
+          `INSERT INTO communication_events (message_id, event_type, description)
+           VALUES (?, 'created', 'Customer details request communication record created.')`,
+          [msg.lastInsertId],
+        )
+      } catch {
+        // Keep customer detail request creation resilient if communications tables are not available yet.
+      }
+
       res.status(201).json({
         ok: true,
         request_id: created.lastInsertId,

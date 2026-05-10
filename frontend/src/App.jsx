@@ -17,6 +17,7 @@ import Vehicles from './pages/Vehicles'
 import Suppliers from './pages/Suppliers'
 import Search from './pages/Search'
 import Reports from './pages/Reports'
+import Communications from './pages/Communications'
 import PlaceholderPage from './pages/PlaceholderPage'
 import Login from './pages/Login'
 import CustomerDetailsRequest from './pages/CustomerDetailsRequest'
@@ -209,6 +210,8 @@ function App() {
             />
           ) : activeKey === 'reports' ? (
             <Reports />
+          ) : activeKey === 'communications' ? (
+            <Communications locationPath={pathname} />
           ) : activeKey === 'new-intake' ? (
             <NewIntake
               locationPath={pathname}
@@ -225,6 +228,7 @@ function App() {
                 onViewPartsOrders={(jobId) => navigateToPath(`/parts?job_id=${jobId}`)}
                 onOpenJobSheet={(id) => navigateToPath(`/job-sheets/${id}`)}
                 onOpenInvoice={(id) => navigateToPath(`/invoices/${id}`)}
+                onOpenCommunications={(jobId) => navigateToPath(`/communications?job_id=${jobId}`)}
               />
             ) : (
               <Jobs
