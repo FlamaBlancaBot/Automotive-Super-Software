@@ -601,6 +601,82 @@ const MYSQL_SCHEMA_STATEMENTS = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
   `
+  CREATE TABLE IF NOT EXISTS vehicle_service_events (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    vehicle_id BIGINT UNSIGNED NULL,
+    registration VARCHAR(20) NOT NULL,
+    job_id BIGINT UNSIGNED NULL,
+    quote_id BIGINT UNSIGNED NULL,
+    invoice_id BIGINT UNSIGNED NULL,
+    event_type VARCHAR(50) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT NULL,
+    mileage INT NULL,
+    event_date DATETIME NULL,
+    source VARCHAR(50) NOT NULL DEFAULT 'manual',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_vehicle_service_events_registration (registration),
+    KEY idx_vehicle_service_events_vehicle (vehicle_id),
+    KEY idx_vehicle_service_events_job (job_id),
+    KEY idx_vehicle_service_events_date (event_date),
+    CONSTRAINT fk_vehicle_service_events_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
+    CONSTRAINT fk_vehicle_service_events_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_vehicle_service_events_quote FOREIGN KEY (quote_id) REFERENCES quotes(id),
+    CONSTRAINT fk_vehicle_service_events_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS vehicle_maintenance_recommendations (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    vehicle_id BIGINT UNSIGNED NULL,
+    registration VARCHAR(20) NOT NULL,
+    recommendation_type VARCHAR(60) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT NULL,
+    due_mileage INT NULL,
+    due_date DATETIME NULL,
+    priority VARCHAR(30) NOT NULL DEFAULT 'medium',
+    status VARCHAR(30) NOT NULL DEFAULT 'open',
+    source VARCHAR(50) NOT NULL DEFAULT 'manual',
+    created_from_job_id BIGINT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_vehicle_maint_registration (registration),
+    KEY idx_vehicle_maint_vehicle (vehicle_id),
+    KEY idx_vehicle_maint_status (status),
+    KEY idx_vehicle_maint_due_date (due_date),
+    CONSTRAINT fk_vehicle_maint_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
+    CONSTRAINT fk_vehicle_maint_job FOREIGN KEY (created_from_job_id) REFERENCES jobs(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS vehicle_document_records (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    vehicle_id BIGINT UNSIGNED NULL,
+    registration VARCHAR(20) NOT NULL,
+    job_id BIGINT UNSIGNED NULL,
+    invoice_id BIGINT UNSIGNED NULL,
+    title VARCHAR(200) NOT NULL,
+    document_type VARCHAR(60) NOT NULL,
+    file_url VARCHAR(500) NULL,
+    notes TEXT NULL,
+    document_date DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_vehicle_docs_registration (registration),
+    KEY idx_vehicle_docs_vehicle (vehicle_id),
+    KEY idx_vehicle_docs_job (job_id),
+    KEY idx_vehicle_docs_invoice (invoice_id),
+    CONSTRAINT fk_vehicle_docs_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
+    CONSTRAINT fk_vehicle_docs_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_vehicle_docs_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
   CREATE TABLE IF NOT EXISTS parts_orders (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     job_id BIGINT UNSIGNED NULL,

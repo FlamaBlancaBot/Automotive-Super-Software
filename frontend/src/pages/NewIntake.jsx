@@ -76,6 +76,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
   const [vehicleSource, setVehicleSource] = useState('database')
   const [vehicleLastChecked, setVehicleLastChecked] = useState('')
   const [vehicleMot, setVehicleMot] = useState(null)
+  const [vehicleHistoryHint, setVehicleHistoryHint] = useState(null)
   const [manualVehicle, setManualVehicle] = useState({
     make: '',
     model: '',
@@ -226,6 +227,27 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
     setVehicleSource('database')
     setVehicleLastChecked('')
     setVehicleMot(null)
+    setVehicleHistoryHint(null)
+  }
+
+  async function loadVehicleHistoryHint(regPath) {
+    const regNorm = normaliseReg(regPath)
+    if (!regNorm) {
+      setVehicleHistoryHint(null)
+      return
+    }
+    try {
+      const out = await apiGet(`/api/vehicles/${encodeURIComponent(regNorm)}/overview`)
+      const eventCount = Number(out?.service_events?.length || 0)
+      const activeRecommendations = Number((out?.maintenance_recommendations || []).filter((r) => ['open', 'planned'].includes(String(r.status || '').toLowerCase())).length)
+      setVehicleHistoryHint({
+        registration: out?.registration || regNorm,
+        event_count: eventCount,
+        active_recommendations: activeRecommendations,
+      })
+    } catch {
+      setVehicleHistoryHint(null)
+    }
   }
 
   async function onLookupVehicle(lookupReg = regInput) {
@@ -257,6 +279,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
         setVehicleLastChecked(data.vehicle?.last_lookup_at || '')
         setVehicleMot(data.mot || null)
         setVehicleMessage('')
+        loadVehicleHistoryHint(regPath)
       } else {
         setVehicleLookupStatus('not_found')
         const msg =
@@ -283,6 +306,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
         setVehicleLastChecked(data.vehicle?.last_lookup_at || '')
         setVehicleLookupStatus('found')
         setVehicleMessage('Vehicle data refreshed from webhook.')
+        loadVehicleHistoryHint(regNormalised)
       } else {
         setVehicleLookupStatus('error')
         setVehicleMessage('Vehicle lookup failed. Check the vehicle lookup webhook or add the vehicle manually.')
@@ -671,6 +695,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
               vehicleSource={vehicleSource}
               vehicleLastChecked={vehicleLastChecked}
               vehicleMot={vehicleMot}
+              vehicleHistoryHint={vehicleHistoryHint}
               manualVehicle={manualVehicle}
               setManualVehicle={setManualVehicle}
             />
@@ -829,7 +854,7 @@ export default function NewIntake({ locationPath, onOpenQuote, onViewJob, onStar
   )
 }
 
-function StepVehicle({ regInput, setRegInput, regNormalised, vehicleLookupStatus, vehicleMessage, onLookupVehicle, onRefreshVehicleData, vehicle, vehicleSource, vehicleLastChecked, vehicleMot, manualVehicle, setManualVehicle }) {
+function StepVehicle({ regInput, setRegInput, regNormalised, vehicleLookupStatus, vehicleMessage, onLookupVehicle, onRefreshVehicleData, vehicle, vehicleSource, vehicleLastChecked, vehicleMot, vehicleHistoryHint, manualVehicle, setManualVehicle }) {
   return (
     <div className="intakeStepContent">
       <div className="intakeStepHeader">
@@ -911,6 +936,11 @@ function StepVehicle({ regInput, setRegInput, regNormalised, vehicleLookupStatus
       </div>
 
       {vehicleMessage ? <Notice tone={vehicleLookupStatus === 'error' ? 'bad' : 'info'}>{vehicleMessage}</Notice> : null}
+      {vehicleHistoryHint ? (
+        <div className="notice info" style={{ marginTop: 10 }}>
+          Previous vehicle history: {vehicleHistoryHint.event_count} event(s) and {vehicleHistoryHint.active_recommendations} active recommendation(s). Open the Vehicles page for full timeline.
+        </div>
+      ) : null}
       {(vehicleLookupStatus === 'not_found' || vehicleLookupStatus === 'error') ? (
         <div className="cardBox" style={{ marginTop: 12 }}>
           <div className="cardTop">

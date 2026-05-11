@@ -2218,6 +2218,74 @@ Workshop bays:
 ### Quote safety confirmation
 - `frontend/src/pages/QuoteDetail.jsx` was not modified in this phase.
 
+## Vehicle service history and maintenance planner foundation
+
+**Date:** 2026-05-11  
+**Version bumped to:** 1.1.035
+
+### Files changed
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `backend/routes/vehicles.js`
+- `frontend/src/pages/Vehicles.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/pages/NewIntake.jsx`
+- `frontend/src/config/navigation.js`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+- `docs/CLAUDE_UI_REDESIGN_NOTES.md`
+
+### Tables added
+- `vehicle_service_events`
+- `vehicle_maintenance_recommendations`
+- `vehicle_document_records`
+
+### Endpoints added
+- `GET /api/vehicles/:registration/history`
+- `POST /api/vehicles/:registration/history`
+- `GET /api/vehicles/:registration/maintenance`
+- `POST /api/vehicles/:registration/maintenance`
+- `PATCH /api/vehicles/:registration/maintenance/:id`
+- `GET /api/vehicles/:registration/documents`
+- `POST /api/vehicles/:registration/documents`
+- `PATCH /api/vehicles/:registration/documents/:id`
+- `GET /api/vehicles/:registration/overview`
+
+### Vehicle page changes
+- Vehicles page upgraded from simple list to registration-centred history workspace.
+- Added REG lookup and overview panel with linked jobs/quotes/invoices/payment summary.
+- Added manual service history entry creation.
+- Added maintenance recommendation creation and status actions (planned/completed/dismissed).
+- Added document record metadata creation/listing (title/type/file URL/notes/date).
+
+### Job Detail vehicle history changes
+- Added internal “Vehicle History” section with:
+  - recent vehicle service events
+  - active maintenance recommendations
+  - open full vehicle history action
+
+### Onboarding changes
+- Added lightweight vehicle history hint on successful registration lookup (previous events + active recommendations).
+- Kept onboarding flow non-blocking and existing save/step behavior unchanged.
+
+### Recommendation logic and limitations
+- Added simple generic rule-based recommendation generation on history event creation:
+  - brakes -> follow-up brake inspection
+  - oil/service -> next service reminder
+  - MOT -> MOT planning reminder
+  - timing belt/cambelt -> interval check
+  - air con/air conditioning -> annual A/C check
+- Recommendations are generic and explicitly not manufacturer-specific schedules.
+
+### Document record limitations
+- This phase stores document metadata only.
+- No file upload/storage pipeline added in this phase.
+
+### Quote safety confirmation
+- `frontend/src/pages/QuoteDetail.jsx` was not modified in this phase.
+
 ## Payment and financial tracking foundation
 
 **Date:** 2026-05-10  

@@ -10,7 +10,7 @@ export const NAV_ITEMS = [
   { key: 'communications', label: 'Communications', path: '/communications', title: 'Communications', icon: '✉️' },
   { key: 'new-intake', label: 'Onboarding', path: '/intake', title: 'Onboarding', icon: '📞' },
   { key: 'search', label: 'Search', path: '/search', title: 'Search', icon: '🔎' },
-  { key: 'vehicles', label: 'Vehicles', path: '/vehicles', title: 'Vehicles', hidden: true, icon: '🚗' },
+  { key: 'vehicles', label: 'Vehicles', path: '/vehicles', title: 'Vehicles', icon: '🚗' },
   { key: 'jobs', label: 'Jobs', path: '/jobs', title: 'Jobs', icon: '🧾' },
   { key: 'quotes', label: 'Quotes', path: '/quotes', title: 'Quotes', icon: '💷' },
   { key: 'parts', label: 'Parts', path: '/parts', title: 'Parts', icon: '🧩' },

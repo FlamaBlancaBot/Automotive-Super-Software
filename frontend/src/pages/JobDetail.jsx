@@ -36,6 +36,7 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [suggestionsStatus, setSuggestionsStatus] = useState('idle')
   const [suggestionsError, setSuggestionsError] = useState('')
   const [suggestions, setSuggestions] = useState(null)
+  const [vehicleHistoryOverview, setVehicleHistoryOverview] = useState(null)
 
   useEffect(() => {
     setDocumentTitle('Jobs')
@@ -67,6 +68,13 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setBays((baysRes && baysRes.bays) || [])
       setCurrentBayAssignment((jobBayRes && jobBayRes.current_assignment) || null)
       setJobCommunications((commsRes && commsRes.messages) || [])
+      const regNorm = String((data.job && data.job.vehicle_registration) || '').toUpperCase().replace(/\s+/g, '').trim()
+      if (regNorm) {
+        const history = await apiGet(`/api/vehicles/${encodeURIComponent(regNorm)}/overview`).catch(() => null)
+        setVehicleHistoryOverview(history || null)
+      } else {
+        setVehicleHistoryOverview(null)
+      }
       setStatus('ready')
     } catch (err) {
       setStatus('error')
@@ -323,6 +331,58 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
                 <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Notes</div><div>{currentBayAssignment.notes || '—'}</div></div>
               </div>
             ) : <div className="emptyState">No bay assigned yet.</div>}
+          </div>
+
+          <div className="jobDetailCard" style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 className="jobDetailCardTitle">Vehicle History</h2>
+              {job.vehicle_registration ? (
+                <button
+                  type="button"
+                  className="secondaryButton"
+                  onClick={() => {
+                    window.history.pushState({}, '', '/vehicles')
+                    window.dispatchEvent(new PopStateEvent('popstate'))
+                  }}
+                >
+                  Open Full Vehicle History
+                </button>
+              ) : null}
+            </div>
+            {vehicleHistoryOverview ? (
+              <div>
+                <div className="availabilitySummaryRow" style={{ marginTop: 0 }}>
+                  <StatusPill>{`REG: ${vehicleHistoryOverview.registration || '—'}`}</StatusPill>
+                  <StatusPill>{`Events: ${Number(vehicleHistoryOverview.service_events?.length || 0)}`}</StatusPill>
+                  <StatusPill>{`Recommendations: ${Number((vehicleHistoryOverview.maintenance_recommendations || []).filter((r) => ['open', 'planned'].includes(String(r.status || '').toLowerCase())).length)}`}</StatusPill>
+                </div>
+                <div className="activityTimelineList" style={{ marginTop: 10 }}>
+                  {(vehicleHistoryOverview.service_events || []).slice(0, 4).map((entry) => (
+                    <div className="activityTimelineItem" key={`veh-${entry.id}`}>
+                      <div className="activityTimelineMarker"></div>
+                      <div className="activityTimelineContent">
+                        <div className="activityTimelineText">{entry.title}</div>
+                        <div className="fieldHint">{entry.description || '—'}</div>
+                        <div className="activityTimelineMeta">{formatDateTime(entry.event_date || entry.created_at)} · Mileage: {entry.mileage || '—'}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {!vehicleHistoryOverview.service_events?.length ? <div className="emptyState">No service history entries yet.</div> : null}
+                </div>
+                {(vehicleHistoryOverview.maintenance_recommendations || []).filter((r) => ['open', 'planned'].includes(String(r.status || '').toLowerCase())).slice(0, 3).length ? (
+                  <div style={{ marginTop: 10 }}>
+                    {(vehicleHistoryOverview.maintenance_recommendations || [])
+                      .filter((r) => ['open', 'planned'].includes(String(r.status || '').toLowerCase()))
+                      .slice(0, 3)
+                      .map((r) => (
+                        <div key={`rec-${r.id}`} className="notice warn" style={{ marginTop: 6 }}>
+                          {r.title} · {r.status} {r.due_date ? `· due ${String(r.due_date).slice(0, 10)}` : ''}
+                        </div>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : <div className="emptyState">Vehicle history unavailable for this job.</div>}
           </div>
 
           <div className="jobDetailCard" style={{ marginTop: 20 }}>

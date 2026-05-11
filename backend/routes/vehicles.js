@@ -144,6 +144,108 @@ function isLookupStale(lastLookupAt, maxDays = 30) {
   return ageMs > maxDays * 24 * 60 * 60 * 1000
 }
 
+function recommendationTemplatesFromText(text, registrationNorm, createdFromJobId = null) {
+  const t = String(text || '').toLowerCase()
+  const now = new Date()
+  const plusMonths = (m) => {
+    const d = new Date(now)
+    d.setMonth(d.getMonth() + m)
+    return d.toISOString().slice(0, 10)
+  }
+  const recs = []
+  if (t.includes('brake')) {
+    recs.push({
+      recommendation_type: 'inspection',
+      title: 'Brake inspection due',
+      description: 'Recommended follow-up brake inspection based on previous brake-related work.',
+      due_date: plusMonths(6),
+      due_mileage: null,
+      priority: 'medium',
+      source: 'rule_based',
+      created_from_job_id: createdFromJobId,
+      status: 'open',
+      registration: registrationNorm,
+    })
+  }
+  if (t.includes('oil') || t.includes('service')) {
+    recs.push({
+      recommendation_type: 'service',
+      title: 'Next service reminder',
+      description: 'Generic recommendation: next service in 12 months or around 10,000 miles.',
+      due_date: plusMonths(12),
+      due_mileage: 10000,
+      priority: 'medium',
+      source: 'rule_based',
+      created_from_job_id: createdFromJobId,
+      status: 'open',
+      registration: registrationNorm,
+    })
+  }
+  if (t.includes('mot')) {
+    recs.push({
+      recommendation_type: 'mot',
+      title: 'MOT planning reminder',
+      description: 'Generic reminder to plan upcoming MOT check and pre-inspection.',
+      due_date: plusMonths(11),
+      due_mileage: null,
+      priority: 'high',
+      source: 'rule_based',
+      created_from_job_id: createdFromJobId,
+      status: 'open',
+      registration: registrationNorm,
+    })
+  }
+  if (t.includes('timing belt') || t.includes('cambelt')) {
+    recs.push({
+      recommendation_type: 'interval_check',
+      title: 'Timing belt interval check',
+      description: 'Generic timing belt/cambelt interval check recommendation.',
+      due_date: plusMonths(12),
+      due_mileage: null,
+      priority: 'high',
+      source: 'rule_based',
+      created_from_job_id: createdFromJobId,
+      status: 'open',
+      registration: registrationNorm,
+    })
+  }
+  if (t.includes('air conditioning') || t.includes('air con')) {
+    recs.push({
+      recommendation_type: 'inspection',
+      title: 'Annual A/C check',
+      description: 'Generic recommendation for annual air-conditioning performance check.',
+      due_date: plusMonths(12),
+      due_mileage: null,
+      priority: 'low',
+      source: 'rule_based',
+      created_from_job_id: createdFromJobId,
+      status: 'open',
+      registration: registrationNorm,
+    })
+  }
+  return recs
+}
+
+async function safeAll(db, sql, params = [], fallback = []) {
+  try {
+    return await db.all(sql, params)
+  } catch (err) {
+    const code = String(err && err.code ? err.code : '')
+    if (code === 'ER_NO_SUCH_TABLE' || code === 'ER_BAD_FIELD_ERROR') return fallback
+    throw err
+  }
+}
+
+async function safeGet(db, sql, params = [], fallback = null) {
+  try {
+    return await db.get(sql, params)
+  } catch (err) {
+    const code = String(err && err.code ? err.code : '')
+    if (code === 'ER_NO_SUCH_TABLE' || code === 'ER_BAD_FIELD_ERROR') return fallback
+    throw err
+  }
+}
+
 async function updateLookupMeta(db, vehicleId, fields) {
   await db.run(
     `UPDATE vehicles
@@ -468,6 +570,386 @@ function createVehiclesRouter({ db }) {
         webhook_attempted: true,
         error: 'Vehicle refresh failed.',
       })
+    }
+  })
+
+  router.get('/:registration/history', async (req, res) => {
+    const regNorm = normaliseRegistration(req.params.registration)
+    if (!regNorm) return res.status(400).json({ ok: false, error: 'Invalid registration.' })
+    try {
+      const vehicle = await safeGet(
+        db,
+        `SELECT * FROM vehicles WHERE upper(replace(registration, ' ', '')) = ? LIMIT 1`,
+        [regNorm],
+        null,
+      )
+      const vehicleId = vehicle ? Number(vehicle.id) : 0
+      const rows = await safeAll(
+        db,
+        `SELECT *
+         FROM vehicle_service_events
+         WHERE upper(replace(registration, ' ', '')) = ?
+            OR (? > 0 AND vehicle_id = ?)
+         ORDER BY COALESCE(event_date, created_at) DESC, id DESC
+         LIMIT 300`,
+        [regNorm, vehicleId, vehicleId],
+        [],
+      )
+      res.json({ ok: true, registration: regNorm, events: rows || [] })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to load vehicle history.' })
+    }
+  })
+
+  router.post('/:registration/history', async (req, res) => {
+    const regNorm = normaliseRegistration(req.params.registration)
+    if (!regNorm) return res.status(400).json({ ok: false, error: 'Invalid registration.' })
+    const body = req.body || {}
+    const title = String(body.title || '').trim()
+    const eventType = String(body.event_type || 'manual_note').trim().toLowerCase()
+    if (!title) return res.status(400).json({ ok: false, error: 'title is required.' })
+    try {
+      const vehicle = await safeGet(
+        db,
+        `SELECT * FROM vehicles WHERE upper(replace(registration, ' ', '')) = ? LIMIT 1`,
+        [regNorm],
+        null,
+      )
+      const created = await db.run(
+        `INSERT INTO vehicle_service_events
+         (vehicle_id, registration, job_id, quote_id, invoice_id, event_type, title, description, mileage, event_date, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          vehicle ? vehicle.id : null,
+          regNorm,
+          body.job_id || null,
+          body.quote_id || null,
+          body.invoice_id || null,
+          eventType,
+          title,
+          body.description ? String(body.description) : null,
+          body.mileage != null && body.mileage !== '' ? Number(body.mileage) : null,
+          body.event_date ? String(body.event_date) : null,
+          body.source ? String(body.source) : 'manual',
+        ],
+      )
+      const event = await db.get(`SELECT * FROM vehicle_service_events WHERE id = ?`, [created.lastInsertId])
+      const autoRecs = recommendationTemplatesFromText(`${eventType} ${title} ${event.description || ''}`, regNorm, event.job_id || null)
+      for (const rec of autoRecs) {
+        await db.run(
+          `INSERT INTO vehicle_maintenance_recommendations
+           (vehicle_id, registration, recommendation_type, title, description, due_mileage, due_date, priority, status, source, created_from_job_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            vehicle ? vehicle.id : null,
+            regNorm,
+            rec.recommendation_type,
+            rec.title,
+            rec.description,
+            rec.due_mileage,
+            rec.due_date,
+            rec.priority,
+            rec.status,
+            rec.source,
+            rec.created_from_job_id,
+          ],
+        )
+      }
+      res.status(201).json({ ok: true, event, auto_recommendations_created: autoRecs.length })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to create vehicle history event.' })
+    }
+  })
+
+  router.get('/:registration/maintenance', async (req, res) => {
+    const regNorm = normaliseRegistration(req.params.registration)
+    if (!regNorm) return res.status(400).json({ ok: false, error: 'Invalid registration.' })
+    try {
+      const vehicle = await safeGet(db, `SELECT * FROM vehicles WHERE upper(replace(registration, ' ', '')) = ? LIMIT 1`, [regNorm], null)
+      const vehicleId = vehicle ? Number(vehicle.id) : 0
+      const rows = await safeAll(
+        db,
+        `SELECT *
+         FROM vehicle_maintenance_recommendations
+         WHERE upper(replace(registration, ' ', '')) = ?
+            OR (? > 0 AND vehicle_id = ?)
+         ORDER BY
+           CASE WHEN status = 'open' THEN 0 WHEN status = 'planned' THEN 1 WHEN status = 'completed' THEN 2 ELSE 3 END,
+           COALESCE(due_date, created_at) ASC,
+           id DESC`,
+        [regNorm, vehicleId, vehicleId],
+        [],
+      )
+      res.json({ ok: true, registration: regNorm, recommendations: rows || [] })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to load maintenance recommendations.' })
+    }
+  })
+
+  router.post('/:registration/maintenance', async (req, res) => {
+    const regNorm = normaliseRegistration(req.params.registration)
+    if (!regNorm) return res.status(400).json({ ok: false, error: 'Invalid registration.' })
+    const body = req.body || {}
+    const title = String(body.title || '').trim()
+    if (!title) return res.status(400).json({ ok: false, error: 'title is required.' })
+    try {
+      const vehicle = await safeGet(db, `SELECT * FROM vehicles WHERE upper(replace(registration, ' ', '')) = ? LIMIT 1`, [regNorm], null)
+      const created = await db.run(
+        `INSERT INTO vehicle_maintenance_recommendations
+         (vehicle_id, registration, recommendation_type, title, description, due_mileage, due_date, priority, status, source, created_from_job_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          vehicle ? vehicle.id : null,
+          regNorm,
+          body.recommendation_type ? String(body.recommendation_type) : 'general',
+          title,
+          body.description ? String(body.description) : null,
+          body.due_mileage != null && body.due_mileage !== '' ? Number(body.due_mileage) : null,
+          body.due_date ? String(body.due_date) : null,
+          body.priority ? String(body.priority) : 'medium',
+          body.status ? String(body.status) : 'open',
+          body.source ? String(body.source) : 'manual',
+          body.created_from_job_id || null,
+        ],
+      )
+      const recommendation = await db.get(`SELECT * FROM vehicle_maintenance_recommendations WHERE id = ?`, [created.lastInsertId])
+      res.status(201).json({ ok: true, recommendation })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to create maintenance recommendation.' })
+    }
+  })
+
+  router.patch('/:registration/maintenance/:id', async (req, res) => {
+    const regNorm = normaliseRegistration(req.params.registration)
+    const id = Number(req.params.id || 0)
+    if (!regNorm || !id) return res.status(400).json({ ok: false, error: 'Invalid parameters.' })
+    const body = req.body || {}
+    try {
+      const row = await db.get(`SELECT * FROM vehicle_maintenance_recommendations WHERE id = ?`, [id])
+      if (!row) return res.status(404).json({ ok: false, error: 'Recommendation not found.' })
+      const next = {
+        recommendation_type: body.recommendation_type != null ? String(body.recommendation_type) : row.recommendation_type,
+        title: body.title != null ? String(body.title).trim() : row.title,
+        description: body.description != null ? (String(body.description).trim() || null) : row.description,
+        due_mileage: body.due_mileage != null ? (body.due_mileage === '' ? null : Number(body.due_mileage)) : row.due_mileage,
+        due_date: body.due_date != null ? (String(body.due_date).trim() || null) : row.due_date,
+        priority: body.priority != null ? String(body.priority) : row.priority,
+        status: body.status != null ? String(body.status) : row.status,
+        source: body.source != null ? String(body.source) : row.source,
+      }
+      await db.run(
+        `UPDATE vehicle_maintenance_recommendations
+         SET recommendation_type = ?, title = ?, description = ?, due_mileage = ?, due_date = ?, priority = ?, status = ?, source = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [next.recommendation_type, next.title, next.description, next.due_mileage, next.due_date, next.priority, next.status, next.source, id],
+      )
+      const recommendation = await db.get(`SELECT * FROM vehicle_maintenance_recommendations WHERE id = ?`, [id])
+      res.json({ ok: true, recommendation })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to update recommendation.' })
+    }
+  })
+
+  router.get('/:registration/documents', async (req, res) => {
+    const regNorm = normaliseRegistration(req.params.registration)
+    if (!regNorm) return res.status(400).json({ ok: false, error: 'Invalid registration.' })
+    try {
+      const vehicle = await safeGet(db, `SELECT * FROM vehicles WHERE upper(replace(registration, ' ', '')) = ? LIMIT 1`, [regNorm], null)
+      const vehicleId = vehicle ? Number(vehicle.id) : 0
+      const rows = await safeAll(
+        db,
+        `SELECT *
+         FROM vehicle_document_records
+         WHERE upper(replace(registration, ' ', '')) = ?
+            OR (? > 0 AND vehicle_id = ?)
+         ORDER BY COALESCE(document_date, created_at) DESC, id DESC`,
+        [regNorm, vehicleId, vehicleId],
+        [],
+      )
+      res.json({ ok: true, registration: regNorm, documents: rows || [] })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to load vehicle documents.' })
+    }
+  })
+
+  router.post('/:registration/documents', async (req, res) => {
+    const regNorm = normaliseRegistration(req.params.registration)
+    if (!regNorm) return res.status(400).json({ ok: false, error: 'Invalid registration.' })
+    const body = req.body || {}
+    const title = String(body.title || '').trim()
+    if (!title) return res.status(400).json({ ok: false, error: 'title is required.' })
+    try {
+      const vehicle = await safeGet(db, `SELECT * FROM vehicles WHERE upper(replace(registration, ' ', '')) = ? LIMIT 1`, [regNorm], null)
+      const created = await db.run(
+        `INSERT INTO vehicle_document_records
+         (vehicle_id, registration, job_id, invoice_id, title, document_type, file_url, notes, document_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          vehicle ? vehicle.id : null,
+          regNorm,
+          body.job_id || null,
+          body.invoice_id || null,
+          title,
+          body.document_type ? String(body.document_type) : 'document',
+          body.file_url ? String(body.file_url) : null,
+          body.notes ? String(body.notes) : null,
+          body.document_date ? String(body.document_date) : null,
+        ],
+      )
+      const document = await db.get(`SELECT * FROM vehicle_document_records WHERE id = ?`, [created.lastInsertId])
+      res.status(201).json({ ok: true, document })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to create vehicle document record.' })
+    }
+  })
+
+  router.patch('/:registration/documents/:id', async (req, res) => {
+    const regNorm = normaliseRegistration(req.params.registration)
+    const id = Number(req.params.id || 0)
+    if (!regNorm || !id) return res.status(400).json({ ok: false, error: 'Invalid parameters.' })
+    const body = req.body || {}
+    try {
+      const row = await db.get(`SELECT * FROM vehicle_document_records WHERE id = ?`, [id])
+      if (!row) return res.status(404).json({ ok: false, error: 'Document record not found.' })
+      const next = {
+        title: body.title != null ? String(body.title).trim() : row.title,
+        document_type: body.document_type != null ? String(body.document_type) : row.document_type,
+        file_url: body.file_url != null ? (String(body.file_url).trim() || null) : row.file_url,
+        notes: body.notes != null ? (String(body.notes).trim() || null) : row.notes,
+        document_date: body.document_date != null ? (String(body.document_date).trim() || null) : row.document_date,
+      }
+      await db.run(
+        `UPDATE vehicle_document_records
+         SET title = ?, document_type = ?, file_url = ?, notes = ?, document_date = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [next.title, next.document_type, next.file_url, next.notes, next.document_date, id],
+      )
+      const document = await db.get(`SELECT * FROM vehicle_document_records WHERE id = ?`, [id])
+      res.json({ ok: true, document })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to update document record.' })
+    }
+  })
+
+  router.get('/:registration/overview', async (req, res) => {
+    const regNorm = normaliseRegistration(req.params.registration)
+    if (!regNorm) return res.status(400).json({ ok: false, error: 'Invalid registration.' })
+    try {
+      const vehicle = await safeGet(
+        db,
+        `SELECT * FROM vehicles WHERE upper(replace(registration, ' ', '')) = ? LIMIT 1`,
+        [regNorm],
+        null,
+      )
+      const vehicleId = vehicle ? Number(vehicle.id) : 0
+
+      const jobs = await safeAll(
+        db,
+        `SELECT j.*, c.first_name AS customer_first_name, c.surname AS customer_surname
+         FROM jobs j
+         LEFT JOIN vehicles v ON v.id = j.vehicle_id
+         LEFT JOIN customers c ON c.id = j.customer_id
+         WHERE (? > 0 AND j.vehicle_id = ?)
+            OR upper(replace(coalesce(v.registration, ''), ' ', '')) = ?
+         ORDER BY COALESCE(j.booked_start, CONCAT(j.requested_date, ' 00:00:00')) DESC, j.id DESC
+         LIMIT 200`,
+        [vehicleId, vehicleId, regNorm],
+        [],
+      )
+      const jobIds = (jobs || []).map((j) => Number(j.id)).filter(Boolean)
+      const inPlaceholders = jobIds.length ? jobIds.map(() => '?').join(',') : '0'
+
+      const quotes = await safeAll(
+        db,
+        `SELECT q.*
+         FROM quotes q
+         LEFT JOIN vehicles v ON v.id = q.vehicle_id
+         WHERE (? > 0 AND q.vehicle_id = ?)
+            OR upper(replace(coalesce(v.registration, ''), ' ', '')) = ?
+            OR (q.job_id IN (${inPlaceholders}))
+         ORDER BY q.updated_at DESC, q.id DESC
+         LIMIT 300`,
+        [vehicleId, vehicleId, regNorm, ...jobIds],
+        [],
+      )
+
+      const quoteIds = (quotes || []).map((q) => Number(q.id)).filter(Boolean)
+      const quoteIn = quoteIds.length ? quoteIds.map(() => '?').join(',') : '0'
+
+      const invoices = await safeAll(
+        db,
+        `SELECT i.*
+         FROM invoices i
+         WHERE (? > 0 AND i.vehicle_id = ?)
+            OR i.job_id IN (${inPlaceholders})
+            OR i.quote_id IN (${quoteIn})
+         ORDER BY i.updated_at DESC, i.id DESC
+         LIMIT 300`,
+        [vehicleId, vehicleId, ...jobIds, ...quoteIds],
+        [],
+      )
+
+      const events = await safeAll(
+        db,
+        `SELECT * FROM vehicle_service_events
+         WHERE upper(replace(registration, ' ', '')) = ?
+            OR (? > 0 AND vehicle_id = ?)
+         ORDER BY COALESCE(event_date, created_at) DESC, id DESC`,
+        [regNorm, vehicleId, vehicleId],
+        [],
+      )
+
+      const maintenance = await safeAll(
+        db,
+        `SELECT * FROM vehicle_maintenance_recommendations
+         WHERE upper(replace(registration, ' ', '')) = ?
+            OR (? > 0 AND vehicle_id = ?)
+         ORDER BY
+           CASE WHEN status = 'open' THEN 0 WHEN status = 'planned' THEN 1 WHEN status = 'completed' THEN 2 ELSE 3 END,
+           COALESCE(due_date, created_at) ASC`,
+        [regNorm, vehicleId, vehicleId],
+        [],
+      )
+
+      const documents = await safeAll(
+        db,
+        `SELECT * FROM vehicle_document_records
+         WHERE upper(replace(registration, ' ', '')) = ?
+            OR (? > 0 AND vehicle_id = ?)
+         ORDER BY COALESCE(document_date, created_at) DESC, id DESC`,
+        [regNorm, vehicleId, vehicleId],
+        [],
+      )
+
+      const invoiceIds = (invoices || []).map((x) => Number(x.id)).filter(Boolean)
+      const invoiceIn = invoiceIds.length ? invoiceIds.map(() => '?').join(',') : '0'
+      const paymentsSummary = await safeGet(
+        db,
+        `SELECT COALESCE(SUM(amount), 0) AS payments_total, COUNT(*) AS payments_count
+         FROM invoice_payments
+         WHERE invoice_id IN (${invoiceIn})
+           AND status NOT IN ('failed', 'cancelled')`,
+        [...invoiceIds],
+        { payments_total: 0, payments_count: 0 },
+      )
+
+      res.json({
+        ok: true,
+        registration: regNorm,
+        vehicle: vehicle || null,
+        jobs: jobs || [],
+        quotes: quotes || [],
+        invoices: invoices || [],
+        service_events: events || [],
+        maintenance_recommendations: maintenance || [],
+        document_records: documents || [],
+        payment_summary: {
+          payments_total: Number((paymentsSummary && paymentsSummary.payments_total) || 0),
+          payments_count: Number((paymentsSummary && paymentsSummary.payments_count) || 0),
+        },
+      })
+    } catch {
+      res.status(500).json({ ok: false, error: 'Failed to load vehicle overview.' })
     }
   })
 
