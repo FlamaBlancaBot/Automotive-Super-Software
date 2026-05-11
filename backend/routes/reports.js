@@ -206,6 +206,35 @@ function createReportsRouter({ db }) {
         [config.days],
       )
 
+      const inventorySummary = await db.get(
+        `SELECT
+          SUM(CASE WHEN active = 1 AND quantity_on_hand <= reorder_point THEN 1 ELSE 0 END) AS low_stock_count,
+          SUM(CASE WHEN active = 1 AND expiry_date IS NOT NULL AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) AS expiring_soon_count,
+          COALESCE(SUM(CASE WHEN unit_cost IS NOT NULL THEN quantity_on_hand * unit_cost ELSE 0 END), 0) AS estimated_stock_value
+         FROM inventory_items`,
+      ).catch(() => ({ low_stock_count: 0, expiring_soon_count: 0, estimated_stock_value: 0 }))
+
+      const inventoryMovements = await db.get(
+        `SELECT COUNT(*) AS stock_movements_this_month
+         FROM inventory_stock_movements
+         WHERE created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`,
+      ).catch(() => ({ stock_movements_this_month: 0 }))
+
+      const mostUsedInventory = await db.all(
+        `SELECT
+          i.id AS inventory_item_id,
+          i.name AS inventory_item_name,
+          COALESCE(SUM(m.quantity), 0) AS quantity_used
+         FROM inventory_stock_movements m
+         JOIN inventory_items i ON i.id = m.inventory_item_id
+         WHERE m.movement_type = 'job_usage'
+           AND m.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+         GROUP BY i.id, i.name
+         ORDER BY quantity_used DESC
+         LIMIT 5`,
+        [config.days],
+      ).catch(() => [])
+
       const revenueTotal = toNumber(invoicesSummary?.revenue_total, 0)
       const invoicesCount = toNumber(invoicesSummary?.invoices_count, 0)
       const paidInvoicesCount = toNumber(invoicesSummary?.paid_invoices_count, 0)
@@ -276,6 +305,17 @@ function createReportsRouter({ db }) {
           received_count: toNumber(partsSummary?.received_count, 0),
           pending_count: toNumber(partsSummary?.pending_count, 0),
           returned_count: toNumber(partsSummary?.returned_count, 0),
+        },
+        inventory: {
+          low_stock_count: toNumber(inventorySummary?.low_stock_count, 0),
+          expiring_soon_count: toNumber(inventorySummary?.expiring_soon_count, 0),
+          estimated_stock_value: toNumber(inventorySummary?.estimated_stock_value, 0),
+          stock_movements_this_month: toNumber(inventoryMovements?.stock_movements_this_month, 0),
+          most_used_items: (mostUsedInventory || []).map((r) => ({
+            inventory_item_id: r.inventory_item_id,
+            inventory_item_name: r.inventory_item_name,
+            quantity_used: toNumber(r.quantity_used, 0),
+          })),
         },
         profit_margin: {
           gross_profit_total: null,

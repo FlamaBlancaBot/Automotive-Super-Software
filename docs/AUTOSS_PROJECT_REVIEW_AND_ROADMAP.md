@@ -1,7 +1,7 @@
 # Automotive Super Software / AUTOSS — Project Review and Roadmap
 
 ## 1. Current Project Snapshot
-- **Current version:** `1.1.029` (from `frontend/src/config/version.js`)
+- **Current version:** `1.1.036` (from `frontend/src/config/version.js`)
 - **Purpose:** Internal garage/workshop management platform covering intake, workshop operations, quoting, parts, invoicing, and management reporting.
 - **Stack:**
   - Frontend: React + Vite
@@ -158,8 +158,8 @@ Current important pages/routes in active workflow:
 - Reports enhancements with reliable margins and labour profitability
 - Vehicle service history and maintenance planner
 - Photo/video inspection reports
-- Advanced inventory management
-- Parts stock/reorder/supplier integration
+- Advanced inventory management foundation (implemented in v1.1.036)
+- Parts stock/reorder/supplier integration foundation (implemented in v1.1.036)
 - QuickBooks/accounting export foundation
 - Team collaboration features (`@mentions`, handover notes, clock-in/out)
 
@@ -223,5 +223,7 @@ Current important pages/routes in active workflow:
 - Payment and financial tracking foundation added in v1.1.034 (deposits/partial/final/refund records, balances, payment statuses, and reporting metrics).
 - Stripe/Square/QuickBooks live integrations remain future work.
 - Vehicle service history and maintenance planner foundation added in v1.1.035 (registration-centred timeline, recommendations, and document metadata records).
+- Advanced inventory management foundation added in v1.1.036 (inventory catalog, stock movements, low-stock/expiry tracking, supplier pricing, and job usage logging).
 - Manufacturer-specific schedules, real document upload storage, and deeper DVSA/MOT automation remain future work.
+- Barcode/QR scanning, live supplier integrations, and automatic quote-part to inventory mapping remain future work.
 - Future work remains: drag/drop scheduling, live capacity heatmaps, and fully automatic assignment decisions.

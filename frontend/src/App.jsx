@@ -17,6 +17,7 @@ import Vehicles from './pages/Vehicles'
 import Suppliers from './pages/Suppliers'
 import Search from './pages/Search'
 import Reports from './pages/Reports'
+import Inventory from './pages/Inventory'
 import Communications from './pages/Communications'
 import PlaceholderPage from './pages/PlaceholderPage'
 import Login from './pages/Login'
@@ -241,6 +242,8 @@ function App() {
             <Setup />
           ) : activeKey === 'parts' ? (
             <PartsOrders locationPath={pathname} />
+          ) : activeKey === 'inventory' ? (
+            <Inventory />
           ) : activeKey === 'settings' ? (
             <Settings
               onOpenSetup={() => navigate('setup')}

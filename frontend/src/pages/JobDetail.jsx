@@ -18,6 +18,9 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [job, setJob] = useState(null)
   const [quotes, setQuotes] = useState([])
   const [partsOrders, setPartsOrders] = useState([])
+  const [inventoryUsage, setInventoryUsage] = useState([])
+  const [inventoryItems, setInventoryItems] = useState([])
+  const [inventoryDraft, setInventoryDraft] = useState({ inventory_item_id: '', quantity: '', notes: '' })
   const [jobSheet, setJobSheet] = useState(null)
   const [jobActivity, setJobActivity] = useState([])
   const [jobCommunications, setJobCommunications] = useState([])
@@ -50,6 +53,7 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setJob(data.job || null)
       setQuotes(data.quotes || [])
       setPartsOrders(data.parts_orders || [])
+      setInventoryUsage(data.inventory_usage || [])
       const invoiceRes = await apiGet(`/api/jobs/${jobId}/invoices`).catch(() => ({ invoices: [] }))
       setInvoices(invoiceRes.invoices || [])
       const [sheetRes, techRes, assignmentsRes, jobActivityRes, baysRes, jobBayRes, commsRes] = await Promise.all([
@@ -68,6 +72,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setBays((baysRes && baysRes.bays) || [])
       setCurrentBayAssignment((jobBayRes && jobBayRes.current_assignment) || null)
       setJobCommunications((commsRes && commsRes.messages) || [])
+      const invItems = await apiGet('/api/inventory/items?active=true').catch(() => ({ items: [] }))
+      setInventoryItems(invItems.items || [])
       const regNorm = String((data.job && data.job.vehicle_registration) || '').toUpperCase().replace(/\s+/g, '').trim()
       if (regNorm) {
         const history = await apiGet(`/api/vehicles/${encodeURIComponent(regNorm)}/overview`).catch(() => null)
@@ -138,6 +144,18 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
     setJobActivity(jobActivityRes.events || [])
     setCurrentBayAssignment(jobBayRes.current_assignment || null)
     setJobCommunications(commsRes.messages || [])
+  }
+
+  async function recordInventoryUsage() {
+    if (!inventoryDraft.inventory_item_id || !inventoryDraft.quantity) return
+    await apiPost(`/api/jobs/${jobId}/inventory-usage`, {
+      inventory_item_id: Number(inventoryDraft.inventory_item_id),
+      quantity: Number(inventoryDraft.quantity),
+      notes: inventoryDraft.notes || null,
+      reference: `JOB-${jobId}`,
+    })
+    setInventoryDraft({ inventory_item_id: '', quantity: '', notes: '' })
+    await load()
   }
 
   function resolveSuggestionInputs(sourceJob) {
@@ -626,6 +644,52 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="jobDetailSection" style={{ marginTop: 24 }}>
+        <h3 className="jobDetailSectionTitle">Inventory Usage</h3>
+        <div className="fieldGrid" style={{ marginTop: 12 }}>
+          <div className="field" style={{ gridColumn: 'span 4' }}>
+            <div className="fieldLabel">Inventory item</div>
+            <select className="select" value={inventoryDraft.inventory_item_id} onChange={(e) => setInventoryDraft((s) => ({ ...s, inventory_item_id: e.target.value }))}>
+              <option value="">Select item</option>
+              {inventoryItems.map((item) => (
+                <option key={item.id} value={item.id}>{item.name} ({item.sku || `ID ${item.id}`})</option>
+              ))}
+            </select>
+          </div>
+          <div className="field" style={{ gridColumn: 'span 2' }}>
+            <div className="fieldLabel">Quantity</div>
+            <input className="input" value={inventoryDraft.quantity} onChange={(e) => setInventoryDraft((s) => ({ ...s, quantity: e.target.value }))} placeholder="e.g. 1 or 0.5" />
+          </div>
+          <div className="field" style={{ gridColumn: 'span 4' }}>
+            <div className="fieldLabel">Notes</div>
+            <input className="input" value={inventoryDraft.notes} onChange={(e) => setInventoryDraft((s) => ({ ...s, notes: e.target.value }))} placeholder="Optional usage note" />
+          </div>
+          <div className="field" style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'end' }}>
+            <button type="button" className="secondaryButton" onClick={recordInventoryUsage}>Record usage</button>
+          </div>
+        </div>
+        {inventoryUsage.length ? (
+          <div className="quoteTableWrap" style={{ marginTop: 12 }}>
+            <table className="quoteTable">
+              <thead><tr><th>Item</th><th>Quantity</th><th>Type</th><th>Date</th><th>Notes / Ref</th></tr></thead>
+              <tbody>
+                {inventoryUsage.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.item_name || `Item ${row.inventory_item_id}`}</td>
+                    <td>{Number(row.quantity || 0).toLocaleString('en-GB', { maximumFractionDigits: 3 })} {row.unit_of_measure || ''}</td>
+                    <td>{row.movement_type}</td>
+                    <td>{formatDateTime(row.created_at)}</td>
+                    <td>{row.notes || row.reference || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="emptyState" style={{ marginTop: 12 }}>No linked inventory usage yet.</div>
+        )}
       </div>
 
       <div className="jobDetailSection" style={{ marginTop: 24 }}>

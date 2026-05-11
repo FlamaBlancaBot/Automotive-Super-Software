@@ -14,6 +14,7 @@ export const NAV_ITEMS = [
   { key: 'jobs', label: 'Jobs', path: '/jobs', title: 'Jobs', icon: '🧾' },
   { key: 'quotes', label: 'Quotes', path: '/quotes', title: 'Quotes', icon: '💷' },
   { key: 'parts', label: 'Parts', path: '/parts', title: 'Parts', icon: '🧩' },
+  { key: 'inventory', label: 'Inventory', path: '/inventory', title: 'Inventory', icon: '📦' },
   { key: 'suppliers', label: 'Suppliers', path: '/suppliers', title: 'Suppliers', hidden: true, icon: '🏭' },
   { key: 'technicians', label: 'Technicians', path: '/technicians', title: 'Technicians', hidden: true, icon: '🧑‍🔧' },
   { key: 'mot', label: 'MOT', path: '/mot', title: 'MOT', icon: '✅' },

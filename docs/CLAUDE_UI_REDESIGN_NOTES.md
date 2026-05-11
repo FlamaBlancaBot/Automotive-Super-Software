@@ -2398,3 +2398,78 @@ Workshop bays:
 
 ### Quote safety confirmation
 - `frontend/src/pages/QuoteDetail.jsx` was not modified in this phase.
+
+## Advanced inventory management foundation — v1.1.036
+
+- **Version used:** `1.1.036`
+- **QuoteDetail.jsx untouched:** Yes
+
+### Files changed
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `backend/routes/inventory.js`
+- `backend/routes/jobs.js`
+- `backend/routes/reports.js`
+- `backend/server.js`
+- `frontend/src/pages/Inventory.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/pages/PartsOrders.jsx`
+- `frontend/src/pages/Reports.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/components/Sidebar.jsx`
+- `frontend/src/config/navigation.js`
+- `frontend/src/App.css`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+
+### Tables added
+- `inventory_items`
+- `inventory_stock_movements`
+- `inventory_item_suppliers`
+
+### Endpoints added
+- `GET /api/inventory/items`
+- `POST /api/inventory/items`
+- `GET /api/inventory/items/:id`
+- `PATCH /api/inventory/items/:id`
+- `GET /api/inventory/items/:id/movements`
+- `POST /api/inventory/items/:id/movements`
+- `GET /api/inventory/low-stock`
+- `GET /api/inventory/expiring?days=30`
+- `GET /api/inventory/summary`
+- `GET /api/inventory/items/:id/suppliers`
+- `POST /api/inventory/items/:id/suppliers`
+- `PATCH /api/inventory/items/:id/suppliers/:supplierId`
+- `POST /api/jobs/:id/inventory-usage`
+
+### Inventory page changes
+- Added a dedicated Inventory page with summary cards, filters, searchable list, status chips, add/edit item modal, movement history panel, movement creation form, and supplier pricing panel.
+- Inventory is separate from Parts Orders to preserve ordering workflow boundaries.
+
+### Stock movement logic
+- Movement type validation is enforced.
+- Numeric movement quantity validation is enforced.
+- Movement updates stock on hand based on movement type.
+- Negative stock is blocked with a clear error.
+- Optional job/quote/parts order references are preserved on movement records.
+
+### Job Detail integration
+- Added Inventory Usage section.
+- Shows job-linked stock movement history.
+- Includes record usage form which writes `job_usage` movements and reduces stock.
+
+### Reports integration
+- Added inventory metrics to reports payload/UI:
+  - low stock count
+  - expiring soon count
+  - estimated stock value
+  - stock movements this month
+  - most used inventory items in range
+
+### Limitations / future work
+- Barcode/QR scanning not implemented.
+- Live supplier API integration not implemented.
+- Automatic quote-part to inventory mapping not implemented.
+- Accounting sync/export integration not implemented.

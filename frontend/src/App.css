@@ -6759,3 +6759,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+.inlineToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  color: var(--text);
+}

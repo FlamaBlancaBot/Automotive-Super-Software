@@ -169,6 +169,9 @@ export default function PartsOrders({ locationPath }) {
           <h3 className="cardTitle">Filters</h3>
           <div className="fieldHint">Search by REG, part, supplier, brand, part number.</div>
         </div>
+        <div className="notice" style={{ marginTop: 10 }}>
+          Inventory linking can be done from Inventory item movements using a parts order reference.
+        </div>
 
         <div className="fieldGrid" style={{ marginTop: 12 }}>
           <div className="field" style={{ gridColumn: 'span 6' }}>

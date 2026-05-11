@@ -241,11 +241,37 @@ function createJobsRouter({ db }) {
         [jobId],
       )
 
+      const inventoryUsage = await db.all(
+        `
+        SELECT
+          m.id,
+          m.inventory_item_id,
+          m.job_id,
+          m.movement_type,
+          m.quantity,
+          m.unit_cost,
+          m.notes,
+          m.reference,
+          m.created_by,
+          m.created_at,
+          i.name AS item_name,
+          i.sku AS item_sku,
+          i.unit_of_measure
+        FROM inventory_stock_movements m
+        JOIN inventory_items i ON i.id = m.inventory_item_id
+        WHERE m.job_id = ?
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT 200
+      `,
+        [jobId],
+      ).catch(() => [])
+
       res.json({
         ok: true,
         job,
         quotes: quotes || [],
         parts_orders: partsOrders || [],
+        inventory_usage: inventoryUsage || [],
         quote_count: (quotes || []).length,
         quote_exists: (quotes || []).length > 0,
       })

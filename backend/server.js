@@ -70,6 +70,7 @@ async function main() {
   const { createActivityRouter } = require('./routes/activity')
   const { createMotEventsRouter } = require('./routes/mot-events')
   const { createInvoicesRouter } = require('./routes/invoices')
+  const { createInventoryRouter } = require('./routes/inventory')
   const { createTemplatesRouter } = require('./routes/templates')
   const {
     createCustomerDetailRequestsRouter,
@@ -142,6 +143,7 @@ async function main() {
   app.use('/api', createCalendarRouter({ db }))
   app.use('/api', createMotEventsRouter({ db }))
   app.use('/api', createInvoicesRouter({ db }))
+  app.use('/api', createInventoryRouter({ db }))
   app.use('/api', requireAuth, requireRole(['admin', 'office']), createTemplatesRouter({ db }))
 
   // In production, serve the built React app from `backend/public/`.

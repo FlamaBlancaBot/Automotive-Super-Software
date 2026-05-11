@@ -752,6 +752,78 @@ const MYSQL_SCHEMA_STATEMENTS = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
   `
+  CREATE TABLE IF NOT EXISTS inventory_items (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    sku VARCHAR(100) NULL,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NULL,
+    description TEXT NULL,
+    supplier_name VARCHAR(150) NULL,
+    supplier_part_number VARCHAR(120) NULL,
+    unit_cost DECIMAL(10,2) NULL,
+    sell_price DECIMAL(10,2) NULL,
+    quantity_on_hand DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    reorder_point DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    reorder_quantity DECIMAL(12,3) NULL,
+    unit_of_measure VARCHAR(40) NOT NULL DEFAULT 'unit',
+    storage_location VARCHAR(120) NULL,
+    expiry_date DATE NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_inventory_items_name (name),
+    KEY idx_inventory_items_sku (sku),
+    KEY idx_inventory_items_category (category),
+    KEY idx_inventory_items_active (active)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS inventory_stock_movements (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    inventory_item_id BIGINT UNSIGNED NOT NULL,
+    job_id BIGINT UNSIGNED NULL,
+    quote_id BIGINT UNSIGNED NULL,
+    parts_order_id BIGINT UNSIGNED NULL,
+    movement_type VARCHAR(40) NOT NULL,
+    quantity DECIMAL(12,3) NOT NULL,
+    unit_cost DECIMAL(10,2) NULL,
+    notes TEXT NULL,
+    reference VARCHAR(150) NULL,
+    created_by VARCHAR(120) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_inventory_moves_item (inventory_item_id),
+    KEY idx_inventory_moves_job (job_id),
+    KEY idx_inventory_moves_quote (quote_id),
+    KEY idx_inventory_moves_parts_order (parts_order_id),
+    KEY idx_inventory_moves_type (movement_type),
+    KEY idx_inventory_moves_created (created_at),
+    CONSTRAINT fk_inventory_moves_item FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id),
+    CONSTRAINT fk_inventory_moves_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_inventory_moves_quote FOREIGN KEY (quote_id) REFERENCES quotes(id),
+    CONSTRAINT fk_inventory_moves_parts_order FOREIGN KEY (parts_order_id) REFERENCES parts_orders(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS inventory_item_suppliers (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    inventory_item_id BIGINT UNSIGNED NOT NULL,
+    supplier_name VARCHAR(150) NOT NULL,
+    supplier_part_number VARCHAR(120) NULL,
+    unit_cost DECIMAL(10,2) NULL,
+    lead_time_days INT NULL,
+    preferred TINYINT(1) NOT NULL DEFAULT 0,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_inventory_item_suppliers_item (inventory_item_id),
+    KEY idx_inventory_item_suppliers_name (supplier_name),
+    CONSTRAINT fk_inventory_item_suppliers_item FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
   CREATE TABLE IF NOT EXISTS users (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(150) NOT NULL,

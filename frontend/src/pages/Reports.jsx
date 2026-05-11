@@ -179,6 +179,29 @@ export default function Reports() {
             <div className="cardBox"><div className="fieldLabel">Parts returned</div><div className="kpiValue">{number(data.parts?.returned_count)}</div></div>
           </div>
 
+          <div className="cards" style={{ marginTop: 16 }}>
+            <div className="cardBox"><div className="fieldLabel">Inventory low stock</div><div className="kpiValue">{number(data.inventory?.low_stock_count)}</div></div>
+            <div className="cardBox"><div className="fieldLabel">Inventory expiring soon</div><div className="kpiValue">{number(data.inventory?.expiring_soon_count)}</div></div>
+            <div className="cardBox"><div className="fieldLabel">Inventory stock value</div><div className="kpiValue">{money(data.inventory?.estimated_stock_value)}</div></div>
+            <div className="cardBox"><div className="fieldLabel">Inventory movements month</div><div className="kpiValue">{number(data.inventory?.stock_movements_this_month)}</div></div>
+          </div>
+
+          <div className="cardBox" style={{ marginTop: 16 }}>
+            <div className="cardTop"><h3 className="cardTitle">Most Used Inventory Items</h3></div>
+            {(data.inventory?.most_used_items || []).length ? (
+              <div className="quoteTableWrap" style={{ marginTop: 12 }}>
+                <table className="quoteTable">
+                  <thead><tr><th>Item</th><th>Qty used</th></tr></thead>
+                  <tbody>
+                    {(data.inventory?.most_used_items || []).map((row) => (
+                      <tr key={row.inventory_item_id}><td>{row.inventory_item_name}</td><td>{number(row.quantity_used)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <div className="emptyState" style={{ marginTop: 12 }}>No inventory usage data in this range.</div>}
+          </div>
+
           <div className="cardBox" style={{ marginTop: 16 }}>
             <div className="cardTop"><h3 className="cardTitle">Profit / Margin</h3></div>
             <div className="emptyState" style={{ marginTop: 12 }}>{data.profit_margin?.note || 'Not enough cost data yet.'}</div>

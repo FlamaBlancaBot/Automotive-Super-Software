@@ -26,6 +26,7 @@ const ICON_MAP = {
   communications: <IcoMessage />,
   quotes:     <IcoFile />,
   parts:      <IcoPackage />,
+  inventory:  <IcoPackage />,
   mot:        <IcoClipboard />,
   settings:   <IcoSettings />,
 }

@@ -34,6 +34,9 @@ const SETUP_TABLES = [
   'parts_orders',
   'goods_received',
   'part_status_logs',
+  'inventory_items',
+  'inventory_stock_movements',
+  'inventory_item_suppliers',
   'users',
   'user_sessions',
   'activity_logs',
@@ -198,6 +201,10 @@ async function migrateDatabase(db) {
   await db.run(`UPDATE parts_orders SET status = 'received' WHERE status IN ('goods_received', 'fitted')`)
   await db.run(`UPDATE parts_orders SET status = 'return_required' WHERE status = 'wrong_part'`)
   await db.run(`UPDATE parts_orders SET status = 'credit_pending' WHERE status = 'awaiting_credit'`)
+
+  // Inventory foundation optional columns for forward-safe updates.
+  await ensureColumn(db, 'inventory_items', 'unit_of_measure', "VARCHAR(40) NOT NULL DEFAULT 'unit'")
+  await ensureColumn(db, 'inventory_items', 'active', 'TINYINT(1) NOT NULL DEFAULT 1')
 }
 
 module.exports = {
