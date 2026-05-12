@@ -12,6 +12,8 @@ const TABS = [
   { key: 'job-statuses', label: 'Job Statuses' },
   { key: 'items', label: 'Predefined Items' },
   { key: 'templates', label: 'Templates' },
+  { key: 'mot-automation', label: 'MOT Automation' },
+  { key: 'notifications', label: 'Notifications & Reminders' },
   { key: 'accounting', label: 'Accounting' },
   { key: 'integrations', label: 'Integrations' },
   { key: 'branding', label: 'Branding' },
@@ -36,6 +38,22 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
   const [shortcodeHelp, setShortcodeHelp] = useState(null)
   const [health, setHealth] = useState(null)
   const [integrationsStatus, setIntegrationsStatus] = useState(null)
+  const [motAutomation, setMotAutomation] = useState({
+    webhook_url: '',
+    first_check_delay_minutes: 45,
+    retry_delay_1_minutes: 10,
+    retry_delay_2_minutes: 10,
+    retry_delay_3_minutes: 5,
+    delayed_retry_minutes: 20,
+    max_checks_per_mot: 20,
+    scheduler_enabled: true,
+    scheduler_interval_seconds: 60,
+  })
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    sound_enabled: true,
+    default_reminder_lead_minutes: 30,
+    unread_behaviour: 'highlight',
+  })
 
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
@@ -77,7 +95,7 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
     setStatus('loading')
     setError('')
     try {
-      const [settingsRes, techRes, skillsRes, baysRes, supplierRes, serviceRes, itemRes, statusesRes, healthRes, integrationsRes, templatesRes] =
+      const [settingsRes, techRes, skillsRes, baysRes, supplierRes, serviceRes, itemRes, statusesRes, healthRes, integrationsRes, templatesRes, motSettingsRes, notifSettingsRes] =
         await Promise.all([
           apiGet('/api/admin/company-settings').catch(() => ({ settings: null })),
           apiGet('/api/admin/technicians').catch(() => ({ technicians: [] })),
@@ -90,6 +108,8 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
           apiGet('/api/health').catch(() => null),
           apiGet('/api/admin/integrations-status').catch(() => null),
           apiGet('/api/templates').catch(() => ({ templates: [], shortcode_help: null })),
+          apiGet('/api/mot/settings').catch(() => ({ settings: null })),
+          apiGet('/api/settings/notifications').catch(() => ({ settings: null })),
         ])
 
       setSettings(settingsRes.settings || null)
@@ -105,6 +125,12 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
       setIntegrationsStatus(integrationsRes || null)
       setTemplates(templatesRes.templates || [])
       setShortcodeHelp(templatesRes.shortcode_help || null)
+      if (motSettingsRes && motSettingsRes.settings) {
+        setMotAutomation((prev) => ({ ...prev, ...motSettingsRes.settings }))
+      }
+      if (notifSettingsRes && notifSettingsRes.settings) {
+        setNotificationPrefs((prev) => ({ ...prev, ...notifSettingsRes.settings }))
+      }
 
       const techList = techRes.technicians || []
       const bayList = baysRes.bays || []
@@ -1019,6 +1045,83 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === 'mot-automation' ? (
+        <div className="cardBox">
+          <div className="cardTop">
+            <h3 className="cardTitle">MOT Automation</h3>
+            <div className="fieldHint">Webhook and polling timings for automated MOT result checks.</div>
+          </div>
+          <div className="fieldGrid" style={{ marginTop: 12 }}>
+            <Field label="Webhook URL"><input className="input" value={motAutomation.webhook_url || ''} onChange={(e) => setMotAutomation((s) => ({ ...s, webhook_url: e.target.value }))} /></Field>
+            <Field label="First check delay (minutes)"><input className="input" value={motAutomation.first_check_delay_minutes ?? 45} onChange={(e) => setMotAutomation((s) => ({ ...s, first_check_delay_minutes: e.target.value }))} /></Field>
+            <Field label="Retry delay 1 (minutes)"><input className="input" value={motAutomation.retry_delay_1_minutes ?? 10} onChange={(e) => setMotAutomation((s) => ({ ...s, retry_delay_1_minutes: e.target.value }))} /></Field>
+            <Field label="Retry delay 2 (minutes)"><input className="input" value={motAutomation.retry_delay_2_minutes ?? 10} onChange={(e) => setMotAutomation((s) => ({ ...s, retry_delay_2_minutes: e.target.value }))} /></Field>
+            <Field label="Retry delay 3 (minutes)"><input className="input" value={motAutomation.retry_delay_3_minutes ?? 5} onChange={(e) => setMotAutomation((s) => ({ ...s, retry_delay_3_minutes: e.target.value }))} /></Field>
+            <Field label="Delayed retry (minutes)"><input className="input" value={motAutomation.delayed_retry_minutes ?? 20} onChange={(e) => setMotAutomation((s) => ({ ...s, delayed_retry_minutes: e.target.value }))} /></Field>
+            <Field label="Max checks per MOT"><input className="input" value={motAutomation.max_checks_per_mot ?? 20} onChange={(e) => setMotAutomation((s) => ({ ...s, max_checks_per_mot: e.target.value }))} /></Field>
+            <Field label="Scheduler interval (seconds)"><input className="input" value={motAutomation.scheduler_interval_seconds ?? 60} onChange={(e) => setMotAutomation((s) => ({ ...s, scheduler_interval_seconds: e.target.value }))} /></Field>
+            <Field label="Scheduler enabled"><label className="inlineCheck"><input type="checkbox" checked={Boolean(motAutomation.scheduler_enabled)} onChange={(e) => setMotAutomation((s) => ({ ...s, scheduler_enabled: e.target.checked }))} /><span>Enable scheduler</span></label></Field>
+          </div>
+          <div className="pageHeaderActions" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="primaryButton"
+              onClick={async () => {
+                try {
+                  const out = await apiPatch('/api/mot/settings', motAutomation)
+                  if (out && out.settings) setMotAutomation((prev) => ({ ...prev, ...out.settings }))
+                  setSaveMessage('MOT automation settings saved.')
+                } catch (err) {
+                  setError(err.message || 'Failed to save MOT automation settings.')
+                }
+              }}
+            >
+              Save MOT automation settings
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === 'notifications' ? (
+        <div className="cardBox">
+          <div className="cardTop">
+            <h3 className="cardTitle">Notifications & Reminders</h3>
+            <div className="fieldHint">Basic platform notification and reminder preferences foundation.</div>
+          </div>
+          <div className="fieldGrid" style={{ marginTop: 12 }}>
+            <Field label="Notification sound enabled">
+              <label className="inlineCheck"><input type="checkbox" checked={Boolean(notificationPrefs.sound_enabled)} onChange={(e) => setNotificationPrefs((s) => ({ ...s, sound_enabled: e.target.checked }))} /><span>Play sound for new high-priority notifications</span></label>
+            </Field>
+            <Field label="Default reminder lead (minutes)">
+              <input className="input" value={notificationPrefs.default_reminder_lead_minutes ?? 30} onChange={(e) => setNotificationPrefs((s) => ({ ...s, default_reminder_lead_minutes: e.target.value }))} />
+            </Field>
+            <Field label="Unread behaviour">
+              <select className="select" value={notificationPrefs.unread_behaviour || 'highlight'} onChange={(e) => setNotificationPrefs((s) => ({ ...s, unread_behaviour: e.target.value }))}>
+                <option value="highlight">highlight</option>
+                <option value="count_only">count_only</option>
+              </select>
+            </Field>
+          </div>
+          <div className="pageHeaderActions" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="primaryButton"
+              onClick={async () => {
+                try {
+                  const out = await apiPatch('/api/settings/notifications', notificationPrefs)
+                  if (out && out.settings) setNotificationPrefs((prev) => ({ ...prev, ...out.settings }))
+                  setSaveMessage('Notification settings saved.')
+                } catch (err) {
+                  setError(err.message || 'Failed to save notification settings.')
+                }
+              }}
+            >
+              Save notification settings
+            </button>
           </div>
         </div>
       ) : null}

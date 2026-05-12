@@ -2473,3 +2473,95 @@ Workshop bays:
 - Live supplier API integration not implemented.
 - Automatic quote-part to inventory mapping not implemented.
 - Accounting sync/export integration not implemented.
+
+## MOT result polling and platform notifications foundation — v1.1.036
+
+- **Version used:** `1.1.036`
+- **QuoteDetail.jsx untouched:** Yes
+
+### Files changed
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `backend/routes/mot.js`
+- `backend/routes/settings.js`
+- `backend/routes/notifications.js`
+- `backend/routes/reminders.js`
+- `backend/routes/intake.js`
+- `backend/routes/jobs.js`
+- `backend/server.js`
+- `frontend/src/pages/MotEvents.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/pages/NewIntake.jsx`
+- `frontend/src/pages/Settings.jsx`
+- `frontend/src/components/TopBar.jsx`
+- `frontend/src/App.jsx`
+- `frontend/src/App.css`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+
+### Tables added
+- `mot_result_checks`
+- `mot_result_faults`
+- `platform_notifications`
+- `platform_reminders`
+- `system_settings`
+
+### Endpoints added
+- `GET /api/mot/checks`
+- `GET /api/mot/checks/:id`
+- `POST /api/mot/checks`
+- `POST /api/mot/checks/:id/mark-arrived`
+- `POST /api/mot/checks/:id/run-now`
+- `PATCH /api/mot/checks/:id`
+- `GET /api/mot/settings`
+- `PATCH /api/mot/settings`
+- `POST /api/jobs/:id/mot/mark-arrived`
+- `GET /api/notifications`
+- `POST /api/notifications`
+- `PATCH /api/notifications/:id/read`
+- `POST /api/notifications/mark-all-read`
+- `GET /api/reminders`
+- `POST /api/reminders`
+- `PATCH /api/reminders/:id`
+- `GET /api/settings/mot`
+- `PATCH /api/settings/mot`
+- `GET /api/settings/notifications`
+- `PATCH /api/settings/notifications`
+
+### MOT webhook response mapping
+- Parses top-level `mot_status`, `mot_status_label`, `latest_test`, `summary`, `failures`, `minors`, `advisories`.
+- Stores raw response JSON plus parsed latest test and summary counts.
+- Stores normalized fault rows with `fault_group`, `dangerous`, and `type_raw`.
+
+### Polling schedule and settings
+- Arrival/offsite status gates all polling.
+- First check scheduled at `booked_start + first_check_delay_minutes`.
+- Retry sequence: delay1, delay2, delay3, then delayed retry cadence.
+- Delayed state triggers warning notification once on transition.
+- Background due-check scheduler runs on backend startup with safe error handling.
+
+### Settings UI changes
+- Added `MOT Automation` tab with webhook and timing controls.
+- Added `Notifications & Reminders` tab for sound/unread/reminder defaults.
+
+### MOT page changes
+- Replaced basic MOT table with MOT result checks view.
+- Added mark arrived/offsite, run now, open job, detailed fault/result panel.
+- Added pass/fail/not-completed/unknown status banners and dangerous warning panel.
+
+### Job Detail MOT panel
+- Added internal MOT status panel for MOT jobs or linked MOT checks.
+- Shows status, arrival, next check, attempts, latest test info, counts, dangerous warning.
+
+### Notification/sound behavior
+- Added top bar notifications dropdown with unread count and mark-read controls.
+- New MOT passed/failed/delayed notifications include severity and sound key.
+- Frontend plays a one-shot in-app beep for new unread high-priority notifications when enabled.
+
+### Reminders foundation
+- Added backend reminders API/table for create/list/update flows.
+- Added settings controls for default reminder lead time; richer reminders UI remains future work.
+
+### Limitations / future work
+- Webhook auth headers/secrets were not introduced in this phase.
+- Scheduler interval runtime reconfiguration is basic; advanced orchestration can be improved later.
+- Full automated reminder escalation and routing remains future work.

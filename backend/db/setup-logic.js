@@ -42,6 +42,11 @@ const SETUP_TABLES = [
   'activity_logs',
   'customer_detail_requests',
   'mot_events',
+  'mot_result_checks',
+  'mot_result_faults',
+  'platform_notifications',
+  'platform_reminders',
+  'system_settings',
 ]
 
 async function listExistingTables(db) {
@@ -205,6 +210,63 @@ async function migrateDatabase(db) {
   // Inventory foundation optional columns for forward-safe updates.
   await ensureColumn(db, 'inventory_items', 'unit_of_measure', "VARCHAR(40) NOT NULL DEFAULT 'unit'")
   await ensureColumn(db, 'inventory_items', 'active', 'TINYINT(1) NOT NULL DEFAULT 1')
+
+  // MOT polling + notifications/reminders foundation defaults.
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'mot.first_check_delay_minutes', '45', 'number', 'Minutes after booked MOT time before first automated result check.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mot.first_check_delay_minutes')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'mot.retry_delay_1_minutes', '10', 'number', 'Retry delay for first incomplete MOT result check.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mot.retry_delay_1_minutes')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'mot.retry_delay_2_minutes', '10', 'number', 'Retry delay for second incomplete MOT result check.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mot.retry_delay_2_minutes')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'mot.retry_delay_3_minutes', '5', 'number', 'Retry delay for third incomplete MOT result check.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mot.retry_delay_3_minutes')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'mot.delayed_retry_minutes', '20', 'number', 'Retry interval in delayed MOT state.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mot.delayed_retry_minutes')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'mot.max_checks_per_mot', '20', 'number', 'Maximum automated checks allowed per MOT poll record.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mot.max_checks_per_mot')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'mot.scheduler_enabled', 'true', 'boolean', 'Enable automatic MOT due-check scheduler.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mot.scheduler_enabled')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'mot.scheduler_interval_seconds', '60', 'number', 'How often to process due MOT checks.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mot.scheduler_interval_seconds')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'mot.webhook_url', 'https://automationplatform.business-automations.uk/webhook/MOTcheck', 'string', 'MOT result polling webhook URL.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'mot.webhook_url')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'notifications.sound_enabled', 'true', 'boolean', 'Allow frontend notification sound prompts.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'notifications.sound_enabled')`,
+  )
+  await db.run(
+    `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
+     SELECT 'reminders.default_lead_minutes', '30', 'number', 'Default lead time used for reminders.'
+     WHERE NOT EXISTS (SELECT 1 FROM system_settings WHERE setting_key = 'reminders.default_lead_minutes')`,
+  )
 }
 
 module.exports = {

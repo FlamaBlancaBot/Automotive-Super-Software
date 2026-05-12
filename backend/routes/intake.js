@@ -395,6 +395,12 @@ async function handleIntakeCommonAsync(tx, input) {
         motIsExternal ? 'booked' : 'in_progress',
       ],
     )
+
+    await tx.run(
+      `INSERT INTO mot_result_checks (job_id, vehicle_id, registration, booked_start, status)
+       VALUES (?, ?, ?, ?, 'booked')`,
+      [jobId, vehicleRow.id, normaliseRegistration(vehicleRow.registration), motTime || bookedStart || null],
+    ).catch(() => {})
   }
 
   const jobRow = await tx.get(

@@ -264,7 +264,10 @@ function App() {
               onOpenVehicle={(reg) => navigateToPath(`/intake?reg=${encodeURIComponent(reg)}`)}
             />
           ) : activeKey === 'mot' ? (
-            <MotEvents onOpenQuote={(id) => navigateToPath(`/quotes/${id}`)} />
+            <MotEvents
+              onOpenQuote={(id) => navigateToPath(`/quotes/${id}`)}
+              onOpenJob={(id) => navigateToPath(`/jobs/${id}`)}
+            />
           ) : activeKey === 'job-sheets' ? (
             jobSheetIdFromPath ? (
               <JobSheetDetail

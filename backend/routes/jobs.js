@@ -266,12 +266,34 @@ function createJobsRouter({ db }) {
         [jobId],
       ).catch(() => [])
 
+      const motCheck = await db.get(
+        `
+        SELECT
+          c.*,
+          (SELECT COUNT(*) FROM mot_result_faults f WHERE f.mot_result_check_id = c.id AND f.fault_group = 'failures' AND f.dangerous = 1) AS dangerous_failures_count
+        FROM mot_result_checks c
+        WHERE c.job_id = ?
+        ORDER BY c.id DESC
+        LIMIT 1
+      `,
+        [jobId],
+      ).catch(() => null)
+
+      const motFaults = motCheck
+        ? await db.all(
+            `SELECT * FROM mot_result_faults WHERE mot_result_check_id = ? ORDER BY FIELD(fault_group,'failures','minors','advisories'), id ASC`,
+            [motCheck.id],
+          ).catch(() => [])
+        : []
+
       res.json({
         ok: true,
         job,
         quotes: quotes || [],
         parts_orders: partsOrders || [],
         inventory_usage: inventoryUsage || [],
+        mot_check: motCheck || null,
+        mot_faults: motFaults || [],
         quote_count: (quotes || []).length,
         quote_exists: (quotes || []).length > 0,
       })

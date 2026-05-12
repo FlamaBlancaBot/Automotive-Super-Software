@@ -18,6 +18,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [job, setJob] = useState(null)
   const [quotes, setQuotes] = useState([])
   const [partsOrders, setPartsOrders] = useState([])
+  const [motCheck, setMotCheck] = useState(null)
+  const [motFaults, setMotFaults] = useState([])
   const [inventoryUsage, setInventoryUsage] = useState([])
   const [inventoryItems, setInventoryItems] = useState([])
   const [inventoryDraft, setInventoryDraft] = useState({ inventory_item_id: '', quantity: '', notes: '' })
@@ -53,6 +55,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setJob(data.job || null)
       setQuotes(data.quotes || [])
       setPartsOrders(data.parts_orders || [])
+      setMotCheck(data.mot_check || null)
+      setMotFaults(data.mot_faults || [])
       setInventoryUsage(data.inventory_usage || [])
       const invoiceRes = await apiGet(`/api/jobs/${jobId}/invoices`).catch(() => ({ invoices: [] }))
       setInvoices(invoiceRes.invoices || [])
@@ -155,6 +159,18 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       reference: `JOB-${jobId}`,
     })
     setInventoryDraft({ inventory_item_id: '', quantity: '', notes: '' })
+    await load()
+  }
+
+  async function markMotArrived() {
+    if (!job) return
+    await apiPost(`/api/jobs/${job.id}/mot/mark-arrived`, {})
+    await load()
+  }
+
+  async function runMotNow() {
+    if (!motCheck) return
+    await apiPost(`/api/mot/checks/${motCheck.id}/run-now`, {})
     await load()
   }
 
@@ -330,6 +346,7 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
             </div>
           </div>
 
+          {Number(job.service_is_mot || 0) === 1 || motCheck ? (
           <div className="jobDetailCard" style={{ marginTop: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <h2 className="jobDetailCardTitle">Workshop Bay</h2>
@@ -349,6 +366,40 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
                 <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Notes</div><div>{currentBayAssignment.notes || '—'}</div></div>
               </div>
             ) : <div className="emptyState">No bay assigned yet.</div>}
+          </div>
+          ) : null}
+
+          <div className="jobDetailCard" style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 className="jobDetailCardTitle">MOT Status</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {motCheck ? <button type="button" className="secondaryButton" onClick={markMotArrived}>Mark arrived/offsite</button> : null}
+                {motCheck ? <button type="button" className="secondaryButton" onClick={runMotNow}>Run check now</button> : null}
+              </div>
+            </div>
+            {motCheck ? (
+              <div>
+                <div className={`notice ${motCheck.mot_status === 'passed' ? 'good' : motCheck.mot_status === 'failed' ? 'bad' : motCheck.mot_status === 'not_completed' || motCheck.mot_status === 'not_completed_this_year' ? 'warn' : ''}`}>
+                  {motCheck.mot_status_label || motCheck.mot_status || motCheck.status}
+                </div>
+                <div className="fieldGrid" style={{ marginTop: 12 }}>
+                  <div className="field"><div className="fieldLabel">Arrival/offsite</div><div>{formatDateTime(motCheck.arrived_at)}</div></div>
+                  <div className="field"><div className="fieldLabel">Next check</div><div>{formatDateTime(motCheck.next_check_at)}</div></div>
+                  <div className="field"><div className="fieldLabel">Attempts</div><div>{Number(motCheck.check_attempts || 0)}</div></div>
+                  <div className="field"><div className="fieldLabel">Latest test</div><div>{motCheck.latest_test_result || '—'} {motCheck.latest_test_expiry ? `· expires ${motCheck.latest_test_expiry}` : ''}</div></div>
+                </div>
+                <div className="availabilitySummaryRow" style={{ marginTop: 10 }}>
+                  <span className="statusChip chipRed">Failures: {Number(motCheck.failures_count || 0)}</span>
+                  <span className="statusChip chipYellow">Minors: {Number(motCheck.minors_count || 0)}</span>
+                  <span className="statusChip chipGrey">Advisories: {Number(motCheck.advisories_count || 0)}</span>
+                </div>
+                {motFaults.some((f) => f.fault_group === 'failures' && Number(f.dangerous) === 1) ? (
+                  <div className="notice bad" style={{ marginTop: 10 }}>Dangerous - do not drive</div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="emptyState">No MOT check linked to this job yet.</div>
+            )}
           </div>
 
           <div className="jobDetailCard" style={{ marginTop: 20 }}>

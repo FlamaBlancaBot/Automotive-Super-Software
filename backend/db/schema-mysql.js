@@ -918,6 +918,110 @@ const MYSQL_SCHEMA_STATEMENTS = [
     KEY idx_mot_events_time (mot_time)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `,
+  `
+  CREATE TABLE IF NOT EXISTS mot_result_checks (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    job_id BIGINT UNSIGNED NULL,
+    vehicle_id BIGINT UNSIGNED NULL,
+    registration VARCHAR(20) NOT NULL,
+    booked_start DATETIME NULL,
+    arrived_at DATETIME NULL,
+    status VARCHAR(40) NOT NULL DEFAULT 'booked',
+    mot_status VARCHAR(40) NULL,
+    mot_status_label VARCHAR(120) NULL,
+    latest_test_date DATE NULL,
+    latest_test_result VARCHAR(40) NULL,
+    latest_test_expiry DATE NULL,
+    failures_count INT NOT NULL DEFAULT 0,
+    minors_count INT NOT NULL DEFAULT 0,
+    advisories_count INT NOT NULL DEFAULT 0,
+    raw_response_json JSON NULL,
+    next_check_at DATETIME NULL,
+    check_attempts INT NOT NULL DEFAULT 0,
+    delayed_at DATETIME NULL,
+    last_checked_at DATETIME NULL,
+    last_error TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_mot_result_checks_job (job_id),
+    KEY idx_mot_result_checks_vehicle (vehicle_id),
+    KEY idx_mot_result_checks_registration (registration),
+    KEY idx_mot_result_checks_status (status),
+    KEY idx_mot_result_checks_next_check (next_check_at),
+    CONSTRAINT fk_mot_result_checks_job FOREIGN KEY (job_id) REFERENCES jobs(id),
+    CONSTRAINT fk_mot_result_checks_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS mot_result_faults (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    mot_result_check_id BIGINT UNSIGNED NOT NULL,
+    fault_group VARCHAR(40) NOT NULL,
+    text TEXT NOT NULL,
+    dangerous TINYINT(1) NOT NULL DEFAULT 0,
+    type_raw VARCHAR(80) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_mot_result_faults_check (mot_result_check_id),
+    KEY idx_mot_result_faults_group (fault_group),
+    CONSTRAINT fk_mot_result_faults_check FOREIGN KEY (mot_result_check_id) REFERENCES mot_result_checks(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS platform_notifications (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NULL,
+    notification_type VARCHAR(60) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    message TEXT NOT NULL,
+    severity VARCHAR(20) NOT NULL DEFAULT 'info',
+    related_type VARCHAR(50) NULL,
+    related_id BIGINT NULL,
+    action_url VARCHAR(255) NULL,
+    sound_key VARCHAR(40) NULL,
+    read_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_platform_notifications_user (user_id),
+    KEY idx_platform_notifications_read (read_at),
+    KEY idx_platform_notifications_created (created_at),
+    CONSTRAINT fk_platform_notifications_user FOREIGN KEY (user_id) REFERENCES users(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS platform_reminders (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NULL,
+    reminder_type VARCHAR(60) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    message TEXT NOT NULL,
+    due_at DATETIME NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'open',
+    related_type VARCHAR(50) NULL,
+    related_id BIGINT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_platform_reminders_user (user_id),
+    KEY idx_platform_reminders_due (due_at),
+    KEY idx_platform_reminders_status (status),
+    CONSTRAINT fk_platform_reminders_user FOREIGN KEY (user_id) REFERENCES users(id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS system_settings (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    setting_key VARCHAR(100) NOT NULL,
+    setting_value TEXT NULL,
+    setting_type VARCHAR(30) NOT NULL DEFAULT 'string',
+    description TEXT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_system_settings_key (setting_key)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `,
 ]
 
 module.exports = {

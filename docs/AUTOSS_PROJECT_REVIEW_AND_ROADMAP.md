@@ -224,6 +224,9 @@ Current important pages/routes in active workflow:
 - Stripe/Square/QuickBooks live integrations remain future work.
 - Vehicle service history and maintenance planner foundation added in v1.1.035 (registration-centred timeline, recommendations, and document metadata records).
 - Advanced inventory management foundation added in v1.1.036 (inventory catalog, stock movements, low-stock/expiry tracking, supplier pricing, and job usage logging).
+- MOT result polling foundation added in v1.1.036 (arrival-based delayed polling schedule, retry cadence, MOT fault mapping, and result notifications).
+- Platform notifications and reminders foundation added in v1.1.036 (in-app notification center, mark-read flow, reminders API base, and MOT-triggered alerts).
 - Manufacturer-specific schedules, real document upload storage, and deeper DVSA/MOT automation remain future work.
 - Barcode/QR scanning, live supplier integrations, and automatic quote-part to inventory mapping remain future work.
+- Full reminder automation workflows and richer reminder UI automation remain future work.
 - Future work remains: drag/drop scheduling, live capacity heatmaps, and fully automatic assignment decisions.

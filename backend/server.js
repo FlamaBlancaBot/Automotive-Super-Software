@@ -69,8 +69,12 @@ async function main() {
   const { createAuthRouter } = require('./routes/auth')
   const { createActivityRouter } = require('./routes/activity')
   const { createMotEventsRouter } = require('./routes/mot-events')
+  const { createMotRouter, startMotScheduler } = require('./routes/mot')
   const { createInvoicesRouter } = require('./routes/invoices')
   const { createInventoryRouter } = require('./routes/inventory')
+  const { createSettingsRouter } = require('./routes/settings')
+  const { createNotificationsRouter } = require('./routes/notifications')
+  const { createRemindersRouter } = require('./routes/reminders')
   const { createTemplatesRouter } = require('./routes/templates')
   const {
     createCustomerDetailRequestsRouter,
@@ -142,9 +146,15 @@ async function main() {
   app.use('/api', requireAuth, requireRole(['admin', 'office']), createAdminRouter({ db }))
   app.use('/api', createCalendarRouter({ db }))
   app.use('/api', createMotEventsRouter({ db }))
+  app.use('/api', createMotRouter({ db }))
   app.use('/api', createInvoicesRouter({ db }))
   app.use('/api', createInventoryRouter({ db }))
+  app.use('/api', createSettingsRouter({ db }))
+  app.use('/api', createNotificationsRouter({ db }))
+  app.use('/api', createRemindersRouter({ db }))
   app.use('/api', requireAuth, requireRole(['admin', 'office']), createTemplatesRouter({ db }))
+
+  startMotScheduler({ db })
 
   // In production, serve the built React app from `backend/public/`.
   // Non-API routes should return index.html so browser refresh works on SPA routes.

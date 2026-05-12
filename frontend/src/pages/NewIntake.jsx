@@ -1450,6 +1450,9 @@ function StepBooking({ requestedDate, setRequestedDate, arrivalTime, setArrivalT
               <div className="motSubtitle">
                 External MOT reminder templates are defaults for now (admin-configurable later).
               </div>
+              <div className="fieldHint" style={{ marginTop: 8 }}>
+                Automated MOT result checking starts only after vehicle is marked arrived/offsite.
+              </div>
               {motRenewalMessage ? (
                 <div className="fieldHint" style={{ marginTop: 8 }}>
                   {motRenewalMessage}
