@@ -26,7 +26,13 @@ function chipTone(s) {
   return 'chipOrange'
 }
 
-export default function MotEvents({ onOpenJob }) {
+function faultDefaultIncluded(f) {
+  const group = String(f.fault_group || '').toLowerCase()
+  if (group === 'advisories') return false
+  return true
+}
+
+export default function MotEvents({ onOpenJob, onOpenQuote }) {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [rows, setRows] = useState([])
@@ -36,9 +42,19 @@ export default function MotEvents({ onOpenJob }) {
   const [filter, setFilter] = useState('')
   const [actionLoading, setActionLoading] = useState({})
   const [actionMessage, setActionMessage] = useState('')
+
   const [manualReg, setManualReg] = useState('')
   const [manualLoading, setManualLoading] = useState(false)
   const [manualResult, setManualResult] = useState(null)
+
+  const [quickAdd, setQuickAdd] = useState({ registration: '', booked_start: '', notes: '', manual_only: true })
+  const [quickAddLoading, setQuickAddLoading] = useState('idle')
+
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false)
+  const [quoteFaultDrafts, setQuoteFaultDrafts] = useState([])
+  const [quoteTitle, setQuoteTitle] = useState('MOT Repair Quote')
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteResult, setQuoteResult] = useState(null)
 
   useEffect(() => {
     setDocumentTitle('MOT')
@@ -125,6 +141,36 @@ export default function MotEvents({ onOpenJob }) {
     }
   }
 
+  async function quickAddCheck(alsoRun) {
+    if (!quickAdd.registration.trim()) return
+    setQuickAddLoading(alsoRun ? 'adding_and_checking' : 'adding')
+    setActionMessage('')
+    try {
+      const out = await apiPost('/api/mot/checks/quick-add', {
+        registration: quickAdd.registration,
+        booked_start: quickAdd.booked_start || null,
+        notes: quickAdd.notes || null,
+        manual_only: quickAdd.manual_only,
+      })
+      await load()
+      setActionMessage(out.message || `${quickAdd.registration.toUpperCase()} added to MOT list.`)
+      if (alsoRun && out?.check?.id) {
+        const run = await apiPost('/api/mot/manual-check', { mot_result_check_id: out.check.id })
+        const row = run?.row
+        if (row?.mot_status === 'passed' || row?.mot_status === 'failed') {
+          setActionMessage(`MOT check completed: ${row.mot_status_label || row.mot_status}.`)
+        } else {
+          setActionMessage(`MOT not completed yet. Automatic schedule unchanged for manual check.`)
+        }
+      }
+      setQuickAdd({ registration: '', booked_start: '', notes: '', manual_only: true })
+    } catch (err) {
+      setActionMessage(`Quick add failed: ${err.message || 'Unknown error.'}`)
+    } finally {
+      setQuickAddLoading('idle')
+    }
+  }
+
   const filtered = useMemo(() => {
     const q = String(search || '').trim().toLowerCase()
     if (!q) return rows
@@ -134,6 +180,51 @@ export default function MotEvents({ onOpenJob }) {
   const detailCheck = detail?.check || null
   const detailFaults = detail?.faults || []
   const dangerous = detailFaults.some((f) => f.fault_group === 'failures' && Number(f.dangerous) === 1)
+  const hasFaults = detailFaults.length > 0 || Number(detailCheck?.failures_count || 0) > 0 || Number(detailCheck?.minors_count || 0) > 0 || Number(detailCheck?.advisories_count || 0) > 0
+
+  function openQuoteBuilder() {
+    if (!detailCheck) return
+    const drafts = (detailFaults || []).map((f) => ({
+      fault_id: f.id,
+      include: faultDefaultIncluded(f),
+      title: String(f.text || '').slice(0, 180),
+      description: '',
+      labour_hours: '',
+      parts_cost: '',
+      sell_price: '',
+      dangerous: Number(f.dangerous) === 1,
+      fault_group: f.fault_group,
+    }))
+    setQuoteTitle('MOT Repair Quote')
+    setQuoteFaultDrafts(drafts)
+    setQuoteResult(null)
+    setQuoteModalOpen(true)
+  }
+
+  async function createQuoteFromMot() {
+    if (!detailCheck) return
+    setQuoteLoading(true)
+    setQuoteResult(null)
+    try {
+      const out = await apiPost(`/api/mot/checks/${detailCheck.id}/create-quote`, {
+        selected_faults: quoteFaultDrafts,
+        quote_title: quoteTitle,
+        job_id: detailCheck.job_id || null,
+        create_job_if_missing: false,
+      })
+      setQuoteResult(out)
+      setActionMessage(out.message || `Draft MOT repair quote created: ${out?.quote?.quote_number || 'Quote'}`)
+      await loadDetail(detailCheck.id)
+    } catch (err) {
+      setQuoteResult({ ok: false, error: err.message || 'Failed to create quote.' })
+    } finally {
+      setQuoteLoading(false)
+    }
+  }
+
+  function setFaultDraft(idx, patch) {
+    setQuoteFaultDrafts((prev) => prev.map((f, i) => (i === idx ? { ...f, ...patch } : f)))
+  }
 
   return (
     <div className="motPage">
@@ -162,6 +253,31 @@ export default function MotEvents({ onOpenJob }) {
         {manualResult && !manualResult.error ? <div className={`notice ${motTone(manualResult.mot_status)}`} style={{ marginTop: 8 }}>{manualResult.mot_status_label || manualResult.mot_status || 'Unknown'}</div> : null}
       </div>
 
+      <div className="cardBox" style={{ marginBottom: 12 }}>
+        <div className="cardTop"><h3 className="cardTitle">Quick Add MOT Check</h3></div>
+        <div className="fieldGrid" style={{ marginTop: 10 }}>
+          <div className="field" style={{ gridColumn: 'span 4' }}>
+            <div className="fieldLabel">Registration</div>
+            <input className="input" value={quickAdd.registration} onChange={(e) => setQuickAdd((s) => ({ ...s, registration: e.target.value.toUpperCase() }))} placeholder="YA07WGK" />
+          </div>
+          <div className="field" style={{ gridColumn: 'span 4' }}>
+            <div className="fieldLabel">Booked date/time (optional)</div>
+            <input className="input" type="datetime-local" value={quickAdd.booked_start} onChange={(e) => setQuickAdd((s) => ({ ...s, booked_start: e.target.value }))} />
+          </div>
+          <div className="field" style={{ gridColumn: 'span 4' }}>
+            <div className="fieldLabel">Notes (optional)</div>
+            <input className="input" value={quickAdd.notes} onChange={(e) => setQuickAdd((s) => ({ ...s, notes: e.target.value }))} />
+          </div>
+          <div className="field" style={{ gridColumn: 'span 12' }}>
+            <label className="inlineCheck"><input type="checkbox" checked={Boolean(quickAdd.manual_only)} onChange={(e) => setQuickAdd((s) => ({ ...s, manual_only: e.target.checked }))} /><span>Manual/watch-list only — no automatic polling until marked arrived/offsite</span></label>
+          </div>
+        </div>
+        <div className="pageHeaderActions" style={{ marginTop: 8, justifyContent: 'flex-start' }}>
+          <button type="button" className="secondaryButton" disabled={quickAddLoading !== 'idle'} onClick={() => quickAddCheck(false)}>{quickAddLoading === 'adding' ? 'Adding...' : 'Add to MOT List'}</button>
+          <button type="button" className="primaryButton" disabled={quickAddLoading !== 'idle'} onClick={() => quickAddCheck(true)}>{quickAddLoading === 'adding_and_checking' ? 'Adding and checking...' : 'Add and Check Now'}</button>
+        </div>
+      </div>
+
       <div className="motControlsSection">
         <div className="motSearchBox">
           <span className="motSearchIcon">MOT</span>
@@ -169,6 +285,7 @@ export default function MotEvents({ onOpenJob }) {
         </div>
         <select className="motStatusFilter" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">All statuses</option>
+          <option value="manual_watch">manual_watch</option>
           <option value="booked">booked</option>
           <option value="awaiting_result">awaiting_result</option>
           <option value="delayed">delayed</option>
@@ -233,6 +350,12 @@ export default function MotEvents({ onOpenJob }) {
             <span className="statusChip chipGrey">Advisories: {Number(detailCheck.advisories_count || 0)}</span>
           </div>
 
+          {hasFaults ? (
+            <div className="pageHeaderActions" style={{ marginTop: 10, justifyContent: 'flex-start' }}>
+              <button type="button" className="primaryButton" onClick={openQuoteBuilder}>Create Repair Quote from MOT</button>
+            </div>
+          ) : null}
+
           <div className="fieldGrid" style={{ marginTop: 12 }}>
             <div className="field" style={{ gridColumn: 'span 12' }}>
               <div className="fieldLabel">Previous / last known DVSA MOT record</div>
@@ -245,6 +368,56 @@ export default function MotEvents({ onOpenJob }) {
           <FaultList title="Failures" rows={detailFaults.filter((f) => f.fault_group === 'failures')} tone="bad" />
           <FaultList title="Minors" rows={detailFaults.filter((f) => f.fault_group === 'minors')} tone="warn" />
           <FaultList title="Advisories" rows={detailFaults.filter((f) => f.fault_group === 'advisories')} tone="" />
+        </div>
+      ) : null}
+
+      {quoteModalOpen ? (
+        <div className="modalOverlay" onClick={() => setQuoteModalOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modalTop">
+              <div>
+                <h3 className="cardTitle">MOT Repair Quote Builder</h3>
+                <div className="fieldHint">Prices must be reviewed before sending to customer.</div>
+              </div>
+              <button type="button" className="miniButton" onClick={() => setQuoteModalOpen(false)}>Close</button>
+            </div>
+            <div className="field" style={{ marginTop: 10 }}>
+              <div className="fieldLabel">Quote title</div>
+              <input className="input" value={quoteTitle} onChange={(e) => setQuoteTitle(e.target.value)} />
+            </div>
+            <div style={{ display: 'grid', gap: 10, marginTop: 10, maxHeight: '46vh', overflow: 'auto' }}>
+              {quoteFaultDrafts.map((f, idx) => (
+                <div key={`${f.fault_id}-${idx}`} className="cardBox" style={{ padding: 12 }}>
+                  <div className="pageHeaderActions" style={{ justifyContent: 'space-between' }}>
+                    <label className="inlineCheck"><input type="checkbox" checked={Boolean(f.include)} onChange={(e) => setFaultDraft(idx, { include: e.target.checked })} /><span>Include</span></label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <span className={`statusChip ${chipTone(f.fault_group)}`}>{f.fault_group}</span>
+                      {f.dangerous ? <span className="statusChip chipRed">dangerous</span> : null}
+                    </div>
+                  </div>
+                  <div className="fieldGrid" style={{ marginTop: 8 }}>
+                    <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Line title</div><input className="input" value={f.title} onChange={(e) => setFaultDraft(idx, { title: e.target.value })} /></div>
+                    <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Internal notes / description</div><input className="input" value={f.description} onChange={(e) => setFaultDraft(idx, { description: e.target.value })} /></div>
+                    <div className="field" style={{ gridColumn: 'span 4' }}><div className="fieldLabel">Labour hours (optional)</div><input className="input" value={f.labour_hours} onChange={(e) => setFaultDraft(idx, { labour_hours: e.target.value })} /></div>
+                    <div className="field" style={{ gridColumn: 'span 4' }}><div className="fieldLabel">Parts cost (optional)</div><input className="input" value={f.parts_cost} onChange={(e) => setFaultDraft(idx, { parts_cost: e.target.value })} /></div>
+                    <div className="field" style={{ gridColumn: 'span 4' }}><div className="fieldLabel">Sell price (optional)</div><input className="input" value={f.sell_price} onChange={(e) => setFaultDraft(idx, { sell_price: e.target.value })} /></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {quoteResult?.ok === false ? <div className="notice bad" style={{ marginTop: 10 }}>{quoteResult.error}</div> : null}
+            {quoteResult?.ok ? <div className="notice good" style={{ marginTop: 10 }}>{quoteResult.message || `Draft MOT repair quote created: ${quoteResult?.quote?.quote_number}`}</div> : null}
+
+            <div className="pageHeaderActions" style={{ marginTop: 12, justifyContent: 'space-between' }}>
+              <button type="button" className="secondaryButton" onClick={() => setQuoteModalOpen(false)}>Stay on MOT</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {quoteResult?.quote?.id ? <button type="button" className="secondaryButton" onClick={() => onOpenQuote && onOpenQuote(quoteResult.quote.id)}>Open Quote</button> : null}
+                {quoteResult?.linked_job_id ? <button type="button" className="secondaryButton" onClick={() => onOpenJob && onOpenJob(quoteResult.linked_job_id)}>Open Job</button> : null}
+                <button type="button" className="primaryButton" disabled={quoteLoading} onClick={createQuoteFromMot}>{quoteLoading ? 'Creating draft quote...' : 'Create Draft Quote'}</button>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

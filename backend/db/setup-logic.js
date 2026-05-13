@@ -217,6 +217,13 @@ async function migrateDatabase(db) {
   await ensureColumn(db, 'mot_result_checks', 'last_manual_status_label', 'VARCHAR(120) NULL')
   await ensureColumn(db, 'mot_result_checks', 'last_manual_response_json', 'JSON NULL')
   await ensureColumn(db, 'mot_result_checks', 'last_action_message', 'VARCHAR(255) NULL')
+  await ensureColumn(db, 'mot_result_checks', 'source', 'VARCHAR(50) NULL')
+  await ensureColumn(db, 'mot_result_checks', 'notes', 'TEXT NULL')
+  await ensureColumn(db, 'mot_result_checks', 'created_quote_id', 'BIGINT UNSIGNED NULL')
+  await ensureColumn(db, 'mot_result_checks', 'created_quote_number', 'VARCHAR(20) NULL')
+  await ensureColumn(db, 'mot_result_checks', 'quote_created_at', 'DATETIME NULL')
+  await ensureColumn(db, 'quotes', 'source_type', 'VARCHAR(40) NULL')
+  await ensureColumn(db, 'quotes', 'source_id', 'BIGINT NULL')
 
   await db.run(
     `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)

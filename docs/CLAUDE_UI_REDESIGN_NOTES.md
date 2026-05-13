@@ -2625,3 +2625,52 @@ Workshop bays:
 
 ### Safety note
 - `QuoteDetail.jsx` untouched.
+
+## MOT quick-add and repair quote builder — v1.1.039
+
+### Files changed
+- `backend/routes/mot.js`
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `frontend/src/pages/MotEvents.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+
+### Quick-add behaviour
+- Added `Quick Add MOT Check` with registration, optional booked datetime, optional notes, and manual/watch-list toggle.
+- Supports adding MOT checks without intake/job creation.
+- `Add and Check Now` creates the check then runs a manual MOT check immediately.
+
+### Manual check behaviour
+- Preserved schedule safety from v1.1.038:
+  - Manual not-completed/unknown does not change automatic `next_check_at`.
+  - Manual not-completed/unknown does not increment automatic attempts.
+  - Manual pass/fail can complete active MOT checks.
+- Manual checks now work for quick-added records without arrival requirement.
+
+### Quote builder flow
+- Added MOT repair quote builder in MOT details and Job Detail MOT panel.
+- Staff can select/deselect individual MOT faults before quote creation.
+- Defaults: failures/minors selected; advisories not selected.
+- Dangerous items are highlighted.
+
+### Quote creation rules
+- Added `POST /api/mot/checks/:id/create-quote`.
+- Uses selected included faults only.
+- Creates draft quotes only; no auto-send/accept.
+- Preserves accepted quote immutability by using additional-work pattern for accepted latest job quotes.
+- Uses safe zero-value line totals with `Price to be confirmed` when sell price not provided.
+- Adds quote source metadata: `source_type = mot_result_check`, `source_id = check id`.
+
+### Current vs previous MOT
+- v1.1.038 current-vs-previous MOT separation remains preserved.
+
+### Limitations / future work
+- If MOT check is not linked to a job/customer, backend returns clear context-required guidance instead of auto-creating customer/job records.
+- Future work: richer job/customer linking, customer approval portal, pricing templates for common MOT defects.
+
+### QuoteDetail status
+- `QuoteDetail.jsx` untouched.

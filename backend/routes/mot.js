@@ -60,6 +60,34 @@ function retryDelayMinutesForAttempt(attemptNumber, settings) {
   return settings.delayed_retry_minutes
 }
 
+function pad4(n) {
+  return String(n).padStart(4, '0')
+}
+
+function toDecimal(value, fallback = 0) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+function roundMoney(value) {
+  return Math.round(toDecimal(value, 0) * 100) / 100
+}
+
+async function generateQuoteNumber(tx) {
+  const year = new Date().getFullYear()
+  const prefix = `Q-${year}-`
+  const last = await tx.get(
+    `SELECT quote_number FROM quotes WHERE quote_number LIKE ? ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+    [`${prefix}%`],
+  )
+  let next = 1
+  if (last && last.quote_number) {
+    const m = String(last.quote_number).match(/Q-\d{4}-(\d{4})$/)
+    if (m && m[1]) next = Number(m[1]) + 1
+  }
+  return `${prefix}${pad4(next)}`
+}
+
 async function createNotification(db, payload) {
   await db.run(
     `INSERT INTO platform_notifications (
@@ -89,6 +117,159 @@ async function upsertMotResultCheckForJob(tx, jobId, vehicleId, registration, bo
     [jobId || null, vehicleId || null, registration, bookedStart || null],
   )
   return tx.get(`SELECT * FROM mot_result_checks WHERE id = ?`, [created.lastInsertId])
+}
+
+async function createQuoteFromMotCheck(tx, { checkId, selectedFaults, quoteTitle, optionalJobId, createJobIfMissing }) {
+  const check = await tx.get(`SELECT * FROM mot_result_checks WHERE id = ?`, [checkId])
+  if (!check) {
+    const err = new Error('MOT check not found.')
+    err.status = 404
+    throw err
+  }
+
+  const faultRows = await tx.all(
+    `SELECT * FROM mot_result_faults WHERE mot_result_check_id = ? ORDER BY FIELD(fault_group,'failures','minors','advisories'), id ASC`,
+    [checkId],
+  )
+  const byId = new Map((faultRows || []).map((f) => [Number(f.id), f]))
+
+  const included = (selectedFaults || [])
+    .filter((x) => x && x.include !== false)
+    .map((x) => ({ ...x, fault_id: toInt(x.fault_id, 0) }))
+    .filter((x) => x.fault_id && byId.has(x.fault_id))
+
+  if (!included.length) {
+    const err = new Error('No MOT faults were selected for quote creation.')
+    err.status = 400
+    throw err
+  }
+
+  let linkedJobId = toInt(optionalJobId, null) || toInt(check.job_id, null)
+  let customerId = null
+  let vehicleId = toInt(check.vehicle_id, null)
+  let titleBase = String(quoteTitle || '').trim() || 'MOT Repair Quote'
+
+  if (linkedJobId) {
+    const job = await tx.get(
+      `SELECT j.id, j.customer_id, j.vehicle_id, j.title, st.name AS service_template_name
+       FROM jobs j
+       LEFT JOIN service_templates st ON st.id = j.service_template_id
+       WHERE j.id = ?`,
+      [linkedJobId],
+    )
+    if (!job) {
+      const err = new Error('Linked job not found for MOT quote creation.')
+      err.status = 404
+      throw err
+    }
+    customerId = job.customer_id
+    vehicleId = job.vehicle_id
+    titleBase = String(job.title || job.service_template_name || titleBase).trim() || titleBase
+  } else if (createJobIfMissing) {
+    const err = new Error('MOT check is not linked to a job/customer. Create or link a job before generating a customer quote.')
+    err.status = 409
+    throw err
+  } else {
+    const err = new Error('This MOT check is not linked to a job. Create or link a job before generating a customer quote.')
+    err.status = 409
+    throw err
+  }
+
+  if (!customerId || !vehicleId) {
+    const err = new Error('Missing customer or vehicle context for quote creation.')
+    err.status = 409
+    throw err
+  }
+
+  const existing = await tx.get(
+    `SELECT id, status, revision_number FROM quotes WHERE job_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1`,
+    [linkedJobId],
+  )
+  const existingStatus = String(existing && existing.status ? existing.status : '').toLowerCase()
+  const sourceQuoteId = existing && existingStatus === 'accepted' ? existing.id : null
+  const revisionNumber = sourceQuoteId ? Math.max(2, Number(existing.revision_number || 1) + 1) : 1
+  const title = sourceQuoteId ? `${titleBase} - ADDITIONAL WORK` : titleBase
+
+  const quoteNumber = await generateQuoteNumber(tx)
+  const created = await tx.run(
+    `INSERT INTO quotes (
+      quote_number, customer_id, vehicle_id, job_id, status, title,
+      parent_quote_id, supersedes_quote_id, revision_number, revision_reason,
+      source_type, source_id,
+      subtotal_cost, subtotal_sell, vat_rate, vat_amount, total_sell, estimated_margin
+    ) VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, 0, 0, 0.2000, 0, 0, 0)`,
+    [
+      quoteNumber,
+      customerId,
+      vehicleId,
+      linkedJobId,
+      title,
+      sourceQuoteId ? sourceQuoteId : null,
+      sourceQuoteId,
+      revisionNumber,
+      sourceQuoteId ? 'Additional MOT work discovered after accepted quote' : 'MOT repair draft quote',
+      'mot_result_check',
+      checkId,
+    ],
+  )
+  const quoteId = created.lastInsertId
+
+  let sortOrder = 10
+  for (const entry of included) {
+    const fault = byId.get(Number(entry.fault_id))
+    const lineTitle = String(entry.title || fault.text || '').trim() || 'MOT item'
+    const detail = String(entry.description || '').trim()
+    const fullDescription = detail
+      ? `${lineTitle}\n${detail}`
+      : `${lineTitle}\nPrice to be confirmed`
+    const unitCost = Math.max(0, toDecimal(entry.parts_cost, 0))
+    const unitSellRaw = entry.sell_price == null || entry.sell_price === '' ? null : toDecimal(entry.sell_price, 0)
+    const unitSell = Math.max(0, unitSellRaw == null ? 0 : unitSellRaw)
+    const qty = 1
+    const totalCost = roundMoney(qty * unitCost)
+    const totalSell = roundMoney(qty * unitSell)
+
+    await tx.run(
+      `INSERT INTO quote_items (
+        quote_id, item_type, description, quantity,
+        unit_cost, unit_sell, markup_percent, vat_rate, eta_text,
+        total_cost, total_sell, selected_for_quote, sort_order
+      ) VALUES (?, 'mot_repair', ?, ?, ?, ?, NULL, 0.2000, NULL, ?, ?, 1, ?)`,
+      [quoteId, fullDescription, qty, unitCost, unitSell, totalCost, totalSell, sortOrder],
+    )
+    sortOrder += 10
+  }
+
+  const sums = await tx.get(
+    `SELECT
+       COALESCE(SUM(total_cost), 0) AS subtotal_cost,
+       COALESCE(SUM(total_sell), 0) AS subtotal_sell,
+       COALESCE(SUM(total_sell * COALESCE(vat_rate, 0.2)), 0) AS vat_amount
+     FROM quote_items
+     WHERE quote_id = ? AND selected_for_quote = 1`,
+    [quoteId],
+  )
+  const subtotalCost = roundMoney(sums ? sums.subtotal_cost : 0)
+  const subtotalSell = roundMoney(sums ? sums.subtotal_sell : 0)
+  const vatAmount = roundMoney(sums ? sums.vat_amount : 0)
+  const totalSell = roundMoney(subtotalSell + vatAmount)
+  const margin = roundMoney(subtotalSell - subtotalCost)
+  await tx.run(
+    `UPDATE quotes
+     SET subtotal_cost = ?, subtotal_sell = ?, vat_amount = ?, total_sell = ?, estimated_margin = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [subtotalCost, subtotalSell, vatAmount, totalSell, margin, quoteId],
+  )
+
+  await tx.run(
+    `UPDATE mot_result_checks
+     SET created_quote_id = ?, created_quote_number = ?, quote_created_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [quoteId, quoteNumber, checkId],
+  )
+
+  const quote = await tx.get(`SELECT id, quote_number, status, title, job_id FROM quotes WHERE id = ?`, [quoteId])
+  return { quote, linked_job_id: linkedJobId }
 }
 
 async function markArrivedForCheck(tx, checkId, nowUtc, settings) {
@@ -142,6 +323,7 @@ function flattenFaults(groupName, rows) {
 async function runMotCheckNow(db, checkId, trigger = 'manual') {
   const settings = await getMotSettings(db)
   const now = new Date()
+  const automaticTrigger = trigger === 'scheduler' || trigger === 'automatic'
 
   const base = await db.get(`SELECT * FROM mot_result_checks WHERE id = ?`, [checkId])
   if (!base) {
@@ -149,7 +331,7 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
     err.status = 404
     throw err
   }
-  if (!base.arrived_at) {
+  if (automaticTrigger && !base.arrived_at) {
     const err = new Error('Vehicle not marked arrived/offsite yet.')
     err.status = 409
     throw err
@@ -185,8 +367,6 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
   } catch (err) {
     fetchError = String(err && err.message ? err.message : err)
   }
-
-  const automaticTrigger = trigger === 'scheduler' || trigger === 'automatic'
 
   return db.transaction(async (tx) => {
     const row = await tx.get(`SELECT * FROM mot_result_checks WHERE id = ? FOR UPDATE`, [checkId])
@@ -478,6 +658,30 @@ function createMotRouter({ db }) {
     res.status(201).json({ ok: true, check })
   })
 
+  router.post('/mot/checks/quick-add', async (req, res) => {
+    const body = req.body || {}
+    const registration = normaliseRegistration(body.registration)
+    if (!registration) return res.status(400).json({ ok: false, error: 'registration is required.' })
+    const hasBookedStart = Boolean(body.booked_start && String(body.booked_start).trim())
+    const manualOnly = body.manual_only == null ? !hasBookedStart : toBool(body.manual_only, true)
+    const status = manualOnly ? 'manual_watch' : 'booked'
+
+    const created = await db.run(
+      `INSERT INTO mot_result_checks (job_id, vehicle_id, registration, booked_start, status, source, notes)
+       VALUES (?, ?, ?, ?, ?, 'quick_add', ?)`,
+      [
+        body.job_id ? toInt(body.job_id, null) : null,
+        body.vehicle_id ? toInt(body.vehicle_id, null) : null,
+        registration,
+        hasBookedStart ? String(body.booked_start).trim() : null,
+        status,
+        body.notes ? String(body.notes).trim().slice(0, 2000) : null,
+      ],
+    )
+    const check = await db.get(`SELECT * FROM mot_result_checks WHERE id = ?`, [created.lastInsertId])
+    res.status(201).json({ ok: true, check, message: `${registration} added to MOT list.` })
+  })
+
   router.post('/mot/checks/:id/mark-arrived', async (req, res) => {
     const id = toInt(req.params.id, 0)
     if (!id) return res.status(400).json({ ok: false, error: 'Invalid MOT check id.' })
@@ -501,6 +705,31 @@ function createMotRouter({ db }) {
     } catch (err) {
       const status = Number(err && err.status) || 500
       res.status(status).json({ ok: false, error: String(err.message || 'Failed to run MOT check now.') })
+    }
+  })
+
+  router.post('/mot/checks/:id/create-quote', async (req, res) => {
+    const checkId = toInt(req.params.id, 0)
+    if (!checkId) return res.status(400).json({ ok: false, error: 'Invalid MOT check id.' })
+    const body = req.body || {}
+    try {
+      const out = await db.transaction((tx) => createQuoteFromMotCheck(tx, {
+        checkId,
+        selectedFaults: Array.isArray(body.selected_faults) ? body.selected_faults : [],
+        quoteTitle: body.quote_title || 'MOT Repair Quote',
+        optionalJobId: body.job_id,
+        createJobIfMissing: toBool(body.create_job_if_missing, false),
+      }))
+      res.status(201).json({
+        ok: true,
+        quote: out.quote,
+        linked_job_id: out.linked_job_id,
+        action_url: `/quotes/${out.quote.id}`,
+        message: `Draft MOT repair quote created: ${out.quote.quote_number}`,
+      })
+    } catch (err) {
+      const status = Number(err && err.status) || 500
+      res.status(status).json({ ok: false, error: String(err.message || 'Failed to create MOT repair quote.') })
     }
   })
 

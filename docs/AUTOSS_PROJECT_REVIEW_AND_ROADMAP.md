@@ -231,3 +231,6 @@ Current important pages/routes in active workflow:
 - Full reminder automation workflows and richer reminder UI automation remain future work.
 - Future work remains: drag/drop scheduling, live capacity heatmaps, and fully automatic assignment decisions.
 - MOT live-test hardening applied in v1.1.038 (manual checks no longer interfere with automatic retry schedule, and Current booked MOT vs Previous/last known MOT are shown separately).
+- MOT quick-add/watch-list foundation implemented in v1.1.039.
+- MOT-to-quote repair builder implemented in v1.1.039 (selected faults to draft quote only).
+- Future work: richer MOT job/customer linking, customer approval portal for selected MOT repairs, and pricing templates for common MOT failures.

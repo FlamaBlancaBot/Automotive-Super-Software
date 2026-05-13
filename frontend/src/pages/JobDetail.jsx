@@ -44,6 +44,10 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [vehicleHistoryOverview, setVehicleHistoryOverview] = useState(null)
   const [motActionStatus, setMotActionStatus] = useState('idle')
   const [motActionMessage, setMotActionMessage] = useState('')
+  const [motQuoteOpen, setMotQuoteOpen] = useState(false)
+  const [motQuoteDrafts, setMotQuoteDrafts] = useState([])
+  const [motQuoteLoading, setMotQuoteLoading] = useState(false)
+  const [motQuoteResult, setMotQuoteResult] = useState(null)
 
   useEffect(() => {
     setDocumentTitle('Jobs')
@@ -216,6 +220,48 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setMotActionMessage(`Failed to create MOT check: ${err.message || 'Unknown error.'}`)
     } finally {
       setMotActionStatus('idle')
+    }
+  }
+
+  function openMotQuoteBuilder() {
+    const drafts = (motFaults || []).map((f) => ({
+      fault_id: f.id,
+      include: String(f.fault_group || '').toLowerCase() !== 'advisories',
+      title: String(f.text || '').slice(0, 180),
+      description: '',
+      labour_hours: '',
+      parts_cost: '',
+      sell_price: '',
+      fault_group: f.fault_group,
+      dangerous: Number(f.dangerous) === 1,
+    }))
+    setMotQuoteDrafts(drafts)
+    setMotQuoteResult(null)
+    setMotQuoteOpen(true)
+  }
+
+  function setMotQuoteDraft(idx, patch) {
+    setMotQuoteDrafts((prev) => prev.map((x, i) => (i === idx ? { ...x, ...patch } : x)))
+  }
+
+  async function createMotQuote() {
+    if (!motCheck) return
+    setMotQuoteLoading(true)
+    setMotQuoteResult(null)
+    try {
+      const out = await apiPost(`/api/mot/checks/${motCheck.id}/create-quote`, {
+        selected_faults: motQuoteDrafts,
+        quote_title: 'MOT Repair Quote',
+        job_id: job.id,
+        create_job_if_missing: false,
+      })
+      setMotQuoteResult(out)
+      setMotActionMessage(out.message || `Draft MOT repair quote created: ${out?.quote?.quote_number || 'Quote'}`)
+      await load()
+    } catch (err) {
+      setMotQuoteResult({ ok: false, error: err.message || 'Failed to create MOT quote.' })
+    } finally {
+      setMotQuoteLoading(false)
     }
   }
 
@@ -439,6 +485,11 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
                   <span className="statusChip chipYellow">Minors: {Number(motCheck.minors_count || 0)}</span>
                   <span className="statusChip chipGrey">Advisories: {Number(motCheck.advisories_count || 0)}</span>
                 </div>
+                {(motFaults || []).length ? (
+                  <div className="pageHeaderActions" style={{ marginTop: 10, justifyContent: 'flex-start' }}>
+                    <button type="button" className="primaryButton" onClick={openMotQuoteBuilder}>Create Repair Quote from MOT</button>
+                  </div>
+                ) : null}
                 {motFaults.some((f) => f.fault_group === 'failures' && Number(f.dangerous) === 1) ? (
                   <div className="notice bad" style={{ marginTop: 10 }}>Dangerous — do not drive</div>
                 ) : null}
@@ -1010,6 +1061,48 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
               <div className="field"><div className="fieldLabel">Description</div><textarea className="textarea" rows={4} value={activityDraft.description} onChange={(e) => setActivityDraft((d) => ({ ...d, description: e.target.value }))} /></div>
               <div className="field"><div className="fieldLabel">Technician (optional)</div><select className="select" value={activityDraft.technician_id} onChange={(e) => setActivityDraft((d) => ({ ...d, technician_id: e.target.value }))}><option value="">No technician</option>{technicians.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
               <div className="pageHeaderActions"><button type="button" className="secondaryButton" onClick={() => setShowActivityModal(false)}>Cancel</button><button type="button" className="primaryButton" onClick={addActivityEvent}>Save</button></div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {motQuoteOpen ? (
+        <div className="modalOverlay" onClick={() => setMotQuoteOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modalTop">
+              <div>
+                <h3 className="cardTitle">MOT Repair Quote Builder</h3>
+                <div className="fieldHint">Prices must be reviewed before sending to customer.</div>
+              </div>
+              <button type="button" className="miniButton" onClick={() => setMotQuoteOpen(false)}>Close</button>
+            </div>
+            <div style={{ display: 'grid', gap: 10, marginTop: 10, maxHeight: '50vh', overflow: 'auto' }}>
+              {motQuoteDrafts.map((f, idx) => (
+                <div key={`${f.fault_id}-${idx}`} className="cardBox" style={{ padding: 12 }}>
+                  <div className="pageHeaderActions" style={{ justifyContent: 'space-between' }}>
+                    <label className="inlineCheck"><input type="checkbox" checked={Boolean(f.include)} onChange={(e) => setMotQuoteDraft(idx, { include: e.target.checked })} /><span>Include</span></label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <span className="statusChip chipGrey">{f.fault_group}</span>
+                      {f.dangerous ? <span className="statusChip chipRed">dangerous</span> : null}
+                    </div>
+                  </div>
+                  <div className="fieldGrid" style={{ marginTop: 8 }}>
+                    <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Line title</div><input className="input" value={f.title} onChange={(e) => setMotQuoteDraft(idx, { title: e.target.value })} /></div>
+                    <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Description</div><input className="input" value={f.description} onChange={(e) => setMotQuoteDraft(idx, { description: e.target.value })} /></div>
+                    <div className="field" style={{ gridColumn: 'span 6' }}><div className="fieldLabel">Parts cost</div><input className="input" value={f.parts_cost} onChange={(e) => setMotQuoteDraft(idx, { parts_cost: e.target.value })} /></div>
+                    <div className="field" style={{ gridColumn: 'span 6' }}><div className="fieldLabel">Sell price</div><input className="input" value={f.sell_price} onChange={(e) => setMotQuoteDraft(idx, { sell_price: e.target.value })} /></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {motQuoteResult?.ok === false ? <div className="notice bad" style={{ marginTop: 10 }}>{motQuoteResult.error}</div> : null}
+            {motQuoteResult?.ok ? <div className="notice good" style={{ marginTop: 10 }}>{motQuoteResult.message}</div> : null}
+            <div className="pageHeaderActions" style={{ marginTop: 12, justifyContent: 'space-between' }}>
+              <button type="button" className="secondaryButton" onClick={() => setMotQuoteOpen(false)}>Stay on Job</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {motQuoteResult?.quote?.id ? <button type="button" className="secondaryButton" onClick={() => onOpenQuote && onOpenQuote(motQuoteResult.quote.id)}>Open Quote</button> : null}
+                <button type="button" className="primaryButton" disabled={motQuoteLoading} onClick={createMotQuote}>{motQuoteLoading ? 'Creating draft quote...' : 'Create Draft Quote'}</button>
+              </div>
             </div>
           </div>
         </div>
