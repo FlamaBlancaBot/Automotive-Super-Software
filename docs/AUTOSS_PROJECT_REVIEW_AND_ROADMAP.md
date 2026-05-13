@@ -1,7 +1,7 @@
 # Automotive Super Software / AUTOSS — Project Review and Roadmap
 
 ## 1. Current Project Snapshot
-- **Current version:** `1.1.036` (from `frontend/src/config/version.js`)
+- **Current version:** `1.1.037` (from `frontend/src/config/version.js`)
 - **Purpose:** Internal garage/workshop management platform covering intake, workshop operations, quoting, parts, invoicing, and management reporting.
 - **Stack:**
   - Frontend: React + Vite

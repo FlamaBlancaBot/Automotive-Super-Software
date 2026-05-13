@@ -2565,3 +2565,12 @@ Workshop bays:
 - Webhook auth headers/secrets were not introduced in this phase.
 - Scheduler interval runtime reconfiguration is basic; advanced orchestration can be improved later.
 - Full automated reminder escalation and routing remains future work.
+
+## Version housekeeping after Inventory and MOT foundations — v1.1.037
+
+- Inventory foundation was implemented.
+- MOT polling/notifications foundation was implemented.
+- Both had been reported as `v1.1.036`.
+- Current identifiable build is now `v1.1.037`.
+- No app logic changed in this housekeeping update.
+- `QuoteDetail.jsx` untouched.
