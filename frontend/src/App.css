@@ -6838,6 +6838,44 @@
   font-weight: 700;
 }
 
+.topToastStack {
+  position: fixed;
+  right: 16px;
+  top: 78px;
+  width: min(420px, calc(100vw - 24px));
+  display: grid;
+  gap: 8px;
+  z-index: 80;
+}
+
+.topToast {
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--surface-1);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: start;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.topToast.isSuccess {
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.topToast.isWarning {
+  border-color: rgba(251, 191, 36, 0.45);
+}
+
+.topToast.isDanger {
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.topToastTitle {
+  font-weight: 700;
+}
+
 .motRowSelected {
   outline: 1px solid rgba(59, 130, 246, 0.5);
   background: rgba(59, 130, 246, 0.08);

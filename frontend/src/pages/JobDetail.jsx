@@ -42,6 +42,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
   const [suggestionsError, setSuggestionsError] = useState('')
   const [suggestions, setSuggestions] = useState(null)
   const [vehicleHistoryOverview, setVehicleHistoryOverview] = useState(null)
+  const [motActionStatus, setMotActionStatus] = useState('idle')
+  const [motActionMessage, setMotActionMessage] = useState('')
 
   useEffect(() => {
     setDocumentTitle('Jobs')
@@ -164,14 +166,57 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
 
   async function markMotArrived() {
     if (!job) return
-    await apiPost(`/api/jobs/${job.id}/mot/mark-arrived`, {})
-    await load()
+    setMotActionStatus('arrived')
+    setMotActionMessage('')
+    try {
+      const out = await apiPost(`/api/jobs/${job.id}/mot/mark-arrived`, {})
+      await load()
+      setMotActionMessage(`Vehicle marked arrived/offsite. First check scheduled for ${formatDateTime(out?.check?.next_check_at)}.`)
+    } catch (err) {
+      setMotActionMessage(`MOT action failed: ${err.message || 'Failed to mark arrived/offsite.'}`)
+    } finally {
+      setMotActionStatus('idle')
+    }
   }
 
   async function runMotNow() {
     if (!motCheck) return
-    await apiPost(`/api/mot/checks/${motCheck.id}/run-now`, {})
-    await load()
+    setMotActionStatus('run')
+    setMotActionMessage('')
+    try {
+      const out = await apiPost(`/api/mot/checks/${motCheck.id}/run-now`, {})
+      await load()
+      const label = out?.row?.mot_status_label || out?.row?.mot_status || 'Unknown'
+      if (out?.row?.mot_status === 'passed' || out?.row?.mot_status === 'failed') {
+        setMotActionMessage(`MOT check completed: ${label}.`)
+      } else {
+        setMotActionMessage(`MOT not completed yet. Next automatic check scheduled for ${formatDateTime(out?.row?.next_check_at)}.`)
+      }
+    } catch (err) {
+      setMotActionMessage(`MOT check failed: ${err.message || 'Failed to run check now.'}`)
+    } finally {
+      setMotActionStatus('idle')
+    }
+  }
+
+  async function createMotCheckForJob() {
+    if (!job) return
+    setMotActionStatus('creating')
+    setMotActionMessage('')
+    try {
+      const out = await apiPost('/api/mot/checks', {
+        job_id: job.id,
+        vehicle_id: job.vehicle_id,
+        registration: job.vehicle_registration,
+        booked_start: job.booked_start || null,
+      })
+      await load()
+      if (out?.check?.id) setMotActionMessage(`MOT check created for ${out.check.registration}. Mark arrived/offsite to start automated polling.`)
+    } catch (err) {
+      setMotActionMessage(`Failed to create MOT check: ${err.message || 'Unknown error.'}`)
+    } finally {
+      setMotActionStatus('idle')
+    }
   }
 
   function resolveSuggestionInputs(sourceJob) {
@@ -373,20 +418,21 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <h2 className="jobDetailCardTitle">MOT Status</h2>
               <div style={{ display: 'flex', gap: 8 }}>
-                {motCheck ? <button type="button" className="secondaryButton" onClick={markMotArrived}>Mark arrived/offsite</button> : null}
-                {motCheck ? <button type="button" className="secondaryButton" onClick={runMotNow}>Run check now</button> : null}
+                {motCheck ? <button type="button" className="secondaryButton" disabled={motActionStatus === 'arrived'} onClick={markMotArrived}>{motActionStatus === 'arrived' ? 'Marking arrived...' : 'Mark arrived/offsite'}</button> : null}
+                {motCheck ? <button type="button" className="secondaryButton" disabled={motActionStatus === 'run'} onClick={runMotNow}>{motActionStatus === 'run' ? 'Checking MOT...' : 'Run check now'}</button> : null}
               </div>
             </div>
+            {motActionMessage ? <div className="notice info" style={{ marginBottom: 10 }}>{motActionMessage}</div> : null}
             {motCheck ? (
               <div>
-                <div className={`notice ${motCheck.mot_status === 'passed' ? 'good' : motCheck.mot_status === 'failed' ? 'bad' : motCheck.mot_status === 'not_completed' || motCheck.mot_status === 'not_completed_this_year' ? 'warn' : ''}`}>
-                  {motCheck.mot_status_label || motCheck.mot_status || motCheck.status}
+                <div className={`notice ${motCheck.mot_status === 'passed' ? 'good' : motCheck.mot_status === 'failed' ? 'bad' : motCheck.mot_status === 'not_completed' || motCheck.mot_status === 'not_completed_this_year' ? 'warn' : 'info'}`}>
+                  Current booked MOT: {motCheck.mot_status_label || motCheck.mot_status || 'Not Completed Yet'}
                 </div>
                 <div className="fieldGrid" style={{ marginTop: 12 }}>
                   <div className="field"><div className="fieldLabel">Arrival/offsite</div><div>{formatDateTime(motCheck.arrived_at)}</div></div>
-                  <div className="field"><div className="fieldLabel">Next check</div><div>{formatDateTime(motCheck.next_check_at)}</div></div>
-                  <div className="field"><div className="fieldLabel">Attempts</div><div>{Number(motCheck.check_attempts || 0)}</div></div>
-                  <div className="field"><div className="fieldLabel">Latest test</div><div>{motCheck.latest_test_result || '—'} {motCheck.latest_test_expiry ? `· expires ${motCheck.latest_test_expiry}` : ''}</div></div>
+                  <div className="field"><div className="fieldLabel">Next automatic check</div><div>{formatDateTime(motCheck.next_check_at)}</div></div>
+                  <div className="field"><div className="fieldLabel">Automatic attempts</div><div>{Number(motCheck.check_attempts || 0)}</div></div>
+                  <div className="field"><div className="fieldLabel">Last manual check</div><div>{formatDateTime(motCheck.last_manual_checked_at)}</div></div>
                 </div>
                 <div className="availabilitySummaryRow" style={{ marginTop: 10 }}>
                   <span className="statusChip chipRed">Failures: {Number(motCheck.failures_count || 0)}</span>
@@ -394,11 +440,20 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
                   <span className="statusChip chipGrey">Advisories: {Number(motCheck.advisories_count || 0)}</span>
                 </div>
                 {motFaults.some((f) => f.fault_group === 'failures' && Number(f.dangerous) === 1) ? (
-                  <div className="notice bad" style={{ marginTop: 10 }}>Dangerous - do not drive</div>
+                  <div className="notice bad" style={{ marginTop: 10 }}>Dangerous — do not drive</div>
                 ) : null}
+                <div className="fieldGrid" style={{ marginTop: 12 }}>
+                  <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Previous / last known DVSA MOT record</div></div>
+                  <div className="field"><div className="fieldLabel">Date</div><div>{motCheck.latest_test_date || 'No previous MOT record returned by webhook.'}</div></div>
+                  <div className="field"><div className="fieldLabel">Result</div><div>{motCheck.latest_test_result || '—'}</div></div>
+                  <div className="field"><div className="fieldLabel">Expiry</div><div>{motCheck.latest_test_expiry || '—'}</div></div>
+                </div>
               </div>
             ) : (
-              <div className="emptyState">No MOT check linked to this job yet.</div>
+              <div>
+                <div className="emptyState">No MOT check linked to this job yet.</div>
+                {Number(job.service_is_mot || 0) === 1 ? <button type="button" className="secondaryButton" disabled={motActionStatus === 'creating'} onClick={createMotCheckForJob}>{motActionStatus === 'creating' ? 'Creating...' : 'Create MOT check'}</button> : null}
+              </div>
             )}
           </div>
 

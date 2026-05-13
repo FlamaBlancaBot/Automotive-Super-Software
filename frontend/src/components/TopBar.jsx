@@ -47,6 +47,9 @@ export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [soundEnabled, setSoundEnabled] = useState(true)
+  const [toasts, setToasts] = useState([])
+  const toastTimers = useRef(new Map())
+  const notifWrapRef = useRef(null)
   const seenIds = useRef(new Set())
 
   async function loadNotifications(initial = false) {
@@ -62,10 +65,22 @@ export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
 
       if (initial) {
         for (const r of rows) seenIds.current.add(r.id)
-      } else if (soundEnabled) {
-        const fresh = rows.find((r) => !seenIds.current.has(r.id) && !r.read_at && ['success', 'warning', 'danger'].includes(String(r.severity || '').toLowerCase()) && r.sound_key)
+      } else {
+        const freshRows = rows.filter((r) => !seenIds.current.has(r.id) && !r.read_at)
         for (const r of rows) seenIds.current.add(r.id)
-        if (fresh) playBeepForSeverity(String(fresh.severity || 'info').toLowerCase())
+        if (freshRows.length) {
+          setToasts((prev) => {
+            const existing = new Set(prev.map((t) => t.id))
+            const add = freshRows
+              .filter((r) => !existing.has(r.id))
+              .map((r) => ({ id: r.id, title: r.title, message: r.message, severity: String(r.severity || 'info').toLowerCase() }))
+            return [...add, ...prev].slice(0, 6)
+          })
+          if (soundEnabled) {
+            const audible = freshRows.find((r) => ['success', 'warning', 'danger'].includes(String(r.severity || '').toLowerCase()) && r.sound_key)
+            if (audible) playBeepForSeverity(String(audible.severity || 'info').toLowerCase())
+          }
+        }
       }
     } catch {
       // ignore
@@ -77,6 +92,39 @@ export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
     const timer = setInterval(() => loadNotifications(false), 15000)
     return () => clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    function onClickOutside(event) {
+      if (!open) return
+      if (notifWrapRef.current && !notifWrapRef.current.contains(event.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [open])
+
+  useEffect(() => {
+    for (const t of toasts) {
+      if (toastTimers.current.has(t.id)) continue
+      const ms = t.severity === 'warning' || t.severity === 'danger' ? 8000 : 5000
+      const timer = setTimeout(() => {
+        setToasts((prev) => prev.filter((x) => x.id !== t.id))
+        toastTimers.current.delete(t.id)
+      }, ms)
+      toastTimers.current.set(t.id, timer)
+    }
+  }, [toasts])
+
+  useEffect(() => () => {
+    for (const timer of toastTimers.current.values()) clearTimeout(timer)
+    toastTimers.current.clear()
+  }, [])
+
+  function dismissToast(id) {
+    const timer = toastTimers.current.get(id)
+    if (timer) clearTimeout(timer)
+    toastTimers.current.delete(id)
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
 
   async function markRead(id) {
     await apiPatch(`/api/notifications/${id}/read`, {}).catch(() => {})
@@ -115,7 +163,7 @@ export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
       </form>
 
       <div className="topBarRight">
-        <div className="topNotifWrap">
+        <div className="topNotifWrap" ref={notifWrapRef}>
           <button type="button" className="topBarIconBtn" title="Notifications" aria-label="Notifications" onClick={() => setOpen((v) => !v)}>
             <BellIcon />
             {unreadCount > 0 ? <span className="topNotifBadge">{unreadCount > 99 ? '99+' : unreadCount}</span> : null}
@@ -124,7 +172,7 @@ export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
             <div className="topNotifDropdown">
               <div className="topNotifHeader">
                 <strong>Notifications</strong>
-                <button type="button" className="miniButton" onClick={markAllRead}>Mark all read</button>
+                <button type="button" className="miniButton" onClick={async () => { await markAllRead(); setOpen(false) }}>Mark all read</button>
               </div>
               <div className="topNotifList">
                 {notifications.length ? notifications.map((n) => (
@@ -135,12 +183,23 @@ export default function TopBar({ onToggleNav, onSearch, pageTitle, user }) {
                       <div className="fieldHint">{n.message}</div>
                       {n.action_url ? <a href={n.action_url} onClick={() => setOpen(false)}>Open</a> : null}
                     </div>
-                    {!n.read_at ? <button type="button" className="miniButton" onClick={() => markRead(n.id)}>Read</button> : null}
+                    {!n.read_at ? <button type="button" className="miniButton" onClick={async () => { await markRead(n.id); }}>Read</button> : null}
                   </div>
                 )) : <div className="emptyState" style={{ marginTop: 8 }}>No notifications yet.</div>}
               </div>
             </div>
           ) : null}
+        </div>
+        <div className="topToastStack" aria-live="polite">
+          {toasts.map((t) => (
+            <div key={t.id} className={`topToast ${t.severity === 'danger' ? 'isDanger' : t.severity === 'warning' ? 'isWarning' : t.severity === 'success' ? 'isSuccess' : 'isInfo'}`}>
+              <div>
+                <div className="topToastTitle">{t.title}</div>
+                <div className="fieldHint">{t.message}</div>
+              </div>
+              <button type="button" className="miniButton" onClick={() => dismissToast(t.id)}>Close</button>
+            </div>
+          ))}
         </div>
 
         {user ? (

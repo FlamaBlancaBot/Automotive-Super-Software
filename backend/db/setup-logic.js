@@ -212,6 +212,12 @@ async function migrateDatabase(db) {
   await ensureColumn(db, 'inventory_items', 'active', 'TINYINT(1) NOT NULL DEFAULT 1')
 
   // MOT polling + notifications/reminders foundation defaults.
+  await ensureColumn(db, 'mot_result_checks', 'last_manual_checked_at', 'DATETIME NULL')
+  await ensureColumn(db, 'mot_result_checks', 'last_manual_status', 'VARCHAR(40) NULL')
+  await ensureColumn(db, 'mot_result_checks', 'last_manual_status_label', 'VARCHAR(120) NULL')
+  await ensureColumn(db, 'mot_result_checks', 'last_manual_response_json', 'JSON NULL')
+  await ensureColumn(db, 'mot_result_checks', 'last_action_message', 'VARCHAR(255) NULL')
+
   await db.run(
     `INSERT INTO system_settings (setting_key, setting_value, setting_type, description)
      SELECT 'mot.first_check_delay_minutes', '45', 'number', 'Minutes after booked MOT time before first automated result check.'

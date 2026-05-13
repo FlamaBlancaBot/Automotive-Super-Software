@@ -230,3 +230,4 @@ Current important pages/routes in active workflow:
 - Barcode/QR scanning, live supplier integrations, and automatic quote-part to inventory mapping remain future work.
 - Full reminder automation workflows and richer reminder UI automation remain future work.
 - Future work remains: drag/drop scheduling, live capacity heatmaps, and fully automatic assignment decisions.
+- MOT live-test hardening applied in v1.1.038 (manual checks no longer interfere with automatic retry schedule, and Current booked MOT vs Previous/last known MOT are shown separately).

@@ -58,6 +58,7 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
+  const [motSaveStatus, setMotSaveStatus] = useState('idle')
 
   const [techDraft, setTechDraft] = useState({ name: '', email: '', phone: '', role: '', skills_notes: '', capabilities: '', active: true })
   const [skillDraft, setSkillDraft] = useState({ name: '', description: '', active: true })
@@ -1055,6 +1056,7 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
             <h3 className="cardTitle">MOT Automation</h3>
             <div className="fieldHint">Webhook and polling timings for automated MOT result checks.</div>
           </div>
+          <div className="fieldHint" style={{ marginTop: 8 }}>Manual checks are immediate and do not reset the automatic retry schedule unless they return a pass or fail.</div>
           <div className="fieldGrid" style={{ marginTop: 12 }}>
             <Field label="Webhook URL"><input className="input" value={motAutomation.webhook_url || ''} onChange={(e) => setMotAutomation((s) => ({ ...s, webhook_url: e.target.value }))} /></Field>
             <Field label="First check delay (minutes)"><input className="input" value={motAutomation.first_check_delay_minutes ?? 45} onChange={(e) => setMotAutomation((s) => ({ ...s, first_check_delay_minutes: e.target.value }))} /></Field>
@@ -1070,17 +1072,23 @@ export default function Settings({ onOpenSetup, theme, onThemeChange, userRole }
             <button
               type="button"
               className="primaryButton"
+              disabled={motSaveStatus === 'saving'}
               onClick={async () => {
+                setMotSaveStatus('saving')
                 try {
                   const out = await apiPatch('/api/mot/settings', motAutomation)
                   if (out && out.settings) setMotAutomation((prev) => ({ ...prev, ...out.settings }))
+                  const latest = await apiGet('/api/mot/settings').catch(() => null)
+                  if (latest && latest.settings) setMotAutomation((prev) => ({ ...prev, ...latest.settings }))
                   setSaveMessage('MOT automation settings saved.')
+                  setMotSaveStatus('saved')
                 } catch (err) {
                   setError(err.message || 'Failed to save MOT automation settings.')
+                  setMotSaveStatus('error')
                 }
               }}
             >
-              Save MOT automation settings
+              {motSaveStatus === 'saving' ? 'Saving...' : motSaveStatus === 'saved' ? 'Saved' : 'Save MOT automation settings'}
             </button>
           </div>
         </div>

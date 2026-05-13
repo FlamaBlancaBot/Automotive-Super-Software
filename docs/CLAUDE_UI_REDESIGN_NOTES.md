@@ -2574,3 +2574,54 @@ Workshop bays:
 - Current identifiable build is now `v1.1.037`.
 - No app logic changed in this housekeeping update.
 - `QuoteDetail.jsx` untouched.
+
+## MOT live-test hardening — v1.1.038
+
+### Files changed
+- `backend/routes/mot.js`
+- `backend/db/schema-mysql.js`
+- `backend/db/setup-logic.js`
+- `frontend/src/components/TopBar.jsx`
+- `frontend/src/pages/MotEvents.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/pages/Settings.jsx`
+- `frontend/src/App.css`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+
+### Notification and toast fixes
+- Persistent notification records remain in dropdown until read.
+- Added temporary top-right toasts with auto-dismiss (5s info/success, 8s warning/danger) and manual close.
+- Dropdown closes on outside click and after mark-all-read action.
+- Unread count refreshes after read/mark-all-read without blocking UI.
+- Sound playback failures are silently ignored.
+
+### Manual check behaviour hardening
+- Added `POST /api/mot/manual-check` for registration-based manual checks.
+- Manual checks tied to an active MOT check use manual-safe mode.
+- Manual not-completed/unknown responses do not change automatic `next_check_at`, retry attempts, or delayed state.
+- Manual pass/fail can complete active MOT checks and clear auto scheduling.
+
+### Current vs previous MOT display
+- MOT UI now separates:
+  - Current booked MOT status and polling state.
+  - Previous / last known DVSA MOT record from `latest_test_*` fields.
+- Current not-completed statuses are clearly shown as current (amber/neutral), not as a completed result.
+
+### Action feedback improvements
+- MOT actions now show loading labels (`Marking arrived...`, `Checking MOT...`).
+- Clear success/error result messages remain visible for review.
+- Job detail MOT panel no longer hides result context immediately after actions.
+
+### Settings clarification
+- MOT Automation tab includes explicit helper text that manual checks do not reset automatic retry timing unless pass/fail completes.
+- Save action now shows saving/saved feedback and refreshes settings state after save.
+
+### Limitations / future work
+- Manual registration checks without linked MOT check return parsed results but do not create/alter automatic schedules.
+- Deeper timeline/audit history UI can be expanded later if needed.
+
+### Safety note
+- `QuoteDetail.jsx` untouched.
