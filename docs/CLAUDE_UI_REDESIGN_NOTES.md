@@ -2674,3 +2674,37 @@ Workshop bays:
 
 ### QuoteDetail status
 - `QuoteDetail.jsx` untouched.
+
+## MOT live-test bugfix: run-now, quick-add and scheduler — v1.1.040
+
+### Files changed
+- `backend/routes/mot.js`
+- `frontend/src/pages/MotEvents.jsx`
+- `frontend/src/pages/JobDetail.jsx`
+- `frontend/src/config/version.js`
+- `backend/package.json`
+- `package.json`
+- `docs/AUTOSS_PROJECT_REVIEW_AND_ROADMAP.md`
+
+### Root cause of run-now 500
+- Run-now/update SQL paths could fail on live databases missing recently added optional MOT columns, causing unknown-column SQL exceptions.
+- Additional robustness gaps around webhook failure/JSON handling surfaced as generic 500s without clear operator feedback.
+
+### Quick-add fix
+- Hardened `/api/mot/checks/quick-add` with backward-compatible insert fallback when optional columns are unavailable.
+- Frontend now surfaces detailed backend error messages clearly and keeps action feedback visible.
+
+### Scheduler fix and diagnostics
+- Scheduler changed to dynamic timed loop honoring configured interval each tick.
+- Added `POST /api/mot/process-due` to process due checks on-demand.
+- Added `GET /api/mot/scheduler-status` for enabled flag, interval, due count, next due, and server time visibility.
+
+### Manual check schedule safety
+- Preserved: manual not-completed/unknown does not increment automatic attempts or change automatic schedule.
+- Preserved: manual pass/fail can complete check and notify.
+
+### Current vs previous MOT
+- Preserved current booked MOT vs previous/last-known MOT separation.
+
+### QuoteDetail status
+- `QuoteDetail.jsx` untouched.

@@ -100,7 +100,8 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
       if (selected === id) await loadDetail(id)
       setActionMessage(`Vehicle marked arrived/offsite. First check scheduled for ${fmtDateTime(out?.check?.next_check_at)}.`)
     } catch (err) {
-      setActionMessage(`MOT action failed: ${err.message || 'Failed to mark arrived/offsite.'}`)
+      const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
+      setActionMessage(`MOT action failed: ${err.message || 'Failed to mark arrived/offsite.'}${detail}`)
     } finally {
       setRowLoading(id, 'arrived', false)
     }
@@ -121,7 +122,8 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
         setActionMessage(`MOT not completed yet. Next automatic check scheduled for ${fmtDateTime(check?.next_check_at)}.`)
       }
     } catch (err) {
-      setActionMessage(`MOT check failed: ${err.message || 'Failed to run check now.'}`)
+      const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
+      setActionMessage(`MOT check failed: ${err.message || 'Failed to run check now.'}${detail}`)
     } finally {
       setRowLoading(id, 'run', false)
     }
@@ -135,7 +137,8 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
       const out = await apiPost('/api/mot/manual-check', { registration: manualReg.trim() })
       setManualResult(out.result || null)
     } catch (err) {
-      setManualResult({ error: err.message || 'Manual check failed.' })
+      const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
+      setManualResult({ error: `${err.message || 'Manual check failed.'}${detail}` })
     } finally {
       setManualLoading(false)
     }
@@ -165,7 +168,8 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
       }
       setQuickAdd({ registration: '', booked_start: '', notes: '', manual_only: true })
     } catch (err) {
-      setActionMessage(`Quick add failed: ${err.message || 'Unknown error.'}`)
+      const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
+      setActionMessage(`Quick add failed: ${err.message || 'Unknown error.'}${detail}`)
     } finally {
       setQuickAddLoading('idle')
     }
@@ -216,7 +220,8 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
       setActionMessage(out.message || `Draft MOT repair quote created: ${out?.quote?.quote_number || 'Quote'}`)
       await loadDetail(detailCheck.id)
     } catch (err) {
-      setQuoteResult({ ok: false, error: err.message || 'Failed to create quote.' })
+      const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
+      setQuoteResult({ ok: false, error: `${err.message || 'Failed to create quote.'}${detail}` })
     } finally {
       setQuoteLoading(false)
     }

@@ -34,6 +34,26 @@ function parseDateTime(value) {
   return d
 }
 
+function toDateOnlySql(value) {
+  if (!value) return null
+  const d = new Date(String(value).replace(' ', 'T'))
+  if (Number.isNaN(d.getTime())) return null
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function toDateOnlySql(value) {
+  if (!value) return null
+  const d = new Date(String(value).replace(' ', 'T'))
+  if (Number.isNaN(d.getTime())) return null
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 async function getMotSettings(db) {
   const rows = await db.all(
     `SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'mot.%' ORDER BY setting_key ASC`,
@@ -105,6 +125,19 @@ async function createNotification(db, payload) {
       payload.sound_key || null,
     ],
   ).catch(() => {})
+}
+
+async function runWithFallback(tx, primarySql, primaryParams, fallbackSql, fallbackParams) {
+  try {
+    return await tx.run(primarySql, primaryParams)
+  } catch (err) {
+    const code = String(err && err.code ? err.code : '')
+    const msg = String(err && err.message ? err.message : '')
+    if (code === 'ER_BAD_FIELD_ERROR' || /Unknown column/i.test(msg)) {
+      return tx.run(fallbackSql, fallbackParams)
+    }
+    throw err
+  }
 }
 
 async function upsertMotResultCheckForJob(tx, jobId, vehicleId, registration, bookedStart) {
@@ -261,11 +294,14 @@ async function createQuoteFromMotCheck(tx, { checkId, selectedFaults, quoteTitle
     [subtotalCost, subtotalSell, vatAmount, totalSell, margin, quoteId],
   )
 
-  await tx.run(
+  await runWithFallback(
+    tx,
     `UPDATE mot_result_checks
      SET created_quote_id = ?, created_quote_number = ?, quote_created_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
     [quoteId, quoteNumber, checkId],
+    `UPDATE mot_result_checks SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [checkId],
   )
 
   const quote = await tx.get(`SELECT id, quote_number, status, title, job_id FROM quotes WHERE id = ?`, [quoteId])
@@ -336,12 +372,23 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
     err.status = 409
     throw err
   }
+  const registration = String(base.registration || '').trim()
+  if (!registration) {
+    const err = new Error('Registration missing on MOT check.')
+    err.status = 409
+    throw err
+  }
+  if (!settings.webhook_url) {
+    const err = new Error('MOT webhook URL is not configured.')
+    err.status = 500
+    throw err
+  }
   if (base.status === 'complete' || base.status === 'failed') {
     return { row: base, skipped: true, reason: 'already_complete' }
   }
 
   const payload = {
-    registration: String(base.registration || '').trim(),
+    registration,
     job_id: base.job_id || null,
     booked_start: base.booked_start || null,
     mot_result_check_id: base.id,
@@ -402,11 +449,16 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
           })
         }
       } else {
-        await tx.run(
+        await runWithFallback(
+          tx,
           `UPDATE mot_result_checks
            SET last_manual_checked_at = ?, last_error = ?, last_action_message = ?, updated_at = CURRENT_TIMESTAMP
            WHERE id = ?`,
           [toDateTimeSql(now), errorText.slice(0, 1000), 'Manual MOT check failed.', checkId],
+          `UPDATE mot_result_checks
+           SET last_error = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
+          [errorText.slice(0, 1000), checkId],
         )
       }
 
@@ -416,7 +468,9 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
 
     const motStatus = String(responseJson.mot_status || 'unknown').trim().toLowerCase()
     const motStatusLabel = String(responseJson.mot_status_label || motStatus || 'Unknown').trim()
-    const latestTest = responseJson.latest_test || {}
+    const latestTest = responseJson && typeof responseJson.latest_test === 'object' && responseJson.latest_test
+      ? responseJson.latest_test
+      : {}
     const summary = responseJson.summary || {}
 
     const failures = Array.isArray(responseJson.failures) ? responseJson.failures : []
@@ -437,7 +491,8 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
 
     if (automaticTrigger || complete) {
       const nextStatus = complete ? (motStatus === 'failed' ? 'failed' : 'complete') : (isDelayed ? 'delayed' : 'awaiting_result')
-      await tx.run(
+      await runWithFallback(
+        tx,
         `UPDATE mot_result_checks
          SET status = ?, mot_status = ?, mot_status_label = ?,
              latest_test_date = ?, latest_test_result = ?, latest_test_expiry = ?,
@@ -455,9 +510,9 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
           nextStatus,
           motStatus || null,
           motStatusLabel || null,
-          latestTest.date || null,
+          toDateOnlySql(latestTest.date),
           latestTest.result || null,
-          latestTest.expiry || null,
+          toDateOnlySql(latestTest.expiry),
           toInt(summary.failures_count, failures.length),
           toInt(summary.minors_count, minors.length),
           toInt(summary.advisories_count, advisories.length),
@@ -478,9 +533,37 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
           complete ? `MOT check completed: ${motStatusLabel}.` : `MOT check complete: ${motStatusLabel}.`,
           checkId,
         ],
+        `UPDATE mot_result_checks
+         SET status = ?, mot_status = ?, mot_status_label = ?,
+             latest_test_date = ?, latest_test_result = ?, latest_test_expiry = ?,
+             failures_count = ?, minors_count = ?, advisories_count = ?,
+             raw_response_json = ?, next_check_at = ?, check_attempts = ?,
+             delayed_at = CASE WHEN ? = 1 AND delayed_at IS NULL THEN ? ELSE delayed_at END,
+             last_checked_at = ?, last_error = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [
+          nextStatus,
+          motStatus || null,
+          motStatusLabel || null,
+          toDateOnlySql(latestTest.date),
+          latestTest.result || null,
+          toDateOnlySql(latestTest.expiry),
+          toInt(summary.failures_count, failures.length),
+          toInt(summary.minors_count, minors.length),
+          toInt(summary.advisories_count, advisories.length),
+          JSON.stringify(responseJson),
+          nextDue ? toDateTimeSql(nextDue) : null,
+          automaticTrigger ? nextAttempts : Number(row.check_attempts || 0),
+          isDelayed ? 1 : 0,
+          toDateTimeSql(now),
+          toDateTimeSql(now),
+          checkId,
+        ],
       )
     } else {
-      await tx.run(
+      await runWithFallback(
+        tx,
         `UPDATE mot_result_checks
          SET mot_status = ?, mot_status_label = ?,
              latest_test_date = ?, latest_test_result = ?, latest_test_expiry = ?,
@@ -492,9 +575,9 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
         [
           motStatus || null,
           motStatusLabel || null,
-          latestTest.date || null,
+          toDateOnlySql(latestTest.date),
           latestTest.result || null,
-          latestTest.expiry || null,
+          toDateOnlySql(latestTest.expiry),
           toInt(summary.failures_count, failures.length),
           toInt(summary.minors_count, minors.length),
           toInt(summary.advisories_count, advisories.length),
@@ -504,6 +587,24 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
           motStatusLabel || null,
           JSON.stringify(responseJson),
           `Manual MOT check completed: ${motStatusLabel}. Automatic timing unchanged.`,
+          checkId,
+        ],
+        `UPDATE mot_result_checks
+         SET mot_status = ?, mot_status_label = ?,
+             latest_test_date = ?, latest_test_result = ?, latest_test_expiry = ?,
+             failures_count = ?, minors_count = ?, advisories_count = ?,
+             raw_response_json = ?, last_error = NULL, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [
+          motStatus || null,
+          motStatusLabel || null,
+          toDateOnlySql(latestTest.date),
+          latestTest.result || null,
+          toDateOnlySql(latestTest.expiry),
+          toInt(summary.failures_count, failures.length),
+          toInt(summary.minors_count, minors.length),
+          toInt(summary.advisories_count, advisories.length),
+          JSON.stringify(responseJson),
           checkId,
         ],
       )
@@ -543,38 +644,65 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
 let motScheduler = null
 let motSchedulerRunning = false
 
+async function getDueMotRows(db, settings, limit = 20) {
+  return db.all(
+    `SELECT * FROM mot_result_checks
+     WHERE arrived_at IS NOT NULL
+       AND next_check_at IS NOT NULL
+       AND next_check_at <= UTC_TIMESTAMP()
+       AND status NOT IN ('complete', 'failed')
+       AND check_attempts < ?
+     ORDER BY next_check_at ASC
+     LIMIT ?`,
+    [Math.max(1, settings.max_checks_per_mot), Math.max(1, limit)],
+  ).catch(() => [])
+}
+
+async function processDueMotChecks(db, opts = {}) {
+  const settings = await getMotSettings(db)
+  const dueRows = await getDueMotRows(db, settings, opts.limit || 20)
+  const out = { processed: 0, completed: 0, delayed: 0, errors: 0, due_count: dueRows.length }
+  for (const row of dueRows || []) {
+    try {
+      const result = await runMotCheckNow(db, row.id, 'scheduler')
+      out.processed += 1
+      const status = String(result?.row?.status || '').toLowerCase()
+      if (status === 'complete' || status === 'failed') out.completed += 1
+      if (status === 'delayed') out.delayed += 1
+    } catch (err) {
+      out.errors += 1
+      // eslint-disable-next-line no-console
+      console.error('[MOT scheduler] due-check error', {
+        check_id: row.id,
+        error: String(err && err.message ? err.message : err),
+      })
+    }
+  }
+  return out
+}
+
 function startMotScheduler({ db }) {
   if (motScheduler) return
-  motScheduler = setInterval(async () => {
+  // eslint-disable-next-line no-console
+  console.log('[MOT scheduler] started.')
+  async function tick() {
     if (motSchedulerRunning) return
     motSchedulerRunning = true
+    let intervalSeconds = 60
     try {
       const settings = await getMotSettings(db)
+      intervalSeconds = Math.max(15, Number(settings.scheduler_interval_seconds || 60))
       if (!settings.scheduler_enabled) return
-
-      const dueRows = await db.all(
-        `SELECT * FROM mot_result_checks
-         WHERE arrived_at IS NOT NULL
-           AND next_check_at IS NOT NULL
-           AND next_check_at <= UTC_TIMESTAMP()
-           AND status NOT IN ('complete', 'failed')
-           AND check_attempts < ?
-         ORDER BY next_check_at ASC
-         LIMIT 20`,
-        [Math.max(1, settings.max_checks_per_mot)],
-      ).catch(() => [])
-
-      for (const row of dueRows || []) {
-        try {
-          await runMotCheckNow(db, row.id, 'scheduler')
-        } catch {
-          // keep scheduler resilient
-        }
-      }
+      await processDueMotChecks(db, { limit: Math.max(1, settings.max_checks_per_mot) })
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[MOT scheduler] tick failed', String(err && err.message ? err.message : err))
     } finally {
       motSchedulerRunning = false
+      motScheduler = setTimeout(tick, intervalSeconds * 1000)
     }
-  }, 60 * 1000)
+  }
+  motScheduler = setTimeout(tick, 1000)
 }
 
 function createMotRouter({ db }) {
@@ -666,18 +794,39 @@ function createMotRouter({ db }) {
     const manualOnly = body.manual_only == null ? !hasBookedStart : toBool(body.manual_only, true)
     const status = manualOnly ? 'manual_watch' : 'booked'
 
-    const created = await db.run(
-      `INSERT INTO mot_result_checks (job_id, vehicle_id, registration, booked_start, status, source, notes)
-       VALUES (?, ?, ?, ?, ?, 'quick_add', ?)`,
-      [
-        body.job_id ? toInt(body.job_id, null) : null,
-        body.vehicle_id ? toInt(body.vehicle_id, null) : null,
-        registration,
-        hasBookedStart ? String(body.booked_start).trim() : null,
-        status,
-        body.notes ? String(body.notes).trim().slice(0, 2000) : null,
-      ],
-    )
+    let created
+    try {
+      created = await db.run(
+        `INSERT INTO mot_result_checks (job_id, vehicle_id, registration, booked_start, status, source, notes)
+         VALUES (?, ?, ?, ?, ?, 'quick_add', ?)`,
+        [
+          body.job_id ? toInt(body.job_id, null) : null,
+          body.vehicle_id ? toInt(body.vehicle_id, null) : null,
+          registration,
+          hasBookedStart ? String(body.booked_start).trim() : null,
+          status,
+          body.notes ? String(body.notes).trim().slice(0, 2000) : null,
+        ],
+      )
+    } catch (err) {
+      const code = String(err && err.code ? err.code : '')
+      const msg = String(err && err.message ? err.message : '')
+      if (code === 'ER_BAD_FIELD_ERROR' || /Unknown column/i.test(msg)) {
+        created = await db.run(
+          `INSERT INTO mot_result_checks (job_id, vehicle_id, registration, booked_start, status)
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            body.job_id ? toInt(body.job_id, null) : null,
+            body.vehicle_id ? toInt(body.vehicle_id, null) : null,
+            registration,
+            hasBookedStart ? String(body.booked_start).trim() : null,
+            status,
+          ],
+        )
+      } else {
+        throw err
+      }
+    }
     const check = await db.get(`SELECT * FROM mot_result_checks WHERE id = ?`, [created.lastInsertId])
     res.status(201).json({ ok: true, check, message: `${registration} added to MOT list.` })
   })
@@ -701,10 +850,25 @@ function createMotRouter({ db }) {
     if (!id) return res.status(400).json({ ok: false, error: 'Invalid MOT check id.' })
     try {
       const result = await runMotCheckNow(db, id, 'manual')
+      if (result && result.error) {
+        return res.status(502).json({
+          ok: false,
+          error: 'MOT check webhook request failed.',
+          details: String(result.error),
+          check: result.row || null,
+        })
+      }
       res.json({ ok: true, ...result })
     } catch (err) {
       const status = Number(err && err.status) || 500
-      res.status(status).json({ ok: false, error: String(err.message || 'Failed to run MOT check now.') })
+      const details = String(err && err.message ? err.message : err)
+      // eslint-disable-next-line no-console
+      console.error('[MOT run-now] failed', { check_id: id, status, details })
+      res.status(status).json({
+        ok: false,
+        error: 'Failed to run MOT check now.',
+        details,
+      })
     }
   })
 
@@ -742,10 +906,21 @@ function createMotRouter({ db }) {
     if (checkId > 0) {
       try {
         const result = await runMotCheckNow(db, checkId, 'manual')
+        if (result && result.error) {
+          return res.status(502).json({
+            ok: false,
+            error: 'MOT check webhook request failed.',
+            details: String(result.error),
+            check: result.row || null,
+          })
+        }
         return res.json({ ok: true, ...result })
       } catch (err) {
         const status = Number(err && err.status) || 500
-        return res.status(status).json({ ok: false, error: String(err.message || 'Failed manual MOT check.') })
+        const details = String(err && err.message ? err.message : err)
+        // eslint-disable-next-line no-console
+        console.error('[MOT manual-check] linked check failed', { check_id: checkId, status, details })
+        return res.status(status).json({ ok: false, error: 'Failed manual MOT check.', details })
       }
     }
 
@@ -774,7 +949,7 @@ function createMotRouter({ db }) {
         responseJson = null
       }
       if (!response.ok || !responseJson) {
-        return res.status(502).json({ ok: false, error: `Webhook returned HTTP ${response.status}` })
+        return res.status(502).json({ ok: false, error: 'MOT webhook returned non-success response.', details: `HTTP ${response.status}` })
       }
       const motStatus = String(responseJson.mot_status || 'unknown').trim().toLowerCase()
       const motStatusLabel = String(responseJson.mot_status_label || motStatus || 'Unknown').trim()
@@ -795,7 +970,54 @@ function createMotRouter({ db }) {
         },
       })
     } catch (err) {
-      return res.status(500).json({ ok: false, error: String(err && err.message ? err.message : err) })
+      const details = String(err && err.message ? err.message : err)
+      // eslint-disable-next-line no-console
+      console.error('[MOT manual-check] ad-hoc registration failed', { registration, details })
+      return res.status(500).json({ ok: false, error: 'Failed manual MOT check.', details })
+    }
+  })
+
+  router.post('/mot/process-due', async (_req, res) => {
+    try {
+      const out = await processDueMotChecks(db, { limit: 50 })
+      return res.json({ ok: true, ...out })
+    } catch (err) {
+      const details = String(err && err.message ? err.message : err)
+      return res.status(500).json({ ok: false, error: 'Failed to process due MOT checks.', details })
+    }
+  })
+
+  router.get('/mot/scheduler-status', async (_req, res) => {
+    try {
+      const settings = await getMotSettings(db)
+      const dueCountRow = await db.get(
+        `SELECT COUNT(*) AS count FROM mot_result_checks
+         WHERE arrived_at IS NOT NULL
+           AND next_check_at IS NOT NULL
+           AND next_check_at <= UTC_TIMESTAMP()
+           AND status NOT IN ('complete', 'failed')
+           AND check_attempts < ?`,
+        [Math.max(1, settings.max_checks_per_mot)],
+      ).catch(() => ({ count: 0 }))
+      const nextDue = await db.get(
+        `SELECT next_check_at FROM mot_result_checks
+         WHERE arrived_at IS NOT NULL
+           AND next_check_at IS NOT NULL
+           AND status NOT IN ('complete', 'failed')
+         ORDER BY next_check_at ASC
+         LIMIT 1`,
+      ).catch(() => null)
+      return res.json({
+        ok: true,
+        scheduler_enabled: Boolean(settings.scheduler_enabled),
+        interval_seconds: Number(settings.scheduler_interval_seconds || 60),
+        due_count: Number((dueCountRow && dueCountRow.count) || 0),
+        next_due_at: nextDue ? nextDue.next_check_at : null,
+        current_server_time: new Date().toISOString(),
+      })
+    } catch (err) {
+      const details = String(err && err.message ? err.message : err)
+      return res.status(500).json({ ok: false, error: 'Failed to load scheduler status.', details })
     }
   })
 

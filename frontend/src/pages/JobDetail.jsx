@@ -177,7 +177,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       await load()
       setMotActionMessage(`Vehicle marked arrived/offsite. First check scheduled for ${formatDateTime(out?.check?.next_check_at)}.`)
     } catch (err) {
-      setMotActionMessage(`MOT action failed: ${err.message || 'Failed to mark arrived/offsite.'}`)
+      const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
+      setMotActionMessage(`MOT action failed: ${err.message || 'Failed to mark arrived/offsite.'}${detail}`)
     } finally {
       setMotActionStatus('idle')
     }
@@ -197,7 +198,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
         setMotActionMessage(`MOT not completed yet. Next automatic check scheduled for ${formatDateTime(out?.row?.next_check_at)}.`)
       }
     } catch (err) {
-      setMotActionMessage(`MOT check failed: ${err.message || 'Failed to run check now.'}`)
+      const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
+      setMotActionMessage(`MOT check failed: ${err.message || 'Failed to run check now.'}${detail}`)
     } finally {
       setMotActionStatus('idle')
     }
@@ -217,7 +219,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       await load()
       if (out?.check?.id) setMotActionMessage(`MOT check created for ${out.check.registration}. Mark arrived/offsite to start automated polling.`)
     } catch (err) {
-      setMotActionMessage(`Failed to create MOT check: ${err.message || 'Unknown error.'}`)
+      const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
+      setMotActionMessage(`Failed to create MOT check: ${err.message || 'Unknown error.'}${detail}`)
     } finally {
       setMotActionStatus('idle')
     }
@@ -259,7 +262,8 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
       setMotActionMessage(out.message || `Draft MOT repair quote created: ${out?.quote?.quote_number || 'Quote'}`)
       await load()
     } catch (err) {
-      setMotQuoteResult({ ok: false, error: err.message || 'Failed to create MOT quote.' })
+      const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
+      setMotQuoteResult({ ok: false, error: `${err.message || 'Failed to create MOT quote.'}${detail}` })
     } finally {
       setMotQuoteLoading(false)
     }

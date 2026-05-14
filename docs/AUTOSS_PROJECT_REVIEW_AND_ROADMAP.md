@@ -234,3 +234,4 @@ Current important pages/routes in active workflow:
 - MOT quick-add/watch-list foundation implemented in v1.1.039.
 - MOT-to-quote repair builder implemented in v1.1.039 (selected faults to draft quote only).
 - Future work: richer MOT job/customer linking, customer approval portal for selected MOT repairs, and pricing templates for common MOT failures.
+- MOT live-test bugfix applied in v1.1.040: repaired run-now 500 handling, quick-add reliability, and scheduler visibility/diagnostics endpoints.
