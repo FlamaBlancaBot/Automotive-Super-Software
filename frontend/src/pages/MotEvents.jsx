@@ -32,6 +32,25 @@ function faultDefaultIncluded(f) {
   return true
 }
 
+const HIDDEN_MOT_CHECKS_KEY = 'autoss_hidden_mot_check_ids'
+
+function getHiddenMotCheckIds() {
+  try {
+    const stored = localStorage.getItem(HIDDEN_MOT_CHECKS_KEY)
+    return new Set(stored ? JSON.parse(stored) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function saveHiddenMotCheckIds(ids) {
+  try {
+    localStorage.setItem(HIDDEN_MOT_CHECKS_KEY, JSON.stringify(Array.from(ids)))
+  } catch {
+    // Silently fail if localStorage is unavailable
+  }
+}
+
 export default function MotEvents({ onOpenJob, onOpenQuote }) {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
@@ -42,6 +61,8 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
   const [filter, setFilter] = useState('')
   const [actionLoading, setActionLoading] = useState({})
   const [actionMessage, setActionMessage] = useState('')
+  const [hiddenChecks, setHiddenChecks] = useState(() => getHiddenMotCheckIds())
+  const [showHidden, setShowHidden] = useState(false)
 
   const [manualReg, setManualReg] = useState('')
   const [manualLoading, setManualLoading] = useState(false)
@@ -175,11 +196,37 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
     }
   }
 
+  function toggleHideCheck(checkId) {
+    setHiddenChecks((prev) => {
+      const next = new Set(prev)
+      if (next.has(checkId)) {
+        next.delete(checkId)
+      } else {
+        next.add(checkId)
+      }
+      saveHiddenMotCheckIds(next)
+      return next
+    })
+  }
+
   const filtered = useMemo(() => {
+    let result = (rows || [])
+
+    // Hide hidden checks unless showHidden is true
+    if (!showHidden) {
+      result = result.filter((r) => !hiddenChecks.has(r.id))
+    }
+
+    // Apply search filter
     const q = String(search || '').trim().toLowerCase()
-    if (!q) return rows
-    return (rows || []).filter((r) => [r.registration, r.job_id, r.job_title, r.vehicle_make, r.vehicle_model].some((v) => String(v || '').toLowerCase().includes(q)))
-  }, [rows, search])
+    if (q) {
+      result = result.filter((r) => [r.registration, r.job_id, r.job_title, r.vehicle_make, r.vehicle_model].some((v) => String(v || '').toLowerCase().includes(q)))
+    }
+
+    return result
+  }, [rows, search, hiddenChecks, showHidden])
+
+  const hiddenCount = useMemo(() => rows.filter((r) => hiddenChecks.has(r.id)).length, [rows, hiddenChecks])
 
   const detailCheck = detail?.check || null
   const detailFaults = detail?.faults || []
@@ -243,27 +290,29 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
       {error ? <div className="notice bad">{error}</div> : null}
       {actionMessage ? <div className="notice info">{actionMessage}</div> : null}
 
-      <div className="cardBox" style={{ marginBottom: 12 }}>
-        <div className="cardTop"><h3 className="cardTitle">Quick Manual MOT Check</h3></div>
+      <div className="cardBox motQuickSection" style={{ marginBottom: 12 }}>
+        <div className="cardTop"><h3 className="cardTitle">🔍 Quick Manual MOT Check</h3></div>
+        <p className="fieldHint" style={{ marginTop: 8 }}>Check a vehicle's MOT status right now from DVSA without adding to watch list.</p>
         <div className="fieldGrid" style={{ marginTop: 10 }}>
           <div className="field" style={{ gridColumn: 'span 6' }}>
             <div className="fieldLabel">Registration</div>
             <input className="input" value={manualReg} onChange={(e) => setManualReg(e.target.value.toUpperCase())} placeholder="YA07WGK" />
           </div>
           <div className="field" style={{ gridColumn: 'span 6', display: 'flex', alignItems: 'end' }}>
-            <button type="button" className="secondaryButton" disabled={manualLoading} onClick={manualCheckNow}>{manualLoading ? 'Checking MOT...' : 'Check MOT Now'}</button>
+            <button type="button" className="primaryButton" disabled={manualLoading} onClick={manualCheckNow} style={{ width: '100%' }}>{manualLoading ? 'Checking MOT...' : 'Check MOT Now'}</button>
           </div>
         </div>
-        {manualResult?.error ? <div className="notice bad" style={{ marginTop: 8 }}>{manualResult.error}</div> : null}
-        {manualResult && !manualResult.error ? <div className={`notice ${motTone(manualResult.mot_status)}`} style={{ marginTop: 8 }}>{manualResult.mot_status_label || manualResult.mot_status || 'Unknown'}</div> : null}
+        {manualResult?.error ? <div className="notice bad" style={{ marginTop: 12 }}>{manualResult.error}</div> : null}
+        {manualResult && !manualResult.error ? <div className={`notice ${motTone(manualResult.mot_status)}`} style={{ marginTop: 12 }}><strong>{manualResult.mot_status_label || manualResult.mot_status || 'Unknown'}</strong></div> : null}
       </div>
 
-      <div className="cardBox" style={{ marginBottom: 12 }}>
-        <div className="cardTop"><h3 className="cardTitle">Quick Add MOT Check</h3></div>
+      <div className="cardBox motQuickSection" style={{ marginBottom: 12 }}>
+        <div className="cardTop"><h3 className="cardTitle">➕ Quick Add MOT Check</h3></div>
+        <p className="fieldHint" style={{ marginTop: 8 }}>Add a vehicle to the MOT watch list and optionally run an immediate check.</p>
         <div className="fieldGrid" style={{ marginTop: 10 }}>
           <div className="field" style={{ gridColumn: 'span 4' }}>
-            <div className="fieldLabel">Registration</div>
-            <input className="input" value={quickAdd.registration} onChange={(e) => setQuickAdd((s) => ({ ...s, registration: e.target.value.toUpperCase() }))} placeholder="YA07WGK" />
+            <div className="fieldLabel">Registration <span style={{ color: 'var(--error, #ef4444)' }}>*</span></div>
+            <input className="input" value={quickAdd.registration} onChange={(e) => setQuickAdd((s) => ({ ...s, registration: e.target.value.toUpperCase() }))} placeholder="YA07WGK" required />
           </div>
           <div className="field" style={{ gridColumn: 'span 4' }}>
             <div className="fieldLabel">Booked date/time (optional)</div>
@@ -274,29 +323,41 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
             <input className="input" value={quickAdd.notes} onChange={(e) => setQuickAdd((s) => ({ ...s, notes: e.target.value }))} />
           </div>
           <div className="field" style={{ gridColumn: 'span 12' }}>
-            <label className="inlineCheck"><input type="checkbox" checked={Boolean(quickAdd.manual_only)} onChange={(e) => setQuickAdd((s) => ({ ...s, manual_only: e.target.checked }))} /><span>Manual/watch-list only — no automatic polling until marked arrived/offsite</span></label>
+            <label className="inlineCheck"><input type="checkbox" checked={Boolean(quickAdd.manual_only)} onChange={(e) => setQuickAdd((s) => ({ ...s, manual_only: e.target.checked }))} /><span>Manual/watch-list only (no automatic polling until marked arrived/offsite)</span></label>
           </div>
         </div>
-        <div className="pageHeaderActions" style={{ marginTop: 8, justifyContent: 'flex-start' }}>
-          <button type="button" className="secondaryButton" disabled={quickAddLoading !== 'idle'} onClick={() => quickAddCheck(false)}>{quickAddLoading === 'adding' ? 'Adding...' : 'Add to MOT List'}</button>
-          <button type="button" className="primaryButton" disabled={quickAddLoading !== 'idle'} onClick={() => quickAddCheck(true)}>{quickAddLoading === 'adding_and_checking' ? 'Adding and checking...' : 'Add and Check Now'}</button>
+        <div className="pageHeaderActions" style={{ marginTop: 12, justifyContent: 'flex-start', gap: 8 }}>
+          <button type="button" className="secondaryButton" disabled={quickAddLoading !== 'idle'} onClick={() => quickAddCheck(false)}>{quickAddLoading === 'adding' ? 'Adding...' : 'Add to List'}</button>
+          <button type="button" className="primaryButton" disabled={quickAddLoading !== 'idle'} onClick={() => quickAddCheck(true)}>{quickAddLoading === 'adding_and_checking' ? 'Adding and checking...' : 'Add & Check Now'}</button>
         </div>
       </div>
 
       <div className="motControlsSection">
-        <div className="motSearchBox">
-          <span className="motSearchIcon">MOT</span>
-          <input className="motSearchInput" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search registration, job id or title" />
+        <div style={{ display: 'flex', gap: 8, flex: 1 }}>
+          <div className="motSearchBox" style={{ flex: 1 }}>
+            <span className="motSearchIcon">🔍</span>
+            <input className="motSearchInput" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search registration, job id or title" />
+          </div>
+          <select className="motStatusFilter" value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="">All statuses</option>
+            <option value="manual_watch">manual_watch</option>
+            <option value="booked">booked</option>
+            <option value="awaiting_result">awaiting_result</option>
+            <option value="delayed">delayed</option>
+            <option value="complete">complete</option>
+            <option value="failed">failed</option>
+          </select>
         </div>
-        <select className="motStatusFilter" value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="">All statuses</option>
-          <option value="manual_watch">manual_watch</option>
-          <option value="booked">booked</option>
-          <option value="awaiting_result">awaiting_result</option>
-          <option value="delayed">delayed</option>
-          <option value="complete">complete</option>
-          <option value="failed">failed</option>
-        </select>
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            className={showHidden ? 'primaryButton' : 'secondaryButton'}
+            onClick={() => setShowHidden(!showHidden)}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {showHidden ? `Hide ${hiddenCount} result${hiddenCount !== 1 ? 's' : ''}` : `Show ${hiddenCount} hidden result${hiddenCount !== 1 ? 's' : ''}`}
+          </button>
+        )}
       </div>
 
       <div className="motTableWrap">
@@ -319,6 +380,9 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
                     <button type="button" className="miniButton" disabled={Boolean(actionLoading[`${row.id}:arrived`])} onClick={() => markArrived(row.id)}>{actionLoading[`${row.id}:arrived`] ? 'Marking arrived...' : 'Mark arrived/offsite'}</button>
                     <button type="button" className="miniButton primary" disabled={Boolean(actionLoading[`${row.id}:run`])} onClick={() => runNow(row.id)}>{actionLoading[`${row.id}:run`] ? 'Checking MOT...' : 'Run check now'}</button>
                     {row.job_id ? <button type="button" className="miniButton" onClick={() => onOpenJob && onOpenJob(row.job_id)}>Open job</button> : null}
+                    <button type="button" className="miniButton" onClick={() => toggleHideCheck(row.id)} title={hiddenChecks.has(row.id) ? 'Restore from view' : 'Hide from this view (does not delete)'}>
+                      {hiddenChecks.has(row.id) ? '👁️ Show' : '👁️‍🗨️ Hide'}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -327,11 +391,18 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
         </table>
       </div>
 
-      {status === 'loading' ? <div className="emptyState">Loading MOT checks…</div> : null}
+      {status === 'loading' ? <div className="emptyState" style={{ marginTop: 12, padding: '32px' }}>Loading MOT checks…</div> : null}
+
+      {filtered.length === 0 && status === 'ready' && !showHidden ? (
+        <div className="emptyState" style={{ marginTop: 12, padding: '32px' }}>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No MOT checks found</div>
+          <div style={{ fontSize: 14, opacity: 0.7 }}>Try adding a vehicle or adjusting your filters</div>
+        </div>
+      ) : null}
 
       {detailCheck ? (
-        <div className="cardBox" style={{ marginTop: 12 }}>
-          <div className="cardTop"><h3 className="cardTitle">MOT Check Details: {detailCheck.registration}</h3></div>
+        <div className="cardBox motDetailSection" style={{ marginTop: 12 }}>
+          <div className="cardTop"><h3 className="cardTitle">📋 MOT Check Details: <span className="mono" style={{ fontWeight: 700 }}>{detailCheck.registration}</span></h3></div>
 
           <div className="fieldGrid" style={{ marginTop: 10 }}>
             <div className="field" style={{ gridColumn: 'span 12' }}>
@@ -378,13 +449,13 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
 
       {quoteModalOpen ? (
         <div className="modalOverlay" onClick={() => setQuoteModalOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal motQuoteModal" onClick={(e) => e.stopPropagation()}>
             <div className="modalTop">
               <div>
-                <h3 className="cardTitle">MOT Repair Quote Builder</h3>
-                <div className="fieldHint">Prices must be reviewed before sending to customer.</div>
+                <h3 className="cardTitle">📋 MOT Repair Quote Builder</h3>
+                <div className="fieldHint">Select faults to include, then create a draft quote for review and sending.</div>
               </div>
-              <button type="button" className="miniButton" onClick={() => setQuoteModalOpen(false)}>Close</button>
+              <button type="button" className="miniButton" onClick={() => setQuoteModalOpen(false)}>✕</button>
             </div>
             <div className="field" style={{ marginTop: 10 }}>
               <div className="fieldLabel">Quote title</div>
@@ -432,13 +503,13 @@ export default function MotEvents({ onOpenJob, onOpenQuote }) {
 function FaultList({ title, rows, tone }) {
   return (
     <div style={{ marginTop: 12 }}>
-      <h4 className="cardTitle">{title}</h4>
+      <h4 className="cardTitle">{title} <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7 }}>({rows.length})</span></h4>
       {rows.length ? (
         <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
           {rows.map((f) => (
-            <div key={f.id} className={`notice ${Number(f.dangerous) ? 'bad' : tone}`}>
+            <div key={f.id} className={`notice ${Number(f.dangerous) ? 'bad' : tone}`} style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
               {f.text}
-              {Number(f.dangerous) ? ' (Dangerous)' : ''}
+              {Number(f.dangerous) ? <span style={{ marginLeft: 8, fontWeight: 600 }}>(⚠️ Dangerous)</span> : ''}
             </div>
           ))}
         </div>

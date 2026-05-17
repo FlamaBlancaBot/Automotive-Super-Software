@@ -5677,10 +5677,24 @@
   }
 }
 
-/* ── MOT Page (Phase 7) ── */
+/* ── MOT Page (Phase 7 / Improved in v1.1.041) ── */
 .motPage {
   display: flex;
   flex-direction: column;
+}
+
+.motQuickSection,
+.motDetailSection {
+  transition: box-shadow 0.15s ease;
+}
+
+.motQuickSection:hover,
+.motDetailSection:hover {
+  border-color: var(--separator);
+}
+
+.motQuoteModal {
+  max-width: min(900px, 95vw);
 }
 
 .motControlsSection {
@@ -5688,6 +5702,7 @@
   gap: 12px;
   margin-bottom: 24px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .motSearchBox {
@@ -6874,6 +6889,53 @@
 
 .topToastTitle {
   font-weight: 700;
+}
+
+/* Light theme MOT improvements */
+:root[data-theme='light'] .motSearchBox {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme='light'] .motSearchInput {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .motSearchInput::placeholder {
+  color: #94a3b8;
+}
+
+:root[data-theme='light'] .motStatusFilter {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .motStatusFilter:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+:root[data-theme='light'] .motTable th {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+:root[data-theme='light'] .motTable tbody tr:hover {
+  background: #f8fafc;
+}
+
+:root[data-theme='light'] .motTable tbody tr:hover td {
+  background: #f8fafc;
+}
+
+:root[data-theme='light'] .cardBox {
+  background: #fff;
+  border-color: #e2e8f0;
+}
+
+:root[data-theme='light'] .fieldLabel {
+  color: #334155;
 }
 
 .motRowSelected {
