@@ -2394,6 +2394,91 @@
   margin-top: 12px;
 }
 
+/* UK Registration Plate Input */
+.regPlateWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.regPlate {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #ffcc00;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 6px 8px;
+  height: 44px;
+  transition: box-shadow 0.2s ease;
+}
+
+.regPlate.focused {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  border-color: #0066ff;
+}
+
+.regPlateEU {
+  background: #0066ff;
+  color: #ffcc00;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  min-width: 36px;
+  text-align: center;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.regPlateInput {
+  background: transparent;
+  border: none;
+  color: #000;
+  font-family: 'Arial Black', Arial, sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  padding: 2px 8px;
+  min-width: 0;
+  flex: 1;
+  outline: none;
+  text-transform: uppercase;
+}
+
+.regPlateInput::placeholder {
+  color: #999;
+  opacity: 0.6;
+}
+
+.regPlateInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Light theme adjustments */
+:root[data-theme='light'] .regPlate {
+  background: #ffcc00;
+  border-color: #000;
+}
+
+:root[data-theme='light'] .regPlate.focused {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  border-color: #0066ff;
+}
+
+:root[data-theme='light'] .regPlateEU {
+  background: #0066ff;
+  color: #ffcc00;
+}
+
+:root[data-theme='light'] .regPlateInput {
+  color: #000;
+}
+
+:root[data-theme='light'] .regPlateInput::placeholder {
+  color: #666;
+}
+
 .publicOnly {
   width: 100%;
 }
@@ -6941,4 +7026,399 @@
 .motRowSelected {
   outline: 1px solid rgba(59, 130, 246, 0.5);
   background: rgba(59, 130, 246, 0.08);
+}
+
+/* ── MOT Page Redesign Styles ── */
+
+/* Summary Cards */
+.motSummaryCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.motSummaryCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.motSummaryValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.motSummaryLabel {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* Quick Actions Row */
+.motQuickActionsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.motQuickCard {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tab Navigation */
+.motTabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--separator);
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+}
+
+.motTabButton {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.motTabButton:hover {
+  color: var(--text);
+}
+
+.motTabButton.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Results List and Cards */
+.motResultsList {
+  display: grid;
+  gap: 12px;
+}
+
+.motResultCard {
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.motResultCard:hover {
+  background: rgba(59, 130, 246, 0.04);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.motResultCardHeader {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.motResultReg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.motResultRegPlate {
+  font-size: 14px;
+  font-weight: 700;
+  background: #ffcc00;
+  color: #000;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: Arial, sans-serif;
+  letter-spacing: 2px;
+  border: 2px solid #000;
+  position: relative;
+}
+
+.motResultRegPlate::before {
+  content: '';
+  position: absolute;
+  left: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 18px;
+  background: #0066ff;
+  border: 1px solid #000;
+  border-radius: 2px;
+}
+
+.motResultInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.motResultJob {
+  font-weight: 600;
+  color: var(--text-strong);
+  font-size: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.motResultJobId {
+  color: var(--accent);
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.motResultVehicle {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.motResultStatus {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.motResultDetails {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.motResultDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.motResultDetailLabel {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.motResultDetailValue {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.motResultActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Detail Section */
+.motDetailSection {
+  margin-top: 24px;
+}
+
+.motDetailHeader {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: start;
+  margin-top: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.motDetailRegPlate {
+  font-size: 20px;
+  font-weight: 700;
+  background: #ffcc00;
+  color: #000;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: Arial, sans-serif;
+  letter-spacing: 2px;
+  border: 2px solid #000;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.motDetailRegPlate::before {
+  content: '';
+  position: absolute;
+  left: -22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 26px;
+  background: #0066ff;
+  border: 2px solid #000;
+  border-radius: 3px;
+}
+
+.motDetailHeaderInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.motFaultSummary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Quote Modal */
+.motQuoteModal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(700px, calc(100vw - 32px));
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  background: var(--surface-1);
+  border: 1px solid var(--separator);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+.motQuoteModal > div:first-child {
+  position: sticky;
+  top: -20px;
+  background: var(--surface-1);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--separator);
+  z-index: 101;
+}
+
+/* Quote Builder Faults */
+.motQuoteBuilderFaults {
+  display: grid;
+  gap: 16px;
+  max-height: calc(100vh - 380px);
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.motQuoteBuilderFault {
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--surface-2);
+}
+
+.motQuoteBuilderFaultHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .motQuickActionsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .motSummaryCards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .motResultCardHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .motResultStatus {
+    justify-content: flex-start;
+  }
+
+  .motDetailHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .motResultDetails {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .motQuoteModal {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 40px);
+  }
+
+  .motTabButton {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Light theme MOT redesign adjustments */
+:root[data-theme='light'] .motSummaryCard {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme='light'] .motResultCard {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme='light'] .motResultCard:hover {
+  background: #f1f5f9;
+  border-color: #3b82f6;
+}
+
+:root[data-theme='light'] .motResultDetails {
+  background: rgba(51, 65, 85, 0.04);
+  border-color: #cbd5e1;
+}
+
+:root[data-theme='light'] .motQuoteBuilderFault {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme='light'] .motQuoteModal {
+  background: #fff;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme='light'] .motDetailRegPlate {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme='light'] .motResultRegPlate {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
