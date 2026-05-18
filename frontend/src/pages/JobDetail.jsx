@@ -258,9 +258,10 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
         job_id: job.id,
         create_job_if_missing: false,
       })
-      setMotQuoteResult(out)
       setMotActionMessage(out.message || `Draft MOT repair quote created: ${out?.quote?.quote_number || 'Quote'}`)
       await load()
+      setMotQuoteOpen(false)
+      if (out?.quote?.id && onOpenQuote) onOpenQuote(out.quote.id)
     } catch (err) {
       const detail = err?.payload?.details ? ` (${err.payload.details})` : ''
       setMotQuoteResult({ ok: false, error: `${err.message || 'Failed to create MOT quote.'}${detail}` })
@@ -1076,37 +1077,35 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
             <div className="modalTop">
               <div>
                 <h3 className="cardTitle">MOT Repair Quote Builder</h3>
-                <div className="fieldHint">Prices must be reviewed before sending to customer.</div>
+                <div className="fieldHint">Select faults to include. The quote will open automatically for review.</div>
               </div>
               <button type="button" className="miniButton" onClick={() => setMotQuoteOpen(false)}>Close</button>
             </div>
-            <div style={{ display: 'grid', gap: 10, marginTop: 10, maxHeight: '50vh', overflow: 'auto' }}>
+            <div style={{ display: 'grid', gap: 8, marginTop: 12, maxHeight: 'calc(60vh - 80px)', overflowY: 'auto', overflowX: 'hidden' }}>
               {motQuoteDrafts.map((f, idx) => (
-                <div key={`${f.fault_id}-${idx}`} className="cardBox" style={{ padding: 12 }}>
-                  <div className="pageHeaderActions" style={{ justifyContent: 'space-between' }}>
+                <div key={`${f.fault_id}-${idx}`} style={{ borderBottom: '1px solid var(--separator)', paddingBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                     <label className="inlineCheck"><input type="checkbox" checked={Boolean(f.include)} onChange={(e) => setMotQuoteDraft(idx, { include: e.target.checked })} /><span>Include</span></label>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
                       <span className="statusChip chipGrey">{f.fault_group}</span>
                       {f.dangerous ? <span className="statusChip chipRed">dangerous</span> : null}
                     </div>
                   </div>
-                  <div className="fieldGrid" style={{ marginTop: 8 }}>
-                    <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Line title</div><input className="input" value={f.title} onChange={(e) => setMotQuoteDraft(idx, { title: e.target.value })} /></div>
-                    <div className="field" style={{ gridColumn: 'span 12' }}><div className="fieldLabel">Description</div><input className="input" value={f.description} onChange={(e) => setMotQuoteDraft(idx, { description: e.target.value })} /></div>
-                    <div className="field" style={{ gridColumn: 'span 6' }}><div className="fieldLabel">Parts cost</div><input className="input" value={f.parts_cost} onChange={(e) => setMotQuoteDraft(idx, { parts_cost: e.target.value })} /></div>
-                    <div className="field" style={{ gridColumn: 'span 6' }}><div className="fieldLabel">Sell price</div><input className="input" value={f.sell_price} onChange={(e) => setMotQuoteDraft(idx, { sell_price: e.target.value })} /></div>
+                  <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
+                    <div className="field"><div className="fieldLabel">Line title</div><input className="input" value={f.title} onChange={(e) => setMotQuoteDraft(idx, { title: e.target.value })} /></div>
+                    <div className="field"><div className="fieldLabel">Description (optional)</div><input className="input" value={f.description} onChange={(e) => setMotQuoteDraft(idx, { description: e.target.value })} /></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, minWidth: 0 }}>
+                      <div className="field"><div className="fieldLabel">Parts cost (£)</div><input type="number" className="input" value={f.parts_cost} onChange={(e) => setMotQuoteDraft(idx, { parts_cost: e.target.value })} placeholder="0.00" /></div>
+                      <div className="field"><div className="fieldLabel">Sell price (£)</div><input type="number" className="input" value={f.sell_price} onChange={(e) => setMotQuoteDraft(idx, { sell_price: e.target.value })} placeholder="0.00" /></div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
             {motQuoteResult?.ok === false ? <div className="notice bad" style={{ marginTop: 10 }}>{motQuoteResult.error}</div> : null}
-            {motQuoteResult?.ok ? <div className="notice good" style={{ marginTop: 10 }}>{motQuoteResult.message}</div> : null}
             <div className="pageHeaderActions" style={{ marginTop: 12, justifyContent: 'space-between' }}>
               <button type="button" className="secondaryButton" onClick={() => setMotQuoteOpen(false)}>Stay on Job</button>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {motQuoteResult?.quote?.id ? <button type="button" className="secondaryButton" onClick={() => onOpenQuote && onOpenQuote(motQuoteResult.quote.id)}>Open Quote</button> : null}
-                <button type="button" className="primaryButton" disabled={motQuoteLoading} onClick={createMotQuote}>{motQuoteLoading ? 'Creating draft quote...' : 'Create Draft Quote'}</button>
-              </div>
+              <button type="button" className="primaryButton" disabled={motQuoteLoading} onClick={createMotQuote}>{motQuoteLoading ? 'Creating quote…' : 'Create & Open Quote'}</button>
             </div>
           </div>
         </div>

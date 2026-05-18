@@ -224,7 +224,8 @@ async function createQuoteFromMotCheck(tx, { checkId, selectedFaults, quoteTitle
   const title = sourceQuoteId ? `${titleBase} - ADDITIONAL WORK` : titleBase
 
   const quoteNumber = await generateQuoteNumber(tx)
-  const created = await tx.run(
+  const created = await runWithFallback(
+    tx,
     `INSERT INTO quotes (
       quote_number, customer_id, vehicle_id, job_id, status, title,
       parent_quote_id, supersedes_quote_id, revision_number, revision_reason,
@@ -243,6 +244,22 @@ async function createQuoteFromMotCheck(tx, { checkId, selectedFaults, quoteTitle
       sourceQuoteId ? 'Additional MOT work discovered after accepted quote' : 'MOT repair draft quote',
       'mot_result_check',
       checkId,
+    ],
+    `INSERT INTO quotes (
+      quote_number, customer_id, vehicle_id, job_id, status, title,
+      parent_quote_id, supersedes_quote_id, revision_number, revision_reason,
+      subtotal_cost, subtotal_sell, vat_rate, vat_amount, total_sell, estimated_margin
+    ) VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, 0, 0, 0.2000, 0, 0, 0)`,
+    [
+      quoteNumber,
+      customerId,
+      vehicleId,
+      linkedJobId,
+      title,
+      sourceQuoteId ? sourceQuoteId : null,
+      sourceQuoteId,
+      revisionNumber,
+      sourceQuoteId ? 'Additional MOT work discovered after accepted quote' : 'MOT repair draft quote',
     ],
   )
   const quoteId = created.lastInsertId
