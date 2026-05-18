@@ -1076,36 +1076,43 @@ export default function JobDetail({ jobId, onBackToJobs, onOpenQuote, onViewPart
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modalTop">
               <div>
-                <h3 className="cardTitle">MOT Repair Quote Builder</h3>
-                <div className="fieldHint">Select faults to include. The quote will open automatically for review.</div>
+                <h3 className="cardTitle">Create Repair Quote from MOT</h3>
+                <div className="fieldHint">Select the faults to add. Parts prices are sourced in the quote editor.</div>
               </div>
-              <button type="button" className="miniButton" onClick={() => setMotQuoteOpen(false)}>Close</button>
+              <button type="button" className="miniButton" onClick={() => setMotQuoteOpen(false)}>✕</button>
             </div>
-            <div style={{ display: 'grid', gap: 8, marginTop: 12, maxHeight: 'calc(60vh - 80px)', overflowY: 'auto', overflowX: 'hidden' }}>
-              {motQuoteDrafts.map((f, idx) => (
-                <div key={`${f.fault_id}-${idx}`} style={{ borderBottom: '1px solid var(--separator)', paddingBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                    <label className="inlineCheck"><input type="checkbox" checked={Boolean(f.include)} onChange={(e) => setMotQuoteDraft(idx, { include: e.target.checked })} /><span>Include</span></label>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <span className="statusChip chipGrey">{f.fault_group}</span>
-                      {f.dangerous ? <span className="statusChip chipRed">dangerous</span> : null}
+            <div style={{ marginTop: 12, maxHeight: 'calc(65vh - 120px)', overflowY: 'auto', overflowX: 'hidden' }}>
+              {motQuoteDrafts.map((f, idx) => {
+                const grp = String(f.fault_group || '').toLowerCase()
+                const chipClass = grp === 'failures' ? 'chipRed' : grp === 'minors' ? 'chipYellow' : 'chipGrey'
+                return (
+                  <label
+                    key={`${f.fault_id}-${idx}`}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--separator)', cursor: 'pointer' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(f.include)}
+                      onChange={(e) => setMotQuoteDraft(idx, { include: e.target.checked })}
+                      style={{ marginTop: 3, flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+                        <span className={`statusChip ${chipClass}`}>{f.fault_group}</span>
+                        {f.dangerous ? <span className="statusChip chipRed">⚠ dangerous</span> : null}
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.4 }}>{f.title}</div>
                     </div>
-                  </div>
-                  <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
-                    <div className="field"><div className="fieldLabel">Line title</div><input className="input" value={f.title} onChange={(e) => setMotQuoteDraft(idx, { title: e.target.value })} /></div>
-                    <div className="field"><div className="fieldLabel">Description (optional)</div><input className="input" value={f.description} onChange={(e) => setMotQuoteDraft(idx, { description: e.target.value })} /></div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, minWidth: 0 }}>
-                      <div className="field"><div className="fieldLabel">Parts cost (£)</div><input type="number" className="input" value={f.parts_cost} onChange={(e) => setMotQuoteDraft(idx, { parts_cost: e.target.value })} placeholder="0.00" /></div>
-                      <div className="field"><div className="fieldLabel">Sell price (£)</div><input type="number" className="input" value={f.sell_price} onChange={(e) => setMotQuoteDraft(idx, { sell_price: e.target.value })} placeholder="0.00" /></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  </label>
+                )
+              })}
             </div>
             {motQuoteResult?.ok === false ? <div className="notice bad" style={{ marginTop: 10 }}>{motQuoteResult.error}</div> : null}
             <div className="pageHeaderActions" style={{ marginTop: 12, justifyContent: 'space-between' }}>
-              <button type="button" className="secondaryButton" onClick={() => setMotQuoteOpen(false)}>Stay on Job</button>
-              <button type="button" className="primaryButton" disabled={motQuoteLoading} onClick={createMotQuote}>{motQuoteLoading ? 'Creating quote…' : 'Create & Open Quote'}</button>
+              <button type="button" className="secondaryButton" onClick={() => setMotQuoteOpen(false)}>Cancel</button>
+              <button type="button" className="primaryButton" disabled={motQuoteLoading || !motQuoteDrafts.some((f) => f.include)} onClick={createMotQuote}>
+                {motQuoteLoading ? 'Creating…' : 'Add to Quote →'}
+              </button>
             </div>
           </div>
         </div>
