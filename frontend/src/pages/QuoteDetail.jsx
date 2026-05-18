@@ -72,6 +72,10 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
 
   const [quoteDraft, setQuoteDraft] = useState({ title: '', internal_notes: '', customer_notes: '' })
   const [partSupplierDrafts, setPartSupplierDrafts] = useState({})
+  const [quoteContextOpen, setQuoteContextOpen] = useState(true)
+  const [partsDrawerOpen, setPartsDrawerOpen] = useState(false)
+  const [partsOrderBusyId, setPartsOrderBusyId] = useState(0)
+  const [partsOrderError, setPartsOrderError] = useState('')
 
   const partItems = useMemo(() => (items || []).filter((i) => PART_TYPES.includes(String(i.item_type || ''))), [items])
   const labourItems = useMemo(() => (items || []).filter((i) => LABOUR_TYPES.includes(String(i.item_type || ''))), [items])
@@ -489,6 +493,19 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
     }
   }
 
+  async function updatePartsOrderStatus(orderId, nextStatus) {
+    setPartsOrderBusyId(Number(orderId))
+    setPartsOrderError('')
+    try {
+      await apiPatch(`/api/parts-orders/${orderId}/status`, { status: nextStatus })
+      await load({ preserveScroll: true, keepStatus: true })
+    } catch (err) {
+      setPartsOrderError(err.message || 'Failed to update parts order status.')
+    } finally {
+      setPartsOrderBusyId(0)
+    }
+  }
+
   if (status === 'loading') return <div className="emptyState">Loading quote…</div>
   if (status === 'error') return <div className="emptyState">{error}</div>
   if (!quote) return <div className="emptyState">Quote not found.</div>
@@ -537,8 +554,8 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           </div>
           <div className="pageHeaderActions" style={{ marginTop: 8 }}>
             <button type="button" className="secondaryButton" onClick={onBackToQuotes}>Back</button>
-            <button type="button" className="secondaryButton" onClick={() => onViewPartsOrders && onViewPartsOrders(quote.id)}>
-              Parts orders
+            <button type="button" className="secondaryButton" onClick={() => { setPartsOrderError(''); setPartsDrawerOpen(true) }}>
+              Parts orders ({partsOrders.length})
             </button>
             {quote.status === 'accepted' ? (
               <button type="button" className="secondaryButton" onClick={createRevisedQuote} disabled={saveBusy}>
@@ -561,65 +578,64 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
       {notice ? <div className="notice good">{notice}</div> : null}
       {error ? <div className="notice bad">{error}</div> : null}
 
-      {/* === STICKY TOTALS BAR — visible while scrolling through all sections === */}
-      <section className="quoteTotalsBar">
-        <div className="totalsGrid">
-          <div className="totalsItem totalsItemMuted"><div className="totalsLabel">Labour</div><div className="totalsValue"><MoneyDisplay value={totalsView.labourEx} /></div></div>
-          <div className="totalsItem totalsItemMuted"><div className="totalsLabel">Fixed</div><div className="totalsValue"><MoneyDisplay value={totalsView.fixedEx} /></div></div>
-          <div className="totalsItem totalsItemMuted"><div className="totalsLabel">Consumables</div><div className="totalsValue"><MoneyDisplay value={totalsView.consumablesEx} /></div></div>
-          <div className="totalsItem totalsItemMuted"><div className="totalsLabel">Parts</div><div className="totalsValue"><MoneyDisplay value={totalsView.partsEx} /></div></div>
-          <div className="totalsItem"><div className="totalsLabel">Lines</div><div className="totalsValue">{totalsView.lines}</div></div>
-          <div className="totalsItem totalsItemMuted"><div className="totalsLabel">Cost ex VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.costEx} /></div></div>
-          <div className="totalsItem"><div className="totalsLabel">Sell ex VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.sellEx} /></div></div>
-          <div className="totalsItem"><div className="totalsLabel">VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.vat} /></div></div>
-          <div className="totalsItem emphasis"><div className="totalsLabel">Sell inc VAT</div><div className="totalsValue"><MoneyDisplay value={totalsView.sellInc} /></div></div>
-          <div className={`totalsItem ${totalsView.margin >= 0 ? 'totalsItemPos' : 'totalsItemNeg'}`}>
-            <div className="totalsLabel">Margin</div>
-            <div className="totalsValue"><MoneyDisplay value={totalsView.margin} /></div>
-          </div>
-        </div>
-      </section>
-
-      {/* === QUOTE CONTEXT === */}
+      {/* === QUOTE CONTEXT (collapsible, default open) === */}
       <section className="cardBox quoteMetaPanel" style={{ marginTop: 12 }}>
         <div className="cardTop">
-          <h3 className="cardTitle">Quote Context</h3>
-          <div className="fieldHint">Notes and customer details</div>
-        </div>
-        <div className="fieldGrid" style={{ marginTop: 12 }}>
-          <div className="field" style={{ gridColumn: 'span 6' }}>
-            <div className="fieldLabel">Title</div>
-            <input className="input" value={quoteDraft.title} onChange={(e) => { setQuoteDraft((p) => ({ ...p, title: e.target.value })); setSaveState('unsaved') }} onBlur={(e) => setQuoteDraft((p) => ({ ...p, title: toOperationalUpper(e.target.value) }))} placeholder="QUOTE TITLE" />
+          <div>
+            <h3 className="cardTitle">Quote Content</h3>
+            <div className="fieldHint">Title, customer details, notes.</div>
           </div>
-          <div className="field" style={{ gridColumn: 'span 6' }}>
-            <div className="fieldLabel">Customer</div>
-            <div className="fieldHint" style={{ marginTop: 10 }}>{quote.customer_first_name} {quote.customer_surname} · {quote.customer_phone || '—'}</div>
-            <div className="fieldHint" style={{ marginTop: 6 }}>
-              {quote.customer_email || 'No email'} · {quote.customer_postcode || 'No postcode'}
+          <button
+            type="button"
+            className="miniButton"
+            aria-expanded={quoteContextOpen}
+            onClick={() => setQuoteContextOpen((v) => !v)}
+          >
+            {quoteContextOpen ? 'Collapse' : 'Expand'}
+          </button>
+        </div>
+        {quoteContextOpen ? (
+          <>
+            <div className="fieldGrid" style={{ marginTop: 12 }}>
+              <div className="field" style={{ gridColumn: 'span 6' }}>
+                <div className="fieldLabel">Title</div>
+                <input className="input" value={quoteDraft.title} onChange={(e) => { setQuoteDraft((p) => ({ ...p, title: e.target.value })); setSaveState('unsaved') }} onBlur={(e) => setQuoteDraft((p) => ({ ...p, title: toOperationalUpper(e.target.value) }))} placeholder="QUOTE TITLE" />
+              </div>
+              <div className="field" style={{ gridColumn: 'span 6' }}>
+                <div className="fieldLabel">Customer</div>
+                <div className="fieldHint" style={{ marginTop: 10 }}>{quote.customer_first_name} {quote.customer_surname} · {quote.customer_phone || '—'}</div>
+                <div className="fieldHint" style={{ marginTop: 6 }}>
+                  {quote.customer_email || 'No email'} · {quote.customer_postcode || 'No postcode'}
+                </div>
+              </div>
+              <div className="field" style={{ gridColumn: 'span 6' }}>
+                <div className="fieldLabel">Internal notes</div>
+                <textarea className="textarea" value={quoteDraft.internal_notes} onChange={(e) => { setQuoteDraft((p) => ({ ...p, internal_notes: e.target.value })); setSaveState('unsaved') }} onBlur={(e) => setQuoteDraft((p) => ({ ...p, internal_notes: toOperationalUpper(e.target.value) }))} placeholder="INTERNAL NOTES" />
+              </div>
+              <div className="field" style={{ gridColumn: 'span 6' }}>
+                <div className="fieldLabel">Customer notes</div>
+                <textarea className="textarea" value={quoteDraft.customer_notes} onChange={(e) => setQuoteDraft((p) => ({ ...p, customer_notes: e.target.value }))} placeholder="CUSTOMER NOTES" />
+              </div>
             </div>
+            <div className="pageHeaderActions" style={{ marginTop: 10 }}>
+              <button type="button" className="secondaryButton" onClick={saveQuoteMeta} disabled={saveBusy}>Save details</button>
+              {quote.status === 'accepted' && (!quote.customer_email || !quote.customer_postcode || !quote.customer_address) ? (
+                <button type="button" className="secondaryButton" onClick={createCustomerDetailsRequest}>
+                  Create customer details request
+                </button>
+              ) : null}
+            </div>
+            {customerDetailLink ? (
+              <div className="notice info" style={{ marginTop: 10 }}>
+                Customer details link: <a href={customerDetailLink} target="_blank" rel="noreferrer">{customerDetailLink}</a>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="fieldHint" style={{ marginTop: 6 }}>
+            {(quoteDraft.title || 'No title').toUpperCase()} · {quote.customer_first_name} {quote.customer_surname}
           </div>
-          <div className="field" style={{ gridColumn: 'span 6' }}>
-            <div className="fieldLabel">Internal notes</div>
-            <textarea className="textarea" value={quoteDraft.internal_notes} onChange={(e) => { setQuoteDraft((p) => ({ ...p, internal_notes: e.target.value })); setSaveState('unsaved') }} onBlur={(e) => setQuoteDraft((p) => ({ ...p, internal_notes: toOperationalUpper(e.target.value) }))} placeholder="INTERNAL NOTES" />
-          </div>
-          <div className="field" style={{ gridColumn: 'span 6' }}>
-            <div className="fieldLabel">Customer notes</div>
-            <textarea className="textarea" value={quoteDraft.customer_notes} onChange={(e) => setQuoteDraft((p) => ({ ...p, customer_notes: e.target.value }))} placeholder="CUSTOMER NOTES" />
-          </div>
-        </div>
-        <div className="pageHeaderActions" style={{ marginTop: 10 }}>
-          <button type="button" className="secondaryButton" onClick={saveQuoteMeta} disabled={saveBusy}>Save details</button>
-          {quote.status === 'accepted' && (!quote.customer_email || !quote.customer_postcode || !quote.customer_address) ? (
-            <button type="button" className="secondaryButton" onClick={createCustomerDetailsRequest}>
-              Create customer details request
-            </button>
-          ) : null}
-        </div>
-        {customerDetailLink ? (
-          <div className="notice info" style={{ marginTop: 10 }}>
-            Customer details link: <a href={customerDetailLink} target="_blank" rel="noreferrer">{customerDetailLink}</a>
-          </div>
-        ) : null}
+        )}
       </section>
 
       {/* === CUSTOMER QUOTE PREVIEW === */}
@@ -632,46 +648,6 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           <div style={{ marginTop: 12 }} dangerouslySetInnerHTML={{ __html: renderedCustomerQuoteHtml || '<p>No preview available.</p>' }} />
         </section>
       ) : null}
-
-      {/* === FIXED / PREDEFINED CHARGES === */}
-      <section className="cardBox" style={{ marginTop: 12 }}>
-        <div className="cardTop">
-          <h3 className="cardTitle">Fixed / Predefined Charges</h3>
-          <div className="fieldHint">Diagnostics and fixed workshop charges.</div>
-        </div>
-        <div className="pageHeaderActions" style={{ marginTop: 10 }}>
-          <select className="select" defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value = ''; if (v) addPredefined(v) }}>
-            <option value="" disabled>Add predefined charge…</option>
-            {predefined.filter((p) => FIXED_TYPES.includes(String(p.item_type || ''))).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <button type="button" className="primaryButton" onClick={() => addLine('diagnostic', 'DIAGNOSTIC')} disabled={saveBusy}>Add charge</button>
-        </div>
-        {fixedItems.length ? (
-          <div className="quoteTableWrap" style={{ marginTop: 10 }}>
-            <table className="quoteTable quoteSimpleTable">
-              <thead>
-                <tr><th>Use</th><th>Item</th><th>Qty</th><th>Sell ex VAT</th><th>Inc VAT</th><th></th></tr>
-              </thead>
-              <tbody>
-                {fixedItems.map((item) => {
-                  const vatRate = toNumber(item.vat_rate, quote.vat_rate || 0.2)
-                  const sellInc = round2(toNumber(item.unit_sell, 0) * (1 + vatRate))
-                  return (
-                    <tr key={item.id}>
-                      <td><input type="checkbox" checked={Number(item.selected_for_quote) === 1} onChange={(e) => patchItem(item.id, { selected_for_quote: e.target.checked ? 1 : 0 })} /></td>
-                      <td><input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: toOperationalUpper(e.target.value) })} /></td>
-                      <td><input className="input compactInput qtyInput" value={String(item.quantity || 1)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, quantity: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { quantity: e.target.value })} /></td>
-                      <td><input className="input compactInput" value={String(item.unit_sell || 0)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, unit_sell: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { unit_sell: e.target.value })} /></td>
-                      <td><span className="incVatSmall">{formatMoney(sellInc)}</span></td>
-                      <td><button type="button" className="miniButton danger" onClick={() => removeItem(item.id)}>Remove</button></td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : <div className="emptyState" style={{ marginTop: 10 }}>No fixed charges added.</div>}
-      </section>
 
       {/* === LABOUR === */}
       <section className="cardBox" style={{ marginTop: 12 }}>
@@ -721,31 +697,37 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
         ) : <div className="emptyState" style={{ marginTop: 10 }}>No labour lines added.</div>}
       </section>
 
-      {/* === CONSUMABLES === */}
+      {/* === FIXED COSTS (includes consumables) === */}
       <section className="cardBox" style={{ marginTop: 12 }}>
         <div className="cardTop">
-          <h3 className="cardTitle">Consumables</h3>
-          <div className="fieldHint">Oil, fluids, service items.</div>
+          <h3 className="cardTitle">Fixed Costs</h3>
+          <div className="fieldHint">Diagnostics, fixed workshop charges, oils and consumables.</div>
         </div>
         <div className="pageHeaderActions" style={{ marginTop: 10 }}>
           <select className="select" defaultValue="" onChange={(e) => { const v = e.target.value; e.target.value = ''; if (v) addPredefined(v) }}>
-            <option value="" disabled>Add consumable…</option>
-            {predefined.filter((p) => CONSUMABLE_TYPES.includes(String(p.item_type || ''))).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <option value="" disabled>Add predefined charge…</option>
+            {predefined.filter((p) => FIXED_TYPES.includes(String(p.item_type || ''))).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {predefined.filter((p) => CONSUMABLE_TYPES.includes(String(p.item_type || ''))).map((p) => <option key={p.id} value={p.id}>{p.name} (consumable)</option>)}
           </select>
-          <button type="button" className="primaryButton" onClick={() => addLine('oil', 'OIL')} disabled={saveBusy}>Add consumable</button>
+          <button type="button" className="primaryButton" onClick={() => addLine('diagnostic', 'DIAGNOSTIC')} disabled={saveBusy}>Add charge</button>
+          <button type="button" className="secondaryButton" onClick={() => addLine('oil', 'CONSUMABLE')} disabled={saveBusy}>Add consumable</button>
         </div>
-        {consumableItems.length ? (
+        {(fixedItems.length + consumableItems.length) ? (
           <div className="quoteTableWrap" style={{ marginTop: 10 }}>
             <table className="quoteTable quoteSimpleTable">
-              <thead><tr><th>Use</th><th>Item</th><th>Qty</th><th>Sell ex VAT</th><th>Inc VAT</th><th></th></tr></thead>
+              <thead>
+                <tr><th>Use</th><th>Item</th><th>Type</th><th>Qty</th><th>Sell ex VAT</th><th>Inc VAT</th><th></th></tr>
+              </thead>
               <tbody>
-                {consumableItems.map((item) => {
+                {[...fixedItems, ...consumableItems].map((item) => {
                   const vatRate = toNumber(item.vat_rate, quote.vat_rate || 0.2)
                   const sellInc = round2(toNumber(item.unit_sell, 0) * (1 + vatRate))
+                  const isConsumable = CONSUMABLE_TYPES.includes(String(item.item_type || ''))
                   return (
                     <tr key={item.id}>
                       <td><input type="checkbox" checked={Number(item.selected_for_quote) === 1} onChange={(e) => patchItem(item.id, { selected_for_quote: e.target.checked ? 1 : 0 })} /></td>
                       <td><input className="input compactInput" value={item.description || ''} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, description: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { description: toOperationalUpper(e.target.value) })} /></td>
+                      <td><span className={`miniTag${isConsumable ? ' warn' : ''}`}>{isConsumable ? 'CONSUMABLE' : String(item.item_type || 'FIXED').toUpperCase()}</span></td>
                       <td><input className="input compactInput qtyInput" value={String(item.quantity || 1)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, quantity: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { quantity: e.target.value })} /></td>
                       <td><input className="input compactInput" value={String(item.unit_sell || 0)} onChange={(e) => setItems((p) => p.map((x) => x.id === item.id ? { ...x, unit_sell: e.target.value } : x))} onBlur={(e) => patchItem(item.id, { unit_sell: e.target.value })} /></td>
                       <td><span className="incVatSmall">{formatMoney(sellInc)}</span></td>
@@ -756,7 +738,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
               </tbody>
             </table>
           </div>
-        ) : <div className="emptyState" style={{ marginTop: 10 }}>No consumables added.</div>}
+        ) : <div className="emptyState" style={{ marginTop: 10 }}>No fixed costs or consumables added.</div>}
       </section>
 
       {/* === PARTS COMPARISON — per-part supplier cards, horizontal scroll per part === */}
@@ -990,7 +972,7 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
       </section>
 
       {/* === ACTIVITY === */}
-      <section className="cardBox" style={{ marginTop: 12, marginBottom: 24 }}>
+      <section className="cardBox" style={{ marginTop: 12 }}>
         <div className="cardTop">
           <h3 className="cardTitle">Activity</h3>
           <div className="fieldHint">{activity.length} entries</div>
@@ -1009,6 +991,98 @@ export default function QuoteDetail({ quoteId, onBackToQuotes, onViewPartsOrders
           <div className="emptyState" style={{ marginTop: 12 }}>No activity yet.</div>
         )}
       </section>
+
+      {/* Spacer so content is not hidden by the sticky bottom totals bar */}
+      <div className="quoteStickyTotalsSpacer" aria-hidden="true" />
+
+      {/* === STICKY BOTTOM TOTALS BAR === */}
+      <div className="quoteStickyTotals" role="status" aria-label="Quote totals">
+        <div className="quoteStickyTotalsInner">
+          <div className="stickyTotal">
+            <div className="stickyTotalLabel">Cost Price</div>
+            <div className="stickyTotalValue"><MoneyDisplay value={totalsView.costEx} /></div>
+          </div>
+          <div className="stickyTotal">
+            <div className="stickyTotalLabel">Total EX VAT</div>
+            <div className="stickyTotalValue"><MoneyDisplay value={totalsView.sellEx} /></div>
+          </div>
+          <div className="stickyTotal stickyTotalEmphasis">
+            <div className="stickyTotalLabel">Total INC VAT</div>
+            <div className="stickyTotalValue"><MoneyDisplay value={totalsView.sellInc} /></div>
+          </div>
+          <div className={`stickyTotal ${totalsView.margin >= 0 ? 'stickyTotalPos' : 'stickyTotalNeg'}`}>
+            <div className="stickyTotalLabel">Margin</div>
+            <div className="stickyTotalValue"><MoneyDisplay value={totalsView.margin} /></div>
+          </div>
+        </div>
+      </div>
+
+      {/* === PARTS ORDERS DRAWER === */}
+      {partsDrawerOpen ? (
+        <div className="modalOverlay" role="dialog" aria-modal="true" onClick={() => setPartsDrawerOpen(false)}>
+          <div className="modal modalWide partsOrdersDrawer" onClick={(e) => e.stopPropagation()}>
+            <div className="modalTop">
+              <div>
+                <div style={{ fontWeight: 950 }}>Parts orders for quote {quote.quote_number}</div>
+                <div className="fieldHint">{partsOrders.length} order(s) — {quote.status === 'accepted' ? 'created on acceptance' : 'created automatically when the quote is accepted'}.</div>
+              </div>
+              <button type="button" className="miniButton" onClick={() => setPartsDrawerOpen(false)}>✕</button>
+            </div>
+
+            {partsOrderError ? <div className="notice bad">{partsOrderError}</div> : null}
+
+            {partsOrders.length ? (
+              <div className="quoteTableWrap" style={{ marginTop: 12 }}>
+                <table className="quoteTable quoteSimpleTable">
+                  <thead>
+                    <tr><th>Part</th><th>Supplier</th><th>ETA</th><th>Qty</th><th>Status</th><th>Update</th></tr>
+                  </thead>
+                  <tbody>
+                    {partsOrders.map((po) => {
+                      const busy = Number(partsOrderBusyId) === Number(po.id)
+                      return (
+                        <tr key={po.id}>
+                          <td>{po.part_name || po.description || '—'}</td>
+                          <td>{po.supplier_name || '—'}</td>
+                          <td>{po.eta_text || '—'}</td>
+                          <td>{po.quantity}</td>
+                          <td><StatusChip label={po.status} tone="chipGrey" /></td>
+                          <td>
+                            <select
+                              className="select"
+                              value={po.status}
+                              disabled={busy}
+                              onChange={(e) => updatePartsOrderStatus(po.id, e.target.value)}
+                            >
+                              <option value="pending">needed</option>
+                              <option value="ordered">ordered</option>
+                              <option value="received">received</option>
+                              <option value="return_required">return required</option>
+                              <option value="returned">returned</option>
+                              <option value="cancelled">cancelled</option>
+                            </select>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="emptyState" style={{ marginTop: 12 }}>
+                No parts orders for this quote yet. Accept the quote to auto-create supplier orders, or use the full Parts page to add ad-hoc orders.
+              </div>
+            )}
+
+            <div className="pageHeaderActions" style={{ marginTop: 12 }}>
+              <button type="button" className="secondaryButton" onClick={() => onViewPartsOrders && onViewPartsOrders(quote.id)}>
+                Open full Parts page
+              </button>
+              <button type="button" className="primaryButton" onClick={() => setPartsDrawerOpen(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
     </div>
   )

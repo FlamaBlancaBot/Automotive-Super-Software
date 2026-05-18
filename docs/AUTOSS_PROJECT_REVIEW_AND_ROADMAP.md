@@ -235,3 +235,10 @@ Current important pages/routes in active workflow:
 - MOT-to-quote repair builder implemented in v1.1.039 (selected faults to draft quote only).
 - Future work: richer MOT job/customer linking, customer approval portal for selected MOT repairs, and pricing templates for common MOT failures.
 - MOT live-test bugfix applied in v1.1.040: repaired run-now 500 handling, quick-add reliability, and scheduler visibility/diagnostics endpoints.
+
+## Quote page UX pass (v1.1.045)
+- Quote detail page reorganised for daily workshop use: collapsible Quote Content (default open), then Labour, then Fixed Costs, then Parts Comparison, then Parts Orders summary, then Activity.
+- Top totals card row removed in favour of a sticky bottom totals bar (Cost Price · Total EX VAT · Total INC VAT · Margin) that stays visible while editing. Total INC VAT and Margin are emphasised, and margin tone flips green/red with sign.
+- Consumables (oil / service_item) are no longer a top-level section; they are managed inside Fixed Costs with a per-row CONSUMABLE tag. Backend item_type values are unchanged, so saved quotes load unchanged.
+- "Parts orders" header button now opens an in-page drawer showing this quote's parts orders with quick status updates (needed/ordered/received/return/returned/cancelled). The drawer also offers a one-click jump to the full Parts page for advanced work.
+- No quote calculation logic changed; totals are derived from the same `totalsView` memo.

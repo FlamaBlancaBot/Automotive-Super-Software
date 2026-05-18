@@ -110,3 +110,41 @@ Suppliers are added to individual parts via `addSupplierToPart(itemId)`. Do NOT 
 - If a supplier IS selected, that supplier is used even if not cheapest.
 - `reloadCount` increments on every `load()` call — this forces React to remount supplier card inputs with fresh `defaultValue` data.
 - `loadCustomerQuotePreview()` returns the HTML string directly — do not remove the return value.
+
+---
+
+## v1.1.045 UX Pass — 2026-05-18
+
+**Goal:** make the quote page feel like a workshop quoting workspace, not a demo. No calculation logic changed.
+
+### Section order (top to bottom)
+1. Vehicle / customer / quote header (`pageHeader`).
+2. Quote Content (`cardBox quoteMetaPanel`) — **collapsible, default open**. Holds title, customer details, internal notes, customer notes, save details button, optional customer-details-request button.
+3. Customer Quote Preview (only when `showCustomerQuote` toggled).
+4. Labour (`cardBox` + `labourTable`).
+5. Fixed Costs (`cardBox` + `quoteSimpleTable`) — **now includes consumables**. Rows render `[...fixedItems, ...consumableItems]`; each row carries a `miniTag` (CONSUMABLE in warn-tone for `oil`/`service_item`, otherwise the item_type uppercased). The predefined dropdown lists fixed presets plus consumable presets (suffixed `(consumable)`). Buttons: `Add charge` (item_type `diagnostic`), `Add consumable` (item_type `oil`).
+6. Parts Comparison (unchanged).
+7. Parts Orders (read-only inline summary, unchanged).
+8. Activity (unchanged).
+9. Sticky bottom totals bar.
+
+### Sticky bottom totals
+- Rendered last in the page, inside `<div className="quoteStickyTotals">`. Uses `position: sticky; bottom: 0;` relative to `.main`'s scroll container.
+- A `<div className="quoteStickyTotalsSpacer">` above it adds page bottom padding so content is never hidden.
+- Shows 4 totals: Cost Price · Total EX VAT · Total INC VAT (emphasised green) · Margin (green if ≥ 0, red if negative).
+- Stacks 2-up on screens ≤ 700px; spacer grows so nothing is covered.
+- Negative margins through to inc-VAT highlight rules come from `App.css` `.stickyTotalEmphasis`, `.stickyTotalPos`, `.stickyTotalNeg`, with light-theme overrides.
+
+### Consumables — backend compatibility
+- Backend `ITEM_TYPES` (in `backend/routes/quotes.js`) is unchanged: `oil` and `service_item` still exist and `CONSUMABLE_TYPES` in `QuoteDetail.jsx` still recognises them.
+- The frontend simply renders consumables inside the Fixed Costs section. Totals memo still tracks `consumablesEx` separately even though it is no longer surfaced as its own card (kept for future reports).
+
+### Parts orders drawer
+- Header button "Parts orders (N)" opens an in-page drawer (`modal modalWide partsOrdersDrawer`). No navigation away from the quote.
+- Drawer states:
+  - Empty — `No parts orders for this quote yet.` plus an "Open full Parts page" fallback.
+  - Filled — table of orders with quick status select (pending=needed, ordered, received, return_required, returned, cancelled). Each change calls `PATCH /api/parts-orders/:id/status` and reloads quote data with scroll preservation.
+  - Error — `partsOrderError` notice surfaces failed status updates.
+  - Busy — the row's status `<select>` disables while saving.
+- Backend "Fitted" status does not exist; the drawer intentionally does **not** invent it. Fitted/usage tracking belongs to the future full Parts page work.
+- The `onViewPartsOrders` prop is still wired and used inside the drawer as "Open full Parts page".
