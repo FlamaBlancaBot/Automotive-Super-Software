@@ -51,6 +51,16 @@ function createDashboardRouter({ db }) {
         `SELECT COUNT(*) AS count FROM mot_events WHERE LOWER(COALESCE(result, status)) = 'passed'`,
       )
 
+      const motActiveChecksRow = await db.get(
+        `SELECT COUNT(*) AS count FROM mot_result_checks WHERE status NOT IN ('complete', 'failed')`,
+      ).catch(() => ({ count: 0 }))
+      const motCompletedChecksRow = await db.get(
+        `SELECT COUNT(*) AS count FROM mot_result_checks WHERE status = 'complete'`,
+      ).catch(() => ({ count: 0 }))
+      const motFailedChecksRow = await db.get(
+        `SELECT COUNT(*) AS count FROM mot_result_checks WHERE status = 'failed'`,
+      ).catch(() => ({ count: 0 }))
+
       const partsToOrderRow = await db.get(
         `SELECT COUNT(*) AS count FROM parts_orders WHERE status = 'pending'`,
       )
@@ -96,6 +106,9 @@ function createDashboardRouter({ db }) {
         mot_booked_today: Number(motBookedTodayRow?.count || 0),
         mot_failed: Number(motFailedRow?.count || 0),
         mot_passed: Number(motPassedRow?.count || 0),
+        mot_active_checks: Number(motActiveChecksRow?.count || 0),
+        mot_completed_checks: Number(motCompletedChecksRow?.count || 0),
+        mot_failed_checks: Number(motFailedChecksRow?.count || 0),
         parts_waiting: 0,
         parts_to_order: Number(partsToOrderRow?.count || 0),
         parts_ordered: Number(partsOrderedRow?.count || 0),

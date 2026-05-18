@@ -7066,17 +7066,33 @@
   text-transform: uppercase;
 }
 
-/* Quick Actions Row */
+/* Quick Actions Row — forced 2-column on desktop, stacks on mobile */
 .motQuickActionsRow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
   margin-bottom: 24px;
+  align-items: start;
 }
 
 .motQuickCard {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+/* Cap plate input width inside cards */
+.motQuickCard .regPlateWrapper {
+  max-width: 360px;
+}
+
+@media (max-width: 900px) {
+  .motQuickActionsRow {
+    grid-template-columns: 1fr;
+  }
+  .motQuickCard .regPlateWrapper {
+    max-width: 100%;
+  }
 }
 
 /* Tab Navigation */
@@ -7349,10 +7365,6 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .motQuickActionsRow {
-    grid-template-columns: 1fr;
-  }
-
   .motSummaryCards {
     grid-template-columns: repeat(2, 1fr);
   }

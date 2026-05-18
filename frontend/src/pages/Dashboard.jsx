@@ -23,6 +23,7 @@ const KPI_ICONS = {
   expected: { icon: <IcoTruck />,    colour: 'green' },
   returns:  { icon: <IcoRotate />,   colour: 'red' },
   mot:      { icon: <IcoCheck />,    colour: 'green' },
+  check:    { icon: <IcoCheck />,    colour: 'green' },
 }
 
 const SERVICE_BAYS = [
@@ -184,9 +185,21 @@ export default function Dashboard({ onStartNewIntake, onViewJobsNeedingQuote }) 
               />
               <KpiCard
                 {...KPI_ICONS.mot}
-                title="MOTs In Progress"
-                value={summary ? String(summary.mot_jobs_in_progress || 0) : '—'}
-                hint="MOT jobs not yet completed"
+                title="MOT Checks Active"
+                value={summary ? String(summary.mot_active_checks ?? summary.mot_jobs_in_progress ?? 0) : '—'}
+                hint="Active MOT result checks being watched"
+              />
+              <KpiCard
+                {...KPI_ICONS.check}
+                title="MOT Checks Passed"
+                value={summary ? String(summary.mot_completed_checks || 0) : '—'}
+                hint="MOT checks completed with pass result"
+              />
+              <KpiCard
+                {...KPI_ICONS.returns}
+                title="MOT Failed / Repair"
+                value={summary ? String(summary.mot_failed_checks || 0) : '—'}
+                hint="MOT checks that failed — may need quote"
               />
             </div>
           </section>

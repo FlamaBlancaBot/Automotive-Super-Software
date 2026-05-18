@@ -949,6 +949,7 @@ const MYSQL_SCHEMA_STATEMENTS = [
     last_action_message VARCHAR(255) NULL,
     source VARCHAR(50) NULL,
     notes TEXT NULL,
+    polling_interval_minutes INT NOT NULL DEFAULT 0,
     created_quote_id BIGINT UNSIGNED NULL,
     created_quote_number VARCHAR(20) NULL,
     quote_created_at DATETIME NULL,

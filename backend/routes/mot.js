@@ -317,10 +317,16 @@ async function markArrivedForCheck(tx, checkId, nowUtc, settings) {
   }
 
   const now = nowUtc || new Date()
-  const booked = parseDateTime(row.booked_start)
-  const firstDue = booked
-    ? new Date(booked.getTime() + Math.max(1, settings.first_check_delay_minutes) * 60 * 1000)
-    : new Date(now.getTime() + 60 * 1000)
+  const perCheckInterval = Number(row.polling_interval_minutes || 0)
+  let firstDue
+  if (perCheckInterval > 0) {
+    firstDue = new Date(now.getTime() + perCheckInterval * 60 * 1000)
+  } else {
+    const booked = parseDateTime(row.booked_start)
+    firstDue = booked
+      ? new Date(booked.getTime() + Math.max(1, settings.first_check_delay_minutes) * 60 * 1000)
+      : new Date(now.getTime() + 60 * 1000)
+  }
   const nextCheck = firstDue.getTime() <= now.getTime() ? new Date(now.getTime() + 30 * 1000) : firstDue
 
   await tx.run(
@@ -424,11 +430,15 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
     }
 
     const nextAttempts = Number(row.check_attempts || 0) + 1
+    const perCheckInterval = Number(row.polling_interval_minutes || 0)
 
     if (fetchError || !responseJson || responseJson.ok !== true) {
       const errorText = fetchError || 'Webhook response malformed or not ok.'
       if (automaticTrigger) {
-        const nextDue = new Date(now.getTime() + retryDelayMinutesForAttempt(nextAttempts, settings) * 60 * 1000)
+        const retryMinutes = perCheckInterval > 0
+          ? perCheckInterval
+          : retryDelayMinutesForAttempt(nextAttempts, settings)
+        const nextDue = new Date(now.getTime() + retryMinutes * 60 * 1000)
         await tx.run(
           `UPDATE mot_result_checks
            SET check_attempts = ?, last_checked_at = ?, last_error = ?, next_check_at = ?, status = CASE WHEN status = 'booked' THEN 'awaiting_result' ELSE status END, updated_at = CURRENT_TIMESTAMP
@@ -485,9 +495,12 @@ async function runMotCheckNow(db, checkId, trigger = 'manual') {
 
     const complete = motStatus === 'passed' || motStatus === 'failed'
     const isDelayed = automaticTrigger && !complete && nextAttempts > 3
+    const scheduledRetryMinutes = perCheckInterval > 0
+      ? perCheckInterval
+      : retryDelayMinutesForAttempt(nextAttempts, settings)
     const nextDue = complete
       ? null
-      : new Date(now.getTime() + retryDelayMinutesForAttempt(nextAttempts, settings) * 60 * 1000)
+      : new Date(now.getTime() + scheduledRetryMinutes * 60 * 1000)
 
     if (automaticTrigger || complete) {
       const nextStatus = complete ? (motStatus === 'failed' ? 'failed' : 'complete') : (isDelayed ? 'delayed' : 'awaiting_result')
@@ -793,12 +806,13 @@ function createMotRouter({ db }) {
     const hasBookedStart = Boolean(body.booked_start && String(body.booked_start).trim())
     const manualOnly = body.manual_only == null ? !hasBookedStart : toBool(body.manual_only, true)
     const status = manualOnly ? 'manual_watch' : 'booked'
+    const pollingInterval = Math.max(0, toInt(body.polling_interval_minutes, 0))
 
     let created
     try {
       created = await db.run(
-        `INSERT INTO mot_result_checks (job_id, vehicle_id, registration, booked_start, status, source, notes)
-         VALUES (?, ?, ?, ?, ?, 'quick_add', ?)`,
+        `INSERT INTO mot_result_checks (job_id, vehicle_id, registration, booked_start, status, source, notes, polling_interval_minutes)
+         VALUES (?, ?, ?, ?, ?, 'quick_add', ?, ?)`,
         [
           body.job_id ? toInt(body.job_id, null) : null,
           body.vehicle_id ? toInt(body.vehicle_id, null) : null,
@@ -806,6 +820,7 @@ function createMotRouter({ db }) {
           hasBookedStart ? String(body.booked_start).trim() : null,
           status,
           body.notes ? String(body.notes).trim().slice(0, 2000) : null,
+          pollingInterval,
         ],
       )
     } catch (err) {
@@ -813,14 +828,15 @@ function createMotRouter({ db }) {
       const msg = String(err && err.message ? err.message : '')
       if (code === 'ER_BAD_FIELD_ERROR' || /Unknown column/i.test(msg)) {
         created = await db.run(
-          `INSERT INTO mot_result_checks (job_id, vehicle_id, registration, booked_start, status)
-           VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO mot_result_checks (job_id, vehicle_id, registration, booked_start, status, source, notes)
+           VALUES (?, ?, ?, ?, ?, 'quick_add', ?)`,
           [
             body.job_id ? toInt(body.job_id, null) : null,
             body.vehicle_id ? toInt(body.vehicle_id, null) : null,
             registration,
             hasBookedStart ? String(body.booked_start).trim() : null,
             status,
+            body.notes ? String(body.notes).trim().slice(0, 2000) : null,
           ],
         )
       } else {

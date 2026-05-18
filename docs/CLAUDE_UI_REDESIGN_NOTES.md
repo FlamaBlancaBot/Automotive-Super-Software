@@ -2708,3 +2708,81 @@ Workshop bays:
 
 ### QuoteDetail status
 - `QuoteDetail.jsx` untouched.
+
+---
+
+## Phase 11: MOT Page Redesign + Backend Polling + Dashboard Real Data (v1.1.042)
+
+**Date:** 2026-05-18
+**Versions:** v1.1.041 (initial redesign + push fix), v1.1.042 (polling support + layout fix)
+
+### MOT page redesign (v1.1.041)
+
+Completely replaced the table-based MOT page with a card/tab layout:
+
+**New layout structure:**
+1. Summary row — 4 compact stat cards: Active, Completed, Needs Quote, Hidden
+2. Quick actions row — 2-column desktop grid (stacks on mobile ≤900px):
+   - Left: Quick Manual Check (REG input + Check MOT Now button)
+   - Right: Add to MOT Watch (REG input, polling frequency selector, booked date/time, notes)
+3. Tabbed results — Active / Completed / Needs Quote / Hidden tabs with live counts
+
+**Tab logic:**
+- Active — any check not in complete/failed status and not hidden
+- Completed — status = 'complete' (passed MOTs)
+- Needs Quote — status = 'failed' (failed MOTs needing repair quote)
+- Hidden — frontend-only, stored in localStorage key autoss_hidden_mot_check_ids
+
+**Frontend-only hiding:**
+- localStorage key: autoss_hidden_mot_check_ids (array of integer check IDs)
+- Hidden records removed from normal tabs; visible in Hidden tab with restore option
+- No backend delete routes added; no records deleted
+
+**New component:**
+- frontend/src/components/RegistrationPlateInput.jsx
+- Yellow background (#ffcc00), black border, blue EU strip, Arial font, auto-uppercase, max 9 chars
+- Used in Quick Manual Check and Add to MOT Watch cards
+- Not applied to NewIntake (has its own plateInput with Enter-key lookup)
+
+### Polling interval support (v1.1.042)
+
+**Database:** mot_result_checks.polling_interval_minutes INT NOT NULL DEFAULT 0
+- Added to schema-mysql.js CREATE TABLE
+- Added via ensureColumn in setup-logic.js (safe live migration, no data loss)
+
+**Backend route POST /api/mot/checks/quick-add:**
+- Now accepts and stores polling_interval_minutes
+- Fallback INSERT without column if not yet migrated
+
+**Scheduler behaviour:**
+- markArrivedForCheck uses per-check polling_interval_minutes for initial next_check_at if > 0
+- runMotCheckNow uses per-check interval for retry delays under scheduler when > 0
+- 0 = manual only (no auto-polling); 5 = every 5 min; 10 = every 10 min
+
+### Dashboard real MOT data (v1.1.042)
+
+**GET /api/dashboard/summary additions:**
+- mot_active_checks — mot_result_checks WHERE status NOT IN ('complete','failed')
+- mot_completed_checks — mot_result_checks WHERE status = 'complete'
+- mot_failed_checks — mot_result_checks WHERE status = 'failed'
+
+**Dashboard.jsx:**
+- MOT Checks Active, MOT Checks Passed, MOT Failed/Repair KPI cards use real counts
+
+### Layout fix (v1.1.042)
+
+- .motQuickActionsRow changed to minmax(0,1fr) minmax(0,1fr) — hard 2-column grid
+- Mobile breakpoint ≤900px collapses to single column
+- .motQuickCard .regPlateWrapper capped at max-width 360px on desktop
+
+### Files changed
+- frontend/src/pages/MotEvents.jsx
+- frontend/src/components/RegistrationPlateInput.jsx
+- frontend/src/App.css
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/config/version.js
+- backend/routes/mot.js
+- backend/routes/dashboard.js
+- backend/db/schema-mysql.js
+- backend/db/setup-logic.js
+- package.json + backend/package.json

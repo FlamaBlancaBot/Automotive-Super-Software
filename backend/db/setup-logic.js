@@ -222,6 +222,7 @@ async function migrateDatabase(db) {
   await ensureColumn(db, 'mot_result_checks', 'created_quote_id', 'BIGINT UNSIGNED NULL')
   await ensureColumn(db, 'mot_result_checks', 'created_quote_number', 'VARCHAR(20) NULL')
   await ensureColumn(db, 'mot_result_checks', 'quote_created_at', 'DATETIME NULL')
+  await ensureColumn(db, 'mot_result_checks', 'polling_interval_minutes', 'INT NOT NULL DEFAULT 0')
   await ensureColumn(db, 'quotes', 'source_type', 'VARCHAR(40) NULL')
   await ensureColumn(db, 'quotes', 'source_id', 'BIGINT NULL')
 
